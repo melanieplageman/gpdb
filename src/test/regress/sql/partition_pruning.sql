@@ -848,6 +848,7 @@ ANALYZE jazz;
 SELECT * FROM partition_table JOIN bar ON dk = c AND pk = d JOIN jazz on dk = e AND pk = f;
 
 -- Two partition selectors selecting for one dynamic index scan
+SET optimizer_enable_dynamictablescan = off;
 CREATE INDEX pt_idx_pk on partition_table (pk);
 SELECT * FROM partition_table JOIN bar ON dk = c AND pk = d AND pk < 9 JOIN jazz on dk = e AND pk = f;
 
