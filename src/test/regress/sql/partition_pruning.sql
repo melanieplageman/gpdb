@@ -832,4 +832,23 @@ select get_selected_parts('explain analyze select * from bar where j is distinct
 -- 8 parts: NULL is shared with others on p1. So, all 8 parts.
 select get_selected_parts('explain analyze select * from bar where j is distinct from NULL;');
 
+-- Two partition selectors selecting for one dynamic table scan
+DROP TABLE IF EXISTS partition_table;
+CREATE TABLE partition_table (dk int, pk int) DISTRIBUTED BY (dk) PARTITION BY range(pk) (START (0) END (6) EVERY (2));
+INSERT INTO partition_table SELECT j, i FROM generate_series(0, 31) AS t(j) CROSS JOIN generate_series(0, 5) AS i;
+ANALYZE partition_table;
+
+DROP TABLE IF EXISTS bar;
+DROP TABLE IF EXISTS jazz;
+CREATE TABLE bar (c, d) AS SELECT j, i FROM generate_series(0, 3) AS j CROSS JOIN (VALUES (0), (2), (8)) AS t(i) DISTRIBUTED BY (c);
+CREATE TABLE jazz (e, f) AS SELECT j, i FROM generate_series(0, 3) AS j CROSS JOIN (VALUES (0), (4), (8)) AS t(i) DISTRIBUTED BY (e);
+ANALYZE bar;
+ANALYZE jazz;
+
+SELECT * FROM partition_table JOIN bar ON dk = c AND pk = d JOIN jazz on dk = e AND pk = f;
+
+-- Two partition selectors selecting for one dynamic index scan
+CREATE INDEX pt_idx_pk on partition_table (pk);
+SELECT * FROM partition_table JOIN bar ON dk = c AND pk = d AND pk < 9 JOIN jazz on dk = e AND pk = f;
+
 RESET ALL;
