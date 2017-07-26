@@ -142,17 +142,15 @@ static bool
 initNextIndexToScan(DynamicIndexScanState *node)
 {
 	IndexScanState *indexState = &(node->indexScanState);
-	DynamicIndexScan *dynamicIndexScan = (DynamicIndexScan *) node->indexScanState.ss.ps.plan;
 	EState *estate = indexState->ss.ps.state;
-	DynamicTableScanInfo *partitionInfo = indexState->ss.ps.state->dynamicTableScanInfo;
-
+	DynamicIndexScan *dynamicIndexScan = (DynamicIndexScan *) indexState->ss.ps.plan;
+	DynamicTableScanInfo *partitionInfo = estate->dynamicTableScanInfo;
 	int32 numSelectors = list_nth_int(partitionInfo->numSelectorsPerScanId, dynamicIndexScan->scan.partIndex);
 
 	/* Load new index when the scanning of the previous index is done. */
 	if (indexState->ss.scan_state == SCAN_INIT ||
 		indexState->ss.scan_state == SCAN_DONE)
 	{
-		/* This is the oid of a partition of the table (*not* index) */
 		PartOidEntry *partOidEntry;
 		while ((partOidEntry = hash_seq_search(&node->pidxStatus)) != NULL)
 		{
@@ -160,6 +158,7 @@ initNextIndexToScan(DynamicIndexScanState *node)
 				break;
 		}
 
+		/* This is the oid of a partition of the table (*not* index) */
 		Oid *pid = (Oid *) partOidEntry;
 		if (pid == NULL)
 		{
@@ -184,7 +183,6 @@ initNextIndexToScan(DynamicIndexScanState *node)
 		 * We started at table level, and now we are fetching the oid of an index
 		 * partition.
 		 */
-
 		Relation currentRelation = OpenScanRelationByOid(*pid);
 		indexState->ss.ss_currentRelation = currentRelation;
 
