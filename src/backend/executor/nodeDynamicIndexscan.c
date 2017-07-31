@@ -145,6 +145,9 @@ initNextIndexToScan(DynamicIndexScanState *node)
 	EState *estate = indexState->ss.ps.state;
 	DynamicIndexScan *dynamicIndexScan = (DynamicIndexScan *) indexState->ss.ps.plan;
 	DynamicTableScanInfo *partitionInfo = estate->dynamicTableScanInfo;
+
+	/* 1-based index */
+	Assert(partitionInfo->numScans >= dynamicIndexScan->scan.partIndex);
 	int32 numSelectors = list_nth_int(partitionInfo->numSelectorsPerScanId, dynamicIndexScan->scan.partIndex);
 
 	/* Load new index when the scanning of the previous index is done. */

@@ -833,7 +833,6 @@ select get_selected_parts('explain analyze select * from bar where j is distinct
 select get_selected_parts('explain analyze select * from bar where j is distinct from NULL;');
 
 -- Two partition selectors selecting for one dynamic table scan
-DROP TABLE IF EXISTS partition_table;
 CREATE TABLE partition_table (dk int, pk int) DISTRIBUTED BY (dk) PARTITION BY range(pk) (START (0) END (6) EVERY (2));
 INSERT INTO partition_table SELECT j, i FROM generate_series(0, 31) AS t(j) CROSS JOIN generate_series(0, 5) AS i;
 ANALYZE partition_table;

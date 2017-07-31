@@ -80,6 +80,9 @@ initNextTableToScan(DynamicTableScanState *node)
 	ScanState *scanState = (ScanState *)node;
 	Scan *scan = (Scan *)scanState->ps.plan;
 	DynamicTableScanInfo *partitionInfo = scanState->ps.state->dynamicTableScanInfo;
+
+	/* 1-based index */
+	Assert(partitionInfo->numScans >= scan->partIndex);
 	int32 numSelectors = list_nth_int(partitionInfo->numSelectorsPerScanId, scan->partIndex);
 
 	if (scanState->scan_state == SCAN_INIT ||
