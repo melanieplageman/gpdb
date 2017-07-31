@@ -142,27 +142,15 @@ static bool
 initNextIndexToScan(DynamicIndexScanState *node)
 {
 	IndexScanState *indexState = &(node->indexScanState);
+	DynamicIndexScan *dynamicIndexScan = (DynamicIndexScan *)node->indexScanState.ss.ps.plan;
 	EState *estate = indexState->ss.ps.state;
-	DynamicIndexScan *dynamicIndexScan = (DynamicIndexScan *) indexState->ss.ps.plan;
-	DynamicTableScanInfo *partitionInfo = estate->dynamicTableScanInfo;
-
-	/* 1-based index */
-	Assert(partitionInfo->numScans >= dynamicIndexScan->scan.partIndex);
-	int32 numSelectors = list_nth_int(partitionInfo->numSelectorsPerScanId, dynamicIndexScan->scan.partIndex);
 
 	/* Load new index when the scanning of the previous index is done. */
 	if (indexState->ss.scan_state == SCAN_INIT ||
 		indexState->ss.scan_state == SCAN_DONE)
 	{
-		PartOidEntry *partOidEntry;
-		while ((partOidEntry = hash_seq_search(&node->pidxStatus)) != NULL)
-		{
-			if (list_length(partOidEntry->selectorList) == numSelectors)
-				break;
-		}
-
 		/* This is the oid of a partition of the table (*not* index) */
-		Oid *pid = (Oid *) partOidEntry;
+		Oid *pid = hash_seq_search(&node->pidxStatus);
 		if (pid == NULL)
 		{
 			/* Return if all parts have been scanned. */

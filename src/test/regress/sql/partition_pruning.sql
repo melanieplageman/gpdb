@@ -844,11 +844,15 @@ CREATE TABLE jazz (e, f) AS SELECT j, i FROM generate_series(0, 3) AS j CROSS JO
 ANALYZE bar;
 ANALYZE jazz;
 
-SELECT * FROM partition_table JOIN bar ON dk = c AND pk = d JOIN jazz on dk = e AND pk = f;
+CREATE OR REPLACE FUNCTION check_partition_selection (pk int) RETURNS INT AS $$
+BEGIN
+	IF pk NOT IN (0, 1) THEN
+		raise exception 'pk: %', pk;
+	END IF;
+	return pk;
+END;
+$$ STABLE LANGUAGE plpgsql;
 
--- Two partition selectors selecting for one dynamic index scan
-SET optimizer_enable_dynamictablescan = off;
-CREATE INDEX pt_idx_pk on partition_table (pk);
-SELECT * FROM partition_table JOIN bar ON dk = c AND pk = d AND pk < 9 JOIN jazz on dk = e AND pk = f;
+SELECT dk, pk, debug, c, d, e, f FROM (SELECT *, check_partition_selection(pk) as debug FROM partition_table) AS pt JOIN bar ON dk = c AND pk = d JOIN jazz on dk = e AND pk = f;
 
 RESET ALL;
