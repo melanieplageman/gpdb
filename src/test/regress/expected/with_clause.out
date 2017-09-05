@@ -1954,3 +1954,33 @@ select * from x, yy;
 (4 rows)
 
 -- End of MPP-17848
+
+--
+-- test WITH attached to intermediate-level set operation
+--
+WITH outermost(x) AS (
+  SELECT 1
+  UNION (WITH innermost as (SELECT 2)
+         SELECT * FROM innermost
+         UNION SELECT 3)
+)
+SELECT * FROM outermost;
+ x 
+---
+ 1
+ 2
+ 3
+(3 rows)
+
+WITH outermost(x) AS (
+  SELECT 1
+  UNION (WITH innermost as (SELECT 2)
+         SELECT * FROM outermost  -- fail
+         UNION SELECT * FROM innermost)
+)
+SELECT * FROM outermost;
+ERROR:  relation "outermost" does not exist
+LINE 4:          SELECT * FROM outermost  
+                               ^
+DETAIL:  There is a WITH item named "outermost", but it cannot be referenced from this part of the query.
+HINT:  Re-order the WITH items to remove forward references.

@@ -1863,6 +1863,7 @@ transformSetOperationStmt(ParseState *pstate, SelectStmt *stmt)
 	Node	   *limitOffset;
 	Node	   *limitCount;
 	List	   *lockingClause;
+	WithClause *withClause;
 	Node	   *node;
 	ListCell   *left_tlist,
 			   *lct,
@@ -1907,11 +1908,13 @@ transformSetOperationStmt(ParseState *pstate, SelectStmt *stmt)
 	limitOffset = stmt->limitOffset;
 	limitCount = stmt->limitCount;
 	lockingClause = stmt->lockingClause;
+	withClause = stmt->withClause;
 
 	stmt->sortClause = NIL;
 	stmt->limitOffset = NULL;
 	stmt->limitCount = NULL;
 	stmt->lockingClause = NIL;
+	stmt->withClause = NULL;
 
 	/* We don't support FOR UPDATE/SHARE with set ops at the moment. */
 	if (lockingClause)
@@ -1920,12 +1923,12 @@ transformSetOperationStmt(ParseState *pstate, SelectStmt *stmt)
 				 errmsg("SELECT FOR UPDATE/SHARE is not allowed with UNION/INTERSECT/EXCEPT")));
 
 	/* process the WITH clause */
-	if (stmt->withClause)
+	if (withClause)
 	{
-		qry->hasRecursive = stmt->withClause->recursive;
-		qry->cteList = transformWithClause(pstate, stmt->withClause);
-		qry->hasModifyingCTE = pstate->p_hasModifyingCTE;
+		qry->hasRecursive = withClause->recursive;
+		qry->cteList = transformWithClause(pstate, withClause);
 	}
+
 
 	/*
 	 * Before transforming the subtrees, we collect all the data types
@@ -2394,13 +2397,14 @@ transformSetOperationTree(ParseState *pstate, SelectStmt *stmt)
 static bool
 isSetopLeaf(SelectStmt *stmt)
 {
-	Assert(stmt && IsA(stmt, SelectStmt));
 	/*
-	 * If an internal node of a set-op tree has ORDER BY, UPDATE, or LIMIT
-	 * clauses attached, we need to treat it like a leaf node to generate an
-	 * independent sub-Query tree.	Otherwise, it can be represented by a
-	 * SetOperationStmt node underneath the parent Query.
-	 */
+	* If an internal node of a set-op tree has ORDER BY, LIMIT, FOR UPDATE,
+	* or WITH clauses attached, we need to treat it like a leaf node to
+	* generate an independent sub-Query tree.  Otherwise, it can be
+	* rexpresented by a SetOperationStmt node underneath the parent Query.
+	*/
+
+	Assert(stmt && IsA(stmt, SelectStmt));
 	if (stmt->op == SETOP_NONE)
 	{
 		Assert(stmt->larg == NULL && stmt->rarg == NULL);
@@ -2410,7 +2414,7 @@ isSetopLeaf(SelectStmt *stmt)
 	{
 		Assert(stmt->larg != NULL && stmt->rarg != NULL);
 		if (stmt->sortClause || stmt->limitOffset || stmt->limitCount ||
-			stmt->lockingClause)
+			stmt->lockingClause || stmt->withClause)
 			return true;
 		else
 			return false;
@@ -2437,6 +2441,7 @@ collectSetopTypes(ParseState *pstate, SelectStmt *stmt,
 	{
 		ParseState	   *parentstate = pstate;
 		SelectStmt	   *select_stmt = stmt;
+		Query          *selectQuery;
 		List		   *tlist, *temp_tlist;
 		ListCell	   *lc, *lct, *lcm;
 		int				tlist_length;
@@ -2445,17 +2450,9 @@ collectSetopTypes(ParseState *pstate, SelectStmt *stmt,
 		pstate = make_parsestate(parentstate);
 		stmt = copyObject(select_stmt);
 
-		if (stmt->valuesLists)
-		{
-			/* in VALUES query, we can transform all */
-			tlist = transformValuesClause(pstate, stmt)->targetList;
-		}
-		else
-		{
-			/* transform only tragetList */
-			transformFromClause(pstate, stmt->fromClause);
-			tlist = transformTargetList(pstate, stmt->targetList);
-		}
+		selectQuery = parse_sub_analyze((Node *) stmt, pstate);
+		tlist = selectQuery->targetList;
+		
 
 		/* Filter out junk columns. */
 		temp_tlist = NIL;
