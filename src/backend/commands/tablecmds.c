@@ -2982,58 +2982,11 @@ ATController(Relation rel, List *cmds, bool recurse)
 
 }
 
-static void
-prepSplitCmd(Relation rel, PgPartRule *prule, bool is_at)
-{
-	PartitionNode		*pNode = NULL;
-	pNode = RelationBuildPartitionDesc(rel, false);
-
-	if (prule->topRule->children)
-		ereport(ERROR,
-				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-					errmsg("cannot split partition with child "
-						"partitions"),
-					errhint("Try splitting the child partitions.")));
-
-	if (prule->topRule->parisdefault &&
-		prule->pNode->part->parkind == 'r' &&
-		is_at)
-	{
-		ereport(ERROR,
-				(errcode(ERRCODE_SYNTAX_ERROR),
-					errmsg("AT clause cannot be used when splitting "
-						"a default RANGE partition")));
-	}
-	else if (prule->pNode->part->parkind == 'l' && pNode->default_part)
-		if (pNode->default_part->children)
-		{
-			ereport(ERROR,
-					(errcode(ERRCODE_GP_FEATURE_NOT_SUPPORTED),
-						errmsg("split partition is not "
-								"currently supported when the "
-								"lowest level is list partitioned")));
-		}
-	else if (prule->pNode->part->parkind == 'l' && !is_at)
-	{
-		ereport(ERROR,
-				(errcode(ERRCODE_SYNTAX_ERROR),
-					errmsg("cannot SPLIT DEFAULT PARTITION "
-						"with LIST"),
-				errhint("Use SPLIT with the AT clause instead.")));
-
-	}
-
-	if (prule->pNode->part->parkind == 'h')
-		ereport(ERROR,
-				(errcode(ERRCODE_WRONG_OBJECT_TYPE),
-					errmsg("SPLIT is not supported for "
-						"HASH partitions")));
-}
 
 /*
  * prepSplitCmd
  *
- * Do initial sanity checking for an ALTER TABLE ... SPLIT PARITION cmd.
+ * Do initial sanity checking for an ALTER TABLE ... SPLIT PARTITION cmd.
  * - Shouldn't have children
  * - The usual permissions checks
  * - Not called on HASH
@@ -3063,16 +3016,16 @@ prepSplitCmd(Relation rel, PgPartRule *prule, bool is_at)
 					errmsg("AT clause cannot be used when splitting "
 						"a default RANGE partition")));
 	}
-	else if (prule->pNode->part->parkind == 'l' && pNode !=NULL && pNode->default_part
-			 && pNode->default_part->children)
+	else if ((prule->pNode->part->parkind == 'l') && (pNode !=NULL && pNode->default_part)
+			 && (pNode->default_part->children))
 		{
 			ereport(ERROR,
 					(errcode(ERRCODE_GP_FEATURE_NOT_SUPPORTED),
-						errmsg("SPLIT PARITION is not "
-								"currently supported when leaf partition is"
+						errmsg("SPLIT PARTITION is not "
+								"currently supported when leaf partition is "
 								"list partitioned in multi level partition table")));
 		}
-	else if (prule->pNode->part->parkind == 'l' && !is_at)
+	else if ((prule->pNode->part->parkind == 'l') && !is_at)
 	{
 		ereport(ERROR,
 				(errcode(ERRCODE_SYNTAX_ERROR),

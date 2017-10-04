@@ -3438,7 +3438,7 @@ select tablename,partitiontablename, partitionname from pg_partitions where tabl
 
 -- SPLIT partition
 alter table mpp14613_list alter partition others split partition subothers at (10) into (partition b1, partition b2);
-ERROR:  split partition is not currently supported when the lowest level is list partitioned
+ERROR:  SPLIT PARTITION is not currently supported when leaf partition is list partitioned in multi level partition table
 alter table mpp14613_range alter partition others split partition subothers at (10) into (partition b1, partition b2);
 ERROR:  AT clause cannot be used when splitting a default RANGE partition
 -- ALTER TABLE ... ALTER PARTITION ... SPLIT DEFAULT PARTITION
@@ -3482,11 +3482,11 @@ NOTICE:  CREATE TABLE will create partition "foo_1_prt_5_2_prt_subothers" for ta
 NOTICE:  CREATE TABLE will create partition "foo_1_prt_5_2_prt_s1" for table "foo_1_prt_5"
 NOTICE:  CREATE TABLE will create partition "foo_1_prt_5_2_prt_s2" for table "foo_1_prt_5"
 alter table foo alter partition others split partition subothers at (10) into (partition b1, default partition);
-ERROR:  split partition is not currently supported when the lowest level is list partitioned
+ERROR:  SPLIT PARTITION is not currently supported when leaf partition is list partitioned in multi level partition table
 alter table foo alter partition others split partition subothers at (10) into (partition b1, partition subothers);
-ERROR:  split partition is not currently supported when the lowest level is list partitioned
+ERROR:  SPLIT PARTITION is not currently supported when leaf partition is list partitioned in multi level partition table
 alter table foo alter partition others split default partition at (10) into (partition b1, default partition);
-ERROR:  split partition is not currently supported when the lowest level is list partitioned
+ERROR:  SPLIT PARTITION is not currently supported when leaf partition is list partitioned in multi level partition table
 drop table foo;
 -- Drop table as gpcheckcat will complaint of not having constraint for newly
 -- created tables due to split.
