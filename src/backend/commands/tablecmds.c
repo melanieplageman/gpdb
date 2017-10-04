@@ -3031,6 +3031,65 @@ prepSplitCmd(Relation rel, PgPartRule *prule, bool is_at)
 }
 
 /*
+ * prepSplitCmd
+ *
+ * Do initial sanity checking for an ALTER TABLE ... SPLIT PARITION cmd.
+ * - Shouldn't have children
+ * - The usual permissions checks
+ * - Not called on HASH
+ */
+static void
+prepSplitCmd(Relation rel, PgPartRule *prule, bool is_at)
+{
+	PartitionNode		*pNode = NULL;
+	pNode = RelationBuildPartitionDesc(rel, false);
+
+	if (prule->topRule->children)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						errmsg("cannot split partition with child "
+									   "partitions"),
+						errhint("Try splitting the child partitions.")));
+
+	}
+
+	if (prule->topRule->parisdefault &&
+		prule->pNode->part->parkind == 'r' &&
+		is_at)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+					errmsg("AT clause cannot be used when splitting "
+						"a default RANGE partition")));
+	}
+	else if (prule->pNode->part->parkind == 'l' && pNode !=NULL && pNode->default_part
+			 && pNode->default_part->children)
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_GP_FEATURE_NOT_SUPPORTED),
+						errmsg("SPLIT PARITION is not "
+								"currently supported when leaf partition is"
+								"list partitioned in multi level partition table")));
+		}
+	else if (prule->pNode->part->parkind == 'l' && !is_at)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+					errmsg("cannot SPLIT DEFAULT PARTITION "
+						"with LIST"),
+				errhint("Use SPLIT with the AT clause instead.")));
+
+	}
+
+	if (prule->pNode->part->parkind == 'h')
+		ereport(ERROR,
+				(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+					errmsg("SPLIT is not supported for "
+						"HASH partitions")));
+}
+
+/*
  * ATPrepCmd
  *
  * Traffic cop for ALTER TABLE Phase 1 operations, including simple
@@ -12768,7 +12827,7 @@ ATPExecPartAlter(List **wqueue, AlteredTableInfo *tab, Relation rel,
 	AlterPartitionCmd 	*pc2		   = NULL;
 	bool				 bPartitionCmd = true;	/* true if a "partition" cmd */
 	Relation			 rel2		   = rel;
-	bool				prepCmd		= false;
+	bool				prepCmd		= false;	/* true if the sub command of ALTER PARTITION is a SPLIT PARTITION */
 
 	while (1)
 	{
@@ -12792,7 +12851,7 @@ ATPExecPartAlter(List **wqueue, AlteredTableInfo *tab, Relation rel,
 	{
 		case AT_PartSplit:				/* Split */
 		{
-			prepCmd = true;
+			prepCmd = true; /* if sub-command is split partition then it will require some preprocessing */
 		}
 		case AT_PartAdd:				/* Add */
 		case AT_PartAddForSplit:		/* Add, as part of a split */
@@ -12858,13 +12917,13 @@ ATPExecPartAlter(List **wqueue, AlteredTableInfo *tab, Relation rel,
 
 			pc2->partid = (Node *)pid2;
 
-			if (prepCmd)
+			if (prepCmd) /* Prep the split partition sub-command */
 			{
 				PgPartRule			*prule1	= NULL;
 				bool is_at = true;
 				prule1 = get_part_rule(rel, pid2, true, true, NULL, false);
 
-				if (linitial((List *)pc2->arg1))
+				if (linitial((List *)pc2->arg1)) /* Check if the SPLIT PARTITION command has an AT clause */
 					is_at = false;
 
 				prepSplitCmd(rel, prule1, is_at);
