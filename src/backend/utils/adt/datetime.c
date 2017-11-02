@@ -8,7 +8,7 @@
  *
  *
  * IDENTIFICATION
- *	  $PostgreSQL: pgsql/src/backend/utils/adt/datetime.c,v 1.188 2008/03/25 22:42:43 tgl Exp $
+ *	  $PostgreSQL: pgsql/src/backend/utils/adt/datetime.c,v 1.191 2008/09/10 18:29:41 tgl Exp $
  *
  *-------------------------------------------------------------------------
  */
@@ -2973,11 +2973,14 @@ DecodeInterval(char **field, int *ftype, int nf, int range,
 				Assert(*field[i] == '-' || *field[i] == '+');
 
 				/*
-				 * Try for hh:mm or hh:mm:ss.  If not, fall through to
-				 * DTK_NUMBER case, which can handle signed float numbers and
-				 * signed year-month values.
+				 * A single signed number ends up here, but will be rejected
+				 * by DecodeTime(). So, work this out to drop through to
+				 * DTK_NUMBER, which *can* tolerate this.
 				 */
-				if (strchr(field[i] + 1, ':') != NULL &&
+				cp = field[i] + 1;
+				while (*cp != '\0' && *cp != ':' && *cp != '.')
+					cp++;
+				if (*cp == ':' &&
 					DecodeTime(field[i] + 1, fmask, INTERVAL_FULL_RANGE,
 							   &tmask, tm, fsec) == 0)
 				{
@@ -2999,13 +3002,32 @@ DecodeInterval(char **field, int *ftype, int nf, int range,
 					tmask = DTK_M(TZ);
 					break;
 				}
+				else if (type == IGNORE_DTF)
+				{
+					if (*cp == '.')
+					{
+						/*
+					* Got a decimal point? Then assume some sort of
+						* seconds specification
+						*/
+					type = DTK_SECOND;
+				}
+				else if (*cp == '\0')
+				{
+					/*
+						* Only a signed integer? Then must assume a
+						* timezone-like usage
+						*/
+					type = DTK_HOUR;
+				}
+			}
 				/* FALL THROUGH */
 
 			case DTK_DATE:
 			case DTK_NUMBER:
 				if (type == IGNORE_DTF)
 				{
-					/* use typmod to decide what rightmost field is */
+					/* use typmod to decide what rightmost integer field is */
 					switch (range)
 					{
 						case INTERVAL_MASK(YEAR):
@@ -3020,21 +3042,21 @@ DecodeInterval(char **field, int *ftype, int nf, int range,
 							break;
 						case INTERVAL_MASK(HOUR):
 						case INTERVAL_MASK(DAY) | INTERVAL_MASK(HOUR):
+						case INTERVAL_MASK(DAY) | INTERVAL_MASK(HOUR) | INTERVAL_MASK(MINUTE):
+						case INTERVAL_MASK(DAY) | INTERVAL_MASK(HOUR) | INTERVAL_MASK(MINUTE) | INTERVAL_MASK(SECOND):
 							type = DTK_HOUR;
 							break;
 						case INTERVAL_MASK(MINUTE):
 						case INTERVAL_MASK(HOUR) | INTERVAL_MASK(MINUTE):
-						case INTERVAL_MASK(DAY) | INTERVAL_MASK(HOUR) | INTERVAL_MASK(MINUTE):
 							type = DTK_MINUTE;
 							break;
 						case INTERVAL_MASK(SECOND):
-						case INTERVAL_MASK(MINUTE) | INTERVAL_MASK(SECOND):
 						case INTERVAL_MASK(HOUR) | INTERVAL_MASK(MINUTE) | INTERVAL_MASK(SECOND):
-						case INTERVAL_MASK(DAY) | INTERVAL_MASK(HOUR) | INTERVAL_MASK(MINUTE) | INTERVAL_MASK(SECOND):
+						case INTERVAL_MASK(MINUTE) | INTERVAL_MASK(SECOND):
 							type = DTK_SECOND;
 							break;
 						default:
-						type = DTK_SECOND;
+							type = DTK_SECOND;
 							break;
 					}
 				}
