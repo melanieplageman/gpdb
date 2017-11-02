@@ -136,3 +136,32 @@ SELECT '1:20:05 5 microseconds'::interval;          -- error
 -- check that '30 days' equals '1 month' according to the hash function
 select '30 days'::interval = '1 month'::interval as t;
 select interval_hash('30 days'::interval) = interval_hash('1 month'::interval) as t;
+SELECT interval '1-2';  -- SQL year-month literal
+
+-- test SQL-spec syntaxes for restricted field sets
+SELECT interval '1' year;
+SELECT interval '2' month;
+SELECT interval '3' day;
+SELECT interval '4' hour;
+SELECT interval '5' minute;
+SELECT interval '6' second;
+SELECT interval '1' year to month;
+SELECT interval '1-2' year to month;
+SELECT interval '1 2' day to hour;
+SELECT interval '1 2:03' day to hour;
+SELECT interval '1 2:03:04' day to hour;
+SELECT interval '1 2' day to minute;
+SELECT interval '1 2:03' day to minute;
+SELECT interval '1 2:03:04' day to minute;
+SELECT interval '1 2' day to second;
+SELECT interval '1 2:03' day to second;
+SELECT interval '1 2:03:04' day to second;
+SELECT interval '1 2' hour to minute;
+SELECT interval '1 2:03' hour to minute;
+SELECT interval '1 2:03:04' hour to minute;
+SELECT interval '1 2' hour to second;
+SELECT interval '1 2:03' hour to second;
+SELECT interval '1 2:03:04' hour to second;
+SELECT interval '1 2' minute to second;
+SELECT interval '1 2:03' minute to second;
+SELECT interval '1 2:03:04' minute to second;
