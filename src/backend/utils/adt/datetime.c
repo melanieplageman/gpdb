@@ -8,7 +8,7 @@
  *
  *
  * IDENTIFICATION
- *	  $PostgreSQL: pgsql/src/backend/utils/adt/datetime.c,v 1.191 2008/09/10 18:29:41 tgl Exp $
+ *	  $PostgreSQL: pgsql/src/backend/utils/adt/datetime.c,v 1.192 2008/09/11 15:27:30 tgl Exp $
  *
  *-------------------------------------------------------------------------
  */
@@ -2438,6 +2438,17 @@ DecodeTime(char *str, int fmask, int range,
 		dterr = ParseFractionalSecond(cp, fsec);
 		if (dterr)
 			return dterr;
+		double		frac;
+
+		str = cp;
+		frac = strtod(str, &cp);
+		if (*cp != '\0')
+			return DTERR_BAD_FORMAT;
+#ifdef HAVE_INT64_TIMESTAMP
+		*fsec = rint(frac * 1000000);
+#else
+		*fsec = frac;
+#endif
 		tm->tm_sec = tm->tm_min;
 		tm->tm_min = tm->tm_hour;
 		tm->tm_hour = 0;
@@ -2457,10 +2468,10 @@ DecodeTime(char *str, int fmask, int range,
 				return dterr;
 		}
 		else
-				return DTERR_BAD_FORMAT;
-		}
-		else
 			return DTERR_BAD_FORMAT;
+	}
+	else
+		return DTERR_BAD_FORMAT;
 
 	/* do a sanity check */
 #ifdef HAVE_INT64_TIMESTAMP
