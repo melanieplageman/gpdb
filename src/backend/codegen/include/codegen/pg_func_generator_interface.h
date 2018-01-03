@@ -40,19 +40,13 @@ struct PGFuncGeneratorInfo {
   // This can be updated while generating the code.
   std::vector<llvm::Value*> llvm_args;
 
-  // Store whether arguments are NULL or not.
-  // This can be updated while generating the code.
-  std::vector<llvm::Value*> llvm_args_isNull;
-
   PGFuncGeneratorInfo(
     llvm::Function* llvm_main_func,
     llvm::BasicBlock* llvm_error_block,
-    const std::vector<llvm::Value*>& llvm_args,
-    const std::vector<llvm::Value*>& llvm_args_isNull) :
+    const std::vector<llvm::Value*>& llvm_args) :
       llvm_main_func(llvm_main_func),
       llvm_error_block(llvm_error_block),
-      llvm_args(llvm_args),
-      llvm_args_isNull(llvm_args_isNull) {
+      llvm_args(llvm_args) {
   }
 };
 
@@ -74,24 +68,19 @@ class PGFuncGeneratorInterface {
   virtual size_t GetTotalArgCount() = 0;
 
   /**
-   * @return True if function is strict; false otherwise.
-   */
-  virtual bool IsStrict() = 0;
-
-  /**
    * @brief Generate the code for Greenplum function.
    *
-   * @param codegen_utils   Utility to easy code generation.
-   * @param pg_gen_info     Information needed for generating the function.
-   * @param llvm_out_value  Store the results of function
-   * @param llvm_isnull_ptr Set to true if result is null
+   * @param codegen_utils     Utility to easy code generation.
+   * @param llvm_main_func    Current function for which we are generating code
+   * @param llvm_error_block  Basic Block to jump when error happens
+   * @param llvm_args         Vector of llvm arguments for the function
+   * @param llvm_out_value    Store the results of function
    *
    * @return true when it generated successfully otherwise it return false.
    **/
   virtual bool GenerateCode(gpcodegen::GpCodegenUtils* codegen_utils,
                             const PGFuncGeneratorInfo& pg_gen_info,
-                            llvm::Value** llvm_out_value,
-                            llvm::Value* const llvm_isnull_ptr) = 0;
+                            llvm::Value** llvm_out_value) = 0;
 };
 
 /** @} */
