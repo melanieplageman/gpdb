@@ -466,10 +466,6 @@ bool		optimizer_analyze_midlevel_partition;
 bool		init_codegen;
 bool		codegen;
 bool		codegen_validate_functions;
-bool		codegen_exec_variable_list;
-bool		codegen_slot_getattr;
-bool		codegen_exec_eval_expr;
-bool		codegen_advance_aggregate;
 int		codegen_varlen_tolerance;
 int		codegen_optimization_level;
 
@@ -2807,7 +2803,9 @@ struct config_bool ConfigureNamesBool_gp[] =
 			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE | GUC_GPDB_ADDOPT
 		},
 		&codegen,
+
 		false,
+
 		assign_codegen, NULL
 	},
 
@@ -2820,62 +2818,6 @@ struct config_bool ConfigureNamesBool_gp[] =
 		&codegen_validate_functions,
 #if defined(USE_ASSERT_CHECKING) && defined(USE_CODEGEN)
 		true, 	/* true by default on debug builds. */
-#else
-		false,
-#endif
-		assign_codegen, NULL
-	},
-	{
-		{"codegen_exec_variable_list", PGC_USERSET, DEVELOPER_OPTIONS,
-			gettext_noop("Enable codegen for ExecVariableList"),
-			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE | GUC_GPDB_ADDOPT
-		},
-		&codegen_exec_variable_list,
-#ifdef USE_CODEGEN
-		true,
-#else
-		false,
-#endif
-		assign_codegen, NULL
-	},
-	{
-		{"codegen_slot_getattr", PGC_USERSET, DEVELOPER_OPTIONS,
-			gettext_noop("Enable codegen for slot_get_attr"),
-			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE | GUC_GPDB_ADDOPT
-		},
-		&codegen_slot_getattr,
-#ifdef USE_CODEGEN
-		true,
-#else
-		false,
-#endif
-		assign_codegen, NULL
-	},
-	{
-		{"codegen_exec_eval_expr", PGC_USERSET, DEVELOPER_OPTIONS,
-			gettext_noop("Enable codegen for ExecEvalExpr"),
-			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE | GUC_GPDB_ADDOPT
-		},
-		&codegen_exec_eval_expr,
-#ifdef USE_CODEGEN
-		true,
-#else
-		false,
-#endif
-		assign_codegen, NULL
-	},
-	{
-		{"codegen_advance_aggregate", PGC_USERSET, DEVELOPER_OPTIONS,
-			gettext_noop("Enable codegen for AdvanceAggregate"),
-			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE | GUC_GPDB_ADDOPT
-		},
-		&codegen_advance_aggregate,
-#ifdef USE_CODEGEN
-		true,
 #else
 		false,
 #endif
@@ -4116,12 +4058,7 @@ struct config_int ConfigureNamesInt_gp[] =
 			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE | GUC_GPDB_ADDOPT
 		},
 		&codegen_varlen_tolerance,
-#ifdef USE_CODEGEN
-		5,
-#else
-		0,
-#endif
-		0, INT_MAX, NULL, NULL
+		5, 0, INT_MAX, NULL, NULL
 	},
 
 	{
