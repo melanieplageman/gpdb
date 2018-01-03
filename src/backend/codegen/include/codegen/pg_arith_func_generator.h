@@ -400,7 +400,7 @@ static bool CreateOverflowCheckLogic(
                       llvm_non_overflow_block);
 
     irb->SetInsertPoint(llvm_overflow_block);
-    EXPAND_CREATE_ELOG(codegen_utils,
+    codegen_utils->CreateElog(
         ERROR,
         "%s", llvm_error_msg);
     irb->CreateBr(pg_func_info.llvm_error_block);
