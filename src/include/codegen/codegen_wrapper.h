@@ -162,12 +162,6 @@ void
 SetActiveCodeGeneratorManager(void* manager);
 
 /*
- * Wrapper function for slot_getattr.
- */
-Datum
-slot_getattr_regular(struct TupleTableSlot *slot, int attnum, bool *isnull);
-
-/*
  * returns the pointer to the ExecVariableList
  */
 void*
