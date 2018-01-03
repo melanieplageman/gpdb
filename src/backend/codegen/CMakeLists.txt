@@ -266,7 +266,7 @@ add_custom_target(unittest-check
 )
 
 # Googletest framework for tests.
-SET(GTEST_DIR ../../../gpAux/extensions/googletest/googletest)
+SET(GTEST_DIR ../../../gpAux/extensions/gtest)
 add_subdirectory(${GTEST_DIR} ${CMAKE_BINARY_DIR}/gtest EXCLUDE_FROM_ALL)
 enable_testing()
 
