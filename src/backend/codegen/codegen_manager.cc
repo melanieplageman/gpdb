@@ -10,10 +10,6 @@
 //
 //---------------------------------------------------------------------------
 
-extern "C" {
-#include <utils/elog.h>
-}
-
 #include <cstdint>
 #include <string>
 
@@ -39,6 +35,10 @@ extern "C" {
 #include "llvm/IR/Value.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/Support/Casting.h"
+
+extern "C" {
+#include <utils/elog.h>
+}
 
 using gpcodegen::CodegenManager;
 
@@ -66,6 +66,7 @@ unsigned int CodegenManager::GenerateCode() {
 }
 
 unsigned int CodegenManager::PrepareGeneratedFunctions() {
+
   unsigned int success_count = 0;
 
   // If no generator registered, just return with success count as 0

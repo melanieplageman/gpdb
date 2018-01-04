@@ -3,7 +3,7 @@
 //  Copyright (C) 2016 Pivotal Software, Inc.
 //
 //  @filename:
-//    exec_variable_list.h
+//    ExecVariableList_codegen.h
 //
 //  @doc:
 //    Headers for slot_deform_tuple codegen

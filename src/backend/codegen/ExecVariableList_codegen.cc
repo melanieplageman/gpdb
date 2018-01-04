@@ -9,12 +9,11 @@
 //    Contains different code generators
 //
 //---------------------------------------------------------------------------
-#include "codegen/exec_variable_list_codegen.h"
-
 #include <algorithm>
 #include <cstdint>
 #include <string>
 
+#include "codegen/ExecVariableList_codegen.h"
 #include "codegen/utils/clang_compiler.h"
 #include "codegen/utils/utility.h"
 #include "codegen/utils/instance_method_wrappers.h"
@@ -50,7 +49,7 @@ constexpr char ExecVariableListCodegen::kExecVariableListPrefix[];
 
 class ElogWrapper {
  public:
-  explicit ElogWrapper(gpcodegen::CodegenUtils* codegen_utils) :
+  ElogWrapper(gpcodegen::CodegenUtils* codegen_utils) :
     codegen_utils_(codegen_utils) {
     SetupElog();
   }
@@ -63,14 +62,15 @@ class ElogWrapper {
       llvm::Value* llvm_elevel,
       llvm::Value* llvm_fmt,
       V ... args ) {
+
     assert(NULL != llvm_elevel);
     assert(NULL != llvm_fmt);
 
     codegen_utils_->ir_builder()->CreateCall(
         llvm_elog_start_, {
-            codegen_utils_->GetConstant(""),  // Filename
-            codegen_utils_->GetConstant(0),   // line number
-            codegen_utils_->GetConstant("")   // function name
+            codegen_utils_->GetConstant(""), // Filename
+            codegen_utils_->GetConstant(0),  // line number
+            codegen_utils_->GetConstant("")  // function name
     });
     codegen_utils_->ir_builder()->CreateCall(
         llvm_elog_finish_, {
@@ -88,14 +88,13 @@ class ElogWrapper {
                codegen_utils_->GetConstant(fmt),
                args...);
   }
-
  private:
   llvm::Function* llvm_elog_start_;
   llvm::Function* llvm_elog_finish_;
 
   gpcodegen::CodegenUtils* codegen_utils_;
 
-  void SetupElog() {
+  void SetupElog(){
     assert(codegen_utils_ != nullptr);
     llvm_elog_start_ = codegen_utils_->RegisterExternalFunction(elog_start);
     assert(llvm_elog_start_ != nullptr);
@@ -107,6 +106,7 @@ class ElogWrapper {
     llvm_elog_start_ = nullptr;
     llvm_elog_finish_ = nullptr;
   }
+
 };
 
 ExecVariableListCodegen::ExecVariableListCodegen
@@ -115,9 +115,7 @@ ExecVariableListCodegen::ExecVariableListCodegen
     ExecVariableListFn* ptr_to_regular_func_ptr,
     ProjectionInfo* proj_info,
     TupleTableSlot* slot) :
-    BaseCodegen(kExecVariableListPrefix,
-        regular_func_ptr,
-        ptr_to_regular_func_ptr),
+    BaseCodegen(kExecVariableListPrefix, regular_func_ptr, ptr_to_regular_func_ptr),
     proj_info_(proj_info),
     slot_(slot) {
 }
@@ -129,23 +127,18 @@ bool ExecVariableListCodegen::GenerateExecVariableList(
   assert(NULL != codegen_utils);
 
   ElogWrapper elogwrapper(codegen_utils);
-  static_assert(sizeof(Datum) == sizeof(int64),
-      "sizeof(Datum) doesn't match sizeof(int64)");
+  static_assert(sizeof(Datum) == sizeof(int64), "sizeof(Datum) doesn't match sizeof(int64)");
 
   if ( NULL == proj_info_->pi_varSlotOffsets ) {
-    elog(DEBUG1,
-        "Cannot codegen ExecVariableList because varSlotOffsets are null");
+    elog(DEBUG1, "Cannot codegen ExecVariableList because varSlotOffsets are null");
     return false;
   }
 
-  // Only do codegen if all the elements in the target list are on the same
-  // tuple slot This is an assumption for scan nodes, but we fall back when
-  // joins are involved.
-  for (int i = list_length(proj_info_->pi_targetlist) - 1; i > 0; i--) {
-    if (proj_info_->pi_varSlotOffsets[i] !=
-        proj_info_->pi_varSlotOffsets[i-1]) {
-      elog(DEBUG1,
-          "Cannot codegen ExecVariableList because multiple slots to deform.");
+  // Only do codegen if all the elements in the target list are on the same tuple slot
+  // This is an assumption for scan nodes, but we fall back when joins are involved.
+  for (int i = list_length(proj_info_->pi_targetlist) - 1; i > 0; i--){
+    if (proj_info_->pi_varSlotOffsets[i] != proj_info_->pi_varSlotOffsets[i-1]){
+      elog(DEBUG1, "Cannot codegen ExecVariableList because multiple slots to deform.");
       return false;
     }
   }
@@ -156,43 +149,42 @@ bool ExecVariableListCodegen::GenerateExecVariableList(
       proj_info_->pi_varNumbers + list_length(proj_info_->pi_targetlist));
 
   // System attribute
-  if (max_attr <= 0) {
-    elog(DEBUG1, "Cannot generate code for ExecVariableList"
-                 "because max_attr is negative (i.e., system attribute).");
+  if(max_attr <= 0)
+  {
+    elog(DEBUG1, "Cannot generate code for ExecVariableList because max_attr is negative (i.e., system attribute).");
     return false;
-  } else if (max_attr > slot_->tts_tupleDescriptor->natts) {
-    elog(DEBUG1, "Cannot generate code for ExecVariableList"
-                 "because max_attr is greater than natts.");
+  }else if (max_attr > slot_->tts_tupleDescriptor->natts) {
+    elog(DEBUG1, "Cannot generate code for ExecVariableList because max_attr is greater than natts.");
     return false;
   }
 
   // So looks like we're going to generate code
-  llvm::Function* exec_variable_list_func = CreateFunction<ExecVariableListFn>(
+  llvm::Function* ExecVariableList_func = CreateFunction<ExecVariableListFn>(
       codegen_utils, GetUniqueFuncName());
 
   auto irb = codegen_utils->ir_builder();
 
   // BasicBlock of function entry.
   llvm::BasicBlock* entry_block = codegen_utils->CreateBasicBlock(
-      "entry", exec_variable_list_func);
+      "entry", ExecVariableList_func);
   // BasicBlock for checking correct slot
   llvm::BasicBlock* slot_check_block = codegen_utils->CreateBasicBlock(
-      "slot_check", exec_variable_list_func);
+      "slot_check", ExecVariableList_func);
   // BasicBlock for checking tuple type.
   llvm::BasicBlock* tuple_type_check_block = codegen_utils->CreateBasicBlock(
-      "tuple_type_check", exec_variable_list_func);
+      "tuple_type_check", ExecVariableList_func);
   // BasicBlock for heap tuple check.
   llvm::BasicBlock* heap_tuple_check_block = codegen_utils->CreateBasicBlock(
-      "heap_tuple_check", exec_variable_list_func);
+      "heap_tuple_check", ExecVariableList_func);
   // BasicBlock for main.
   llvm::BasicBlock* main_block = codegen_utils->CreateBasicBlock(
-      "main", exec_variable_list_func);
+      "main", ExecVariableList_func);
   // BasicBlock for final computations.
   llvm::BasicBlock* final_block = codegen_utils->CreateBasicBlock(
-      "final", exec_variable_list_func);
+      "final", ExecVariableList_func);
   // BasicBlock for fall back.
   llvm::BasicBlock* fallback_block = codegen_utils->CreateBasicBlock(
-      "fallback", exec_variable_list_func);
+      "fallback", ExecVariableList_func);
 
   // External functions
   llvm::Function* llvm_memset = codegen_utils->RegisterExternalFunction(memset);
@@ -202,9 +194,9 @@ bool ExecVariableListCodegen::GenerateExecVariableList(
   llvm::Value* llvm_slot = codegen_utils->GetConstant(slot_);
 
   // Function arguments to ExecVariableList
-  llvm::Value* llvm_projInfo_arg = ArgumentByPosition(exec_variable_list_func, 0);
-  llvm::Value* llvm_values_arg = ArgumentByPosition(exec_variable_list_func, 1);
-  llvm::Value* llvm_isnull_arg = ArgumentByPosition(exec_variable_list_func, 2);
+  llvm::Value* llvm_projInfo_arg = ArgumentByPosition(ExecVariableList_func, 0);
+  llvm::Value* llvm_values_arg = ArgumentByPosition(ExecVariableList_func, 1);
+  llvm::Value* llvm_isnull_arg = ArgumentByPosition(ExecVariableList_func, 2);
 
   // Entry block
   // -----------
@@ -236,7 +228,8 @@ bool ExecVariableListCodegen::GenerateExecVariableList(
   irb->CreateCondBr(
       irb->CreateICmpEQ(llvm_slot, llvm_slot_arg),
       tuple_type_check_block /* true */,
-      fallback_block /* false */);
+      fallback_block /* false */
+  );
 
   // Tuple type check block
   // ----------------------
@@ -260,8 +253,7 @@ bool ExecVariableListCodegen::GenerateExecVariableList(
 
   // slot->PRIVATE_tts_memtuple != NULL
   llvm::Value* llvm_tuple_has_memtuple = irb->CreateICmpNE(
-      llvm_slot_PRIVATE_tts_memtuple,
-      codegen_utils->GetConstant((MemTuple) NULL));
+      llvm_slot_PRIVATE_tts_memtuple, codegen_utils->GetConstant((MemTuple) NULL));
 
   // Fall back if tuple is virtual or memtuple is null
   irb->CreateCondBr(
@@ -286,18 +278,19 @@ bool ExecVariableListCodegen::GenerateExecVariableList(
 
   // Main block
   // ----------
-  // We generate code for slot_deform_tuple.  Note that we do not need to check
-  // the type of the tuple, since previous check guarantees that the we use the
-  // enrolled slot, which includes a heap tuple.
+  // We generate code for slot_deform_tuple.
+  // Note that we do not need to check the type of the tuple, since previous check
+  // guarantees that the we use the enrolled slot, which includes a heap tuple.
   irb->SetInsertPoint(main_block);
 
   llvm::Value* llvm_heaptuple_t_data =
       irb->CreateLoad(codegen_utils->GetPointerToMember(
           llvm_slot_PRIVATE_tts_heaptuple,
-          &HeapTupleData::t_data));
+          &HeapTupleData::t_data
+      ));
 
   llvm::Value* llvm_heaptuple_t_data_t_infomask =
-      irb->CreateLoad(codegen_utils->GetPointerToMember(
+      irb->CreateLoad( codegen_utils->GetPointerToMember(
           llvm_heaptuple_t_data, &HeapTupleHeaderData::t_infomask));
 
   // Implementation for : {{{
@@ -317,17 +310,18 @@ bool ExecVariableListCodegen::GenerateExecVariableList(
       irb->CreateSelect(
           irb->CreateICmpSLT(llvm_attno_t0, llvm_max_attr),
           llvm_attno_t0,
-          llvm_max_attr);
+          llvm_max_attr
+      );
   // }}}
 
   // Retrieve slot's PRIVATE variables
-  llvm::Value* llvm_slot_PRIVATE_tts_isnull /* bool* */ =
+  llvm::Value* llvm_slot_PRIVATE_tts_isnull /* bool* */=
       irb->CreateLoad(codegen_utils->GetPointerToMember(
           llvm_slot, &TupleTableSlot::PRIVATE_tts_isnull));
-  llvm::Value* llvm_slot_PRIVATE_tts_values /* Datum* */ =
+  llvm::Value* llvm_slot_PRIVATE_tts_values /* Datum* */=
       irb->CreateLoad(codegen_utils->GetPointerToMember(
           llvm_slot, &TupleTableSlot::PRIVATE_tts_values));
-  llvm::Value* llvm_slot_PRIVATE_tts_nvalid_ptr /* int* */ =
+  llvm::Value* llvm_slot_PRIVATE_tts_nvalid_ptr /* int* */=
       codegen_utils->GetPointerToMember(
           llvm_slot, &TupleTableSlot::PRIVATE_tts_nvalid);
 
@@ -363,7 +357,7 @@ bool ExecVariableListCodegen::GenerateExecVariableList(
 
   // block of first attribute
   attribute_block = codegen_utils->CreateBasicBlock(
-      "attribute_block_"+0, exec_variable_list_func);
+      "attribute_block_"+0, ExecVariableList_func);
 
   irb->CreateBr(attribute_block);
 
@@ -385,7 +379,7 @@ bool ExecVariableListCodegen::GenerateExecVariableList(
     // Create the block of (attnum+1)th attribute and jump to it after
     // you finish with current attribute.
     next_attribute_block = codegen_utils->CreateBasicBlock(
-        "attribute_block_"+(attnum+1), exec_variable_list_func);
+        "attribute_block_"+(attnum+1), ExecVariableList_func);
 
     llvm::Value* llvm_next_values_ptr =
         irb->CreateInBoundsGEP(llvm_slot_PRIVATE_tts_values,
@@ -396,9 +390,9 @@ bool ExecVariableListCodegen::GenerateExecVariableList(
     if (!thisatt->attnotnull) {
       // Create blocks
       is_null_block = codegen_utils->CreateBasicBlock(
-          "is_null_block_"+attnum, exec_variable_list_func);
+          "is_null_block_"+attnum, ExecVariableList_func);
       is_not_null_block = codegen_utils->CreateBasicBlock(
-          "is_not_null_block_"+attnum, exec_variable_list_func);
+          "is_not_null_block_"+attnum, ExecVariableList_func);
 
       llvm::Value* llvm_attnum = codegen_utils->GetConstant(attnum);
 
@@ -406,7 +400,7 @@ bool ExecVariableListCodegen::GenerateExecVariableList(
       // if (hasnulls && att_isnull(attnum, bp)) {{{
       // att_isnull(attnum, bp): !((BITS)[(ATT) >> 3] & (1<<((ATT) & 0x07))) {{
       // Expr_1: ((BITS)[(ATT) >> 3]
-      llvm::Value* llvm_expr_1 = irb->CreateLoad(irb->CreateGEP(
+      llvm::Value* llvm_expr_1= irb->CreateLoad(irb->CreateGEP(
           llvm_heaptuple_t_data_t_bits,
           {codegen_utils->GetConstant(0),
               irb->CreateAShr(llvm_attnum, codegen_utils->GetConstant(3))}));
@@ -464,7 +458,8 @@ bool ExecVariableListCodegen::GenerateExecVariableList(
       // ----------------
 
       irb->SetInsertPoint(is_not_null_block);
-    }  // End of if ( !thisatt->attnotnull )
+
+    } // End of if (!thisatt->attnotnull)
 
     off = att_align(off, thisatt->attalign);
 
@@ -474,9 +469,10 @@ bool ExecVariableListCodegen::GenerateExecVariableList(
                                {codegen_utils->GetConstant(off)});
 
     llvm::Value* llvm_colVal = nullptr;
-    if (thisatt->attbyval) {
+    if( thisatt->attbyval) {
       // Load the value from the calculated input address.
-      switch (thisatt->attlen) {
+      switch(thisatt->attlen)
+      {
         case sizeof(char):
                   llvm_colVal = irb->CreateLoad(llvm_next_t_data_ptr);
         break;
@@ -529,7 +525,7 @@ bool ExecVariableListCodegen::GenerateExecVariableList(
     off += thisatt->attlen;
     // Process next attribute
     attribute_block = next_attribute_block;
-  }  // end for
+  } // end for
 
   // Next attribute block
   // ----------------
@@ -545,7 +541,7 @@ bool ExecVariableListCodegen::GenerateExecVariableList(
   irb->SetInsertPoint(final_block);
 
   // slot->PRIVATE_tts_off = off;
-  llvm::Value* llvm_slot_PRIVATE_tts_off_ptr /* long* */ =
+  llvm::Value* llvm_slot_PRIVATE_tts_off_ptr /* long* */=
       codegen_utils->GetPointerToMember(
           llvm_slot, &TupleTableSlot::PRIVATE_tts_off);
   irb->CreateStore(codegen_utils->GetConstant<long>(off),
@@ -563,7 +559,7 @@ bool ExecVariableListCodegen::GenerateExecVariableList(
   //   slot->PRIVATE_tts_isnull[attno] = true;
   // }
 
-  // TODO(shardikar): Convert these to loops
+  // TODO: Convert these to loops
   llvm::Value* llvm_num_bytes = irb->CreateMul(
       codegen_utils->GetConstant(sizeof(Datum)),
       irb->CreateZExtOrTrunc(
@@ -572,8 +568,7 @@ bool ExecVariableListCodegen::GenerateExecVariableList(
   codegen_utils->ir_builder()->CreateCall(
       llvm_memset, {
           irb->CreateBitCast(
-              irb->CreateInBoundsGEP(llvm_slot_PRIVATE_tts_values,
-                                     {llvm_attno}),
+              irb->CreateInBoundsGEP(llvm_slot_PRIVATE_tts_values, {llvm_attno}),
               codegen_utils->GetType<void*>()),
               codegen_utils->GetConstant(0),
               llvm_num_bytes});
@@ -581,10 +576,9 @@ bool ExecVariableListCodegen::GenerateExecVariableList(
   codegen_utils->ir_builder()->CreateCall(
       llvm_memset, {
           irb->CreateBitCast(
-              irb->CreateInBoundsGEP(llvm_slot_PRIVATE_tts_isnull,
-                                     {llvm_attno}),
+              irb->CreateInBoundsGEP(llvm_slot_PRIVATE_tts_isnull, {llvm_attno}),
               codegen_utils->GetType<void*>()),
-              codegen_utils->GetConstant(static_cast<int>(true)),
+              codegen_utils->GetConstant((int) true),
               llvm_num_bytes});
 
   // TupSetVirtualTuple(slot);
@@ -596,32 +590,26 @@ bool ExecVariableListCodegen::GenerateExecVariableList(
 
   // }}}
 
-  // slot_getattr() after calling _slot_getsomeattrs() and remainder of
-  // ExecVariableList {{{
+  // slot_getattr() after calling _slot_getsomeattrs() and remainder of ExecVariableList {{{
   //
-  // This code from ExecVariableList copies the contents of the isnull & values
-  // arrays in the slot to output variable from the function parameters to
-  // ExecVariableList
+  // This code from ExecVariableList copies the contents of the isnull & values arrays
+  // in the slot to output variable from the function parameters to ExecVariableList
   int  *varNumbers = proj_info_->pi_varNumbers;
   for (int i = list_length(proj_info_->pi_targetlist) - 1; i >= 0; i--) {
     // *isnull = slot->PRIVATE_tts_isnull[attnum-1];
     llvm::Value* llvm_isnull_from_slot_val =
-        irb->CreateLoad(irb->CreateInBoundsGEP(
-              llvm_slot_PRIVATE_tts_isnull,
-              {codegen_utils->GetConstant(varNumbers[i] - 1)}));
+        irb->CreateLoad(irb->CreateInBoundsGEP(llvm_slot_PRIVATE_tts_isnull,
+                                               {codegen_utils->GetConstant(varNumbers[i] - 1)}));
     llvm::Value* llvm_isnull_ptr =
-        irb->CreateInBoundsGEP(llvm_isnull_arg,
-                               {codegen_utils->GetConstant(i)});
+        irb->CreateInBoundsGEP(llvm_isnull_arg, {codegen_utils->GetConstant(i)});
     irb->CreateStore(llvm_isnull_from_slot_val, llvm_isnull_ptr);
 
     // values[i] = slot_getattr(varSlot, varNumber+1, &(isnull[i]));
     llvm::Value* llvm_value_from_slot_val =
-        irb->CreateLoad(irb->CreateInBoundsGEP(
-              llvm_slot_PRIVATE_tts_values,
-              {codegen_utils->GetConstant(varNumbers[i] - 1)}));
+        irb->CreateLoad(irb->CreateInBoundsGEP(llvm_slot_PRIVATE_tts_values,
+                                               {codegen_utils->GetConstant(varNumbers[i] - 1)}));
     llvm::Value* llvm_values_ptr =
-        irb->CreateInBoundsGEP(llvm_values_arg,
-                               {codegen_utils->GetConstant(i)});
+        irb->CreateInBoundsGEP(llvm_values_arg, {codegen_utils->GetConstant(i)});
     irb->CreateStore(llvm_value_from_slot_val, llvm_values_ptr);
   }
 
@@ -631,37 +619,31 @@ bool ExecVariableListCodegen::GenerateExecVariableList(
 
   // Fall back block
   // ---------------
-  // Note: We collect error code information, based on the block from which we
-  // fall back, and log it for debugging purposes.
+  // Note: We collect error code information, based on the block from which we fall back,
+  // and log it for debugging purposes.
   irb->SetInsertPoint(fallback_block);
   llvm::PHINode* llvm_error = irb->CreatePHI(codegen_utils->GetType<int>(), 4);
-  llvm_error->addIncoming(codegen_utils->GetConstant(0),
-      slot_check_block);
-  llvm_error->addIncoming(codegen_utils->GetConstant(1),
-      tuple_type_check_block);
-  llvm_error->addIncoming(codegen_utils->GetConstant(2),
-      heap_tuple_check_block);
+  llvm_error->addIncoming(codegen_utils->GetConstant(0), slot_check_block);
+  llvm_error->addIncoming(codegen_utils->GetConstant(1), tuple_type_check_block);
+  llvm_error->addIncoming(codegen_utils->GetConstant(2), heap_tuple_check_block);
 
-  elogwrapper.CreateElog(
-      DEBUG1,
-      "Falling back to regular ExecVariableList, reason = %d",
-      llvm_error);
+  elogwrapper.CreateElog(DEBUG1, "Falling back to regular ExecVariableList, reason = %d", llvm_error);
 
   codegen_utils->CreateFallback<ExecVariableListFn>(
       codegen_utils->RegisterExternalFunction(GetRegularFuncPointer()),
-      exec_variable_list_func);
+      ExecVariableList_func);
   return true;
 }
 
 
-bool ExecVariableListCodegen::GenerateCodeInternal(
-    CodegenUtils* codegen_utils) {
+bool ExecVariableListCodegen::GenerateCodeInternal(CodegenUtils* codegen_utils) {
   bool isGenerated = GenerateExecVariableList(codegen_utils);
 
   if (isGenerated) {
     elog(DEBUG1, "ExecVariableList was generated successfully!");
     return true;
-  } else {
+  }
+  else {
     elog(DEBUG1, "ExecVariableList generation failed!");
     return false;
   }
