@@ -309,18 +309,6 @@ class CodegenUtils {
   llvm::Value* CreateAddOverflow(llvm::Value* arg0, llvm::Value* arg1);
 
   /**
-     * @brief Use LLVM intrinsic to increase the value of a variable by one
-     *        with overflow instruction
-     *
-     * @tparam CppType  CppType for add
-     * @param arg       Input variable
-     *
-     * @return LLVM Value as a pair of results and overflow flag.
-     **/
-  template <typename CppType>
-  llvm::Value* CreateIncOverflow(llvm::Value* arg);
-
-  /**
    * @brief Use LLVM intrinsic to create Subtract with overflow
    *        instruction
    *
@@ -1423,12 +1411,6 @@ llvm::Value* CodegenUtils::CreateAddOverflow(llvm::Value* arg0,
 }
 
 template <typename CppType>
-llvm::Value* CodegenUtils::CreateIncOverflow(llvm::Value* arg) {
-  return codegen_utils_detail::ArithOpMaker<CppType>::
-      CreateAddOverflow(this, arg, GetConstant<CppType>(1));
-}
-
-template <typename CppType>
 llvm::Value* CodegenUtils::CreateSubOverflow(llvm::Value* arg0,
                                              llvm::Value* arg1) {
   return codegen_utils_detail::ArithOpMaker<CppType>::CreateSubOverflow(this,
@@ -1486,7 +1468,6 @@ class CastMaker<
     assert(nullptr != value);
     assert(nullptr != value->getType());
     assert(value->getType()->isIntegerTy());
-    assert(nullptr != llvm_dest_type);
     assert(llvm_dest_type->isIntegerTy());
   }
 };
@@ -1516,7 +1497,6 @@ class CastMaker<
     assert(nullptr != value);
     assert(nullptr != value->getType());
     assert(value->getType()->isIntegerTy());
-    assert(nullptr != llvm_dest_type);
     assert(llvm_dest_type->isIntegerTy());
   }
 };
@@ -1545,7 +1525,6 @@ class CastMaker<
       assert(nullptr != value->getType());
       assert(value->getType()->isFloatTy() ||
              value->getType()->isDoubleTy());
-      assert(nullptr != llvm_dest_type);
       assert(llvm_dest_type->isFloatTy());
     }
 };
@@ -1574,7 +1553,6 @@ class CastMaker<
     assert(nullptr != value->getType());
     assert(value->getType()->isFloatTy() ||
            value->getType()->isDoubleTy());
-    assert(nullptr != llvm_dest_type);
     assert(llvm_dest_type->isDoubleTy());
   }
 };

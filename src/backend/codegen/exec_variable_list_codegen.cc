@@ -68,8 +68,7 @@ ExecVariableListCodegen::ExecVariableListCodegen(
 }
 
 bool ExecVariableListCodegen::InitDependencies() {
-  assert(nullptr != proj_info_);
-  assert(nullptr != proj_info_->pi_targetlist);
+  assert(proj_info_ != nullptr);
 
   // Find the largest attribute index in projInfo->pi_targetlist
   max_attr_ = *std::max_element(
