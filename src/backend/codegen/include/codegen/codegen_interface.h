@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 
+
 namespace gpcodegen {
 
 /** \addtogroup gpcodegen
@@ -30,13 +31,6 @@ class GpCodegenUtils;
 class CodegenInterface {
  public:
   virtual ~CodegenInterface() = default;
-
-  /**
-   * @brief Hook to request for and initialize any dependencies
-   *
-   * @return true on success
-   */
-  virtual bool InitDependencies() = 0;
 
   /**
    * @brief Generates specialized code at run time.

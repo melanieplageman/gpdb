@@ -62,22 +62,9 @@ ExecVariableListCodegen::ExecVariableListCodegen(
                   regular_func_ptr,
                   ptr_to_regular_func_ptr),
       proj_info_(proj_info),
-      slot_(slot),
-      max_attr_(0),
-      slot_getattr_codegen_(nullptr) {
+      slot_(slot) {
 }
 
-bool ExecVariableListCodegen::InitDependencies() {
-  assert(proj_info_ != nullptr);
-
-  // Find the largest attribute index in projInfo->pi_targetlist
-  max_attr_ = *std::max_element(
-      proj_info_->pi_varNumbers,
-      proj_info_->pi_varNumbers + list_length(proj_info_->pi_targetlist));
-  slot_getattr_codegen_ = SlotGetAttrCodegen::GetCodegenInstance(
-      manager(), slot_, max_attr_);
-  return true;
-}
 
 bool ExecVariableListCodegen::GenerateExecVariableList(
     gpcodegen::GpCodegenUtils* codegen_utils) {
@@ -103,12 +90,17 @@ bool ExecVariableListCodegen::GenerateExecVariableList(
     }
   }
 
+  // Find the largest attribute index in projInfo->pi_targetlist
+  int max_attr = *std::max_element(
+      proj_info_->pi_varNumbers,
+      proj_info_->pi_varNumbers + list_length(proj_info_->pi_targetlist));
+
   // System attribute
-  if (max_attr_ <= 0) {
+  if (max_attr <= 0) {
     elog(DEBUG1, "Cannot generate code for ExecVariableList"
                  "because max_attr is negative (i.e., system attribute).");
     return false;
-  } else if (max_attr_ > slot_->tts_tupleDescriptor->natts) {
+  } else if (max_attr > slot_->tts_tupleDescriptor->natts) {
     elog(DEBUG1, "Cannot generate code for ExecVariableList"
                  "because max_attr is greater than natts.");
     return false;
@@ -135,7 +127,7 @@ bool ExecVariableListCodegen::GenerateExecVariableList(
       "fallback", exec_variable_list_func);
 
   // Generation-time constants
-  llvm::Value* llvm_max_attr = codegen_utils->GetConstant(max_attr_);
+  llvm::Value* llvm_max_attr = codegen_utils->GetConstant(max_attr);
   llvm::Value* llvm_slot = codegen_utils->GetConstant(slot_);
 
   // Function arguments to ExecVariableList
@@ -146,17 +138,21 @@ bool ExecVariableListCodegen::GenerateExecVariableList(
 
 
   // Generate slot_getattr for attributes all the way to max_attr
-  assert(nullptr != slot_getattr_codegen_);
-  slot_getattr_codegen_->GenerateCode(codegen_utils);
-  llvm::Function* slot_getattr_func = slot_getattr_codegen_->GetGeneratedFunction();
-
-  // In case the above generation failed, no point in continuing since that was
-  // the most crucial part of ExecVariableList code generation.
-  if (nullptr == slot_getattr_func) {
+  std::string slot_getattr_func_name =
+      "slot_getattr_" + std::to_string(max_attr);
+  llvm::Function* slot_getattr_func = nullptr;
+  bool ok = SlotGetAttrCodegen::GenerateSlotGetAttr(
+      codegen_utils,
+      slot_getattr_func_name,
+      slot_,
+      max_attr,
+      &slot_getattr_func);
+  if (!ok) {
     elog(DEBUG1, "Cannot generate code for ExecVariableList "
                  "because slot_getattr generation failed!");
     return false;
   }
+  assert(nullptr != slot_getattr_func);
 
   // Entry block
   // -----------

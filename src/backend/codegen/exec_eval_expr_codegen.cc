@@ -59,32 +59,30 @@ ExecEvalExprCodegen::ExecEvalExprCodegen(
                   kExecEvalExprPrefix,
                   regular_func_ptr, ptr_to_regular_func_ptr),
       exprstate_(exprstate),
-      plan_state_(plan_state),
-      gen_info_(econtext, nullptr, nullptr, nullptr, 0),
-      slot_getattr_codegen_(nullptr),
-      expr_tree_generator_(nullptr) {
+      econtext_(econtext),
+      plan_state_(plan_state) {
 }
 
-bool ExecEvalExprCodegen::InitDependencies() {
-  OpExprTreeGenerator::InitializeSupportedFunction();
-  ExprTreeGenerator::VerifyAndCreateExprTree(
-        exprstate_, &gen_info_, &expr_tree_generator_);
-  // Prepare dependent slot_getattr() generation
-  PrepareSlotGetAttr();
-  return true;
-}
-
-void ExecEvalExprCodegen::PrepareSlotGetAttr() {
-  TupleTableSlot* slot = nullptr;
+void ExecEvalExprCodegen::PrepareSlotGetAttr(
+    gpcodegen::GpCodegenUtils* codegen_utils, ExprTreeGeneratorInfo* gen_info) {
   assert(nullptr != plan_state_);
   switch (nodeTag(plan_state_)) {
     case T_SeqScanState:
     case T_TableScanState:
       // Generate dependent slot_getattr() implementation for the given slot
-      if (gen_info_.max_attr > 0) {
-        slot = reinterpret_cast<ScanState*>(plan_state_)
+      if (gen_info->max_attr > 0) {
+        TupleTableSlot* slot = reinterpret_cast<ScanState*>(plan_state_)
             ->ss_ScanTupleSlot;
         assert(nullptr != slot);
+        std::string slot_getattr_func_name = "slot_getattr_"
+            + std::to_string(reinterpret_cast<uint64_t>(slot)) + "_"
+            + std::to_string(gen_info->max_attr);
+        bool ok = SlotGetAttrCodegen::GenerateSlotGetAttr(
+            codegen_utils, slot_getattr_func_name, slot, gen_info->max_attr,
+            &gen_info->llvm_slot_getattr_func);
+        if (!ok) {
+          elog(DEBUG1, "slot_getattr generation for ExecEvalExpr failed!");
+        }
       }
       break;
     case T_AggState:
@@ -92,15 +90,11 @@ void ExecEvalExprCodegen::PrepareSlotGetAttr() {
       // deformed in which case, we can avoid generating and calling the
       // generated slot_getattr(). This may not be true always, but calling the
       // regular slot_getattr() will still preserve correctness.
+      gen_info->llvm_slot_getattr_func = nullptr;
       break;
     default:
       elog(DEBUG1,
           "Attempting to generate ExecEvalExpr for an unsupported operator!");
-  }
-
-  if (nullptr != slot) {
-    slot_getattr_codegen_ = SlotGetAttrCodegen::GetCodegenInstance(
-        manager(), slot, gen_info_.max_attr);
   }
 }
 
@@ -110,24 +104,11 @@ bool ExecEvalExprCodegen::GenerateExecEvalExpr(
   assert(NULL != codegen_utils);
   if (nullptr == exprstate_ ||
       nullptr == exprstate_->expr ||
-      nullptr == gen_info_.econtext) {
+      nullptr == econtext_) {
     return false;
   }
-
-  if (nullptr == expr_tree_generator_.get()) {
-    return false;
-  }
-
-  // In case the generation above either failed or was not needed,
-  // we revert to use the external slot_getattr()
-  if (nullptr == slot_getattr_codegen_) {
-    gen_info_.llvm_slot_getattr_func =
-        codegen_utils->GetOrRegisterExternalFunction(slot_getattr,
-                                                     "slot_getattr");
-  } else {
-    slot_getattr_codegen_->GenerateCode(codegen_utils);
-    gen_info_.llvm_slot_getattr_func = slot_getattr_codegen_->GetGeneratedFunction();
-  }
+  // TODO(krajaraman): move to better place
+  OpExprTreeGenerator::InitializeSupportedFunction();
 
   llvm::Function* exec_eval_expr_func = CreateFunction<ExecEvalExprFn>(
       codegen_utils, GetUniqueFuncName());
@@ -141,10 +122,33 @@ bool ExecEvalExprCodegen::GenerateExecEvalExpr(
   llvm::BasicBlock* llvm_error_block = codegen_utils->CreateBasicBlock(
         "error_block", exec_eval_expr_func);
 
-  gen_info_.llvm_main_func = exec_eval_expr_func;
-  gen_info_.llvm_error_block = llvm_error_block;
-
   auto irb = codegen_utils->ir_builder();
+
+  // Check if we can codegen. If so create ExprTreeGenerator
+  ExprTreeGeneratorInfo gen_info(econtext_,
+                                 exec_eval_expr_func,
+                                 llvm_error_block,
+                                 nullptr,
+                                 0);
+
+  std::unique_ptr<ExprTreeGenerator> expr_tree_generator(nullptr);
+  bool can_generate = ExprTreeGenerator::VerifyAndCreateExprTree(
+      exprstate_, &gen_info, &expr_tree_generator);
+  if (!can_generate ||
+      expr_tree_generator.get() == nullptr) {
+    return false;
+  }
+
+  // Prepare dependent slot_getattr() generation
+  PrepareSlotGetAttr(codegen_utils, &gen_info);
+
+  // In case the generation above failed either or it was not needed,
+  // we revert to use the external slot_getattr()
+  if (nullptr == gen_info.llvm_slot_getattr_func) {
+    gen_info.llvm_slot_getattr_func =
+        codegen_utils->GetOrRegisterExternalFunction(slot_getattr,
+                                                     "slot_getattr");
+  }
 
   irb->SetInsertPoint(llvm_entry_block);
 
@@ -154,10 +158,11 @@ bool ExecEvalExprCodegen::GenerateExecEvalExpr(
       "Codegen'ed expression evaluation called!");
 #endif
 
+
   // Generate code from expression tree generator
   llvm::Value* value = nullptr;
-  bool is_generated = expr_tree_generator_->GenerateCode(codegen_utils,
-                                                        gen_info_,
+  bool is_generated = expr_tree_generator->GenerateCode(codegen_utils,
+                                                        gen_info,
                                                         llvm_isnull_arg,
                                                         &value);
   if (!is_generated ||
