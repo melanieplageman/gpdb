@@ -132,11 +132,9 @@ bool ExecEvalExprCodegen::GenerateExecEvalExpr(
 
   irb->SetInsertPoint(llvm_entry_block);
 
-#ifdef CODEGEN_DEBUG
   codegen_utils->CreateElog(
       DEBUG1,
-      "Codegen'ed expression evaluation called!");
-#endif
+      "Calling codegen'ed expression evaluation");
 
 
   // Generate code from expression tree generator
