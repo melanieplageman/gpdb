@@ -3,10 +3,10 @@
 //  Copyright (C) 2016 Pivotal Software, Inc.
 //
 //  @filename:
-//    op_expr_tree_generator.h
+//    base_codegen.h
 //
 //  @doc:
-//    Object that generate code for operator expression.
+//    Base class for expression tree to generate code
 //
 //---------------------------------------------------------------------------
 
@@ -17,7 +17,7 @@
 #include "llvm/IR/Value.h"
 
 extern "C" {
-#include "postgres.h"  // NOLINT(build/include)
+#include "postgres.h"
 #include "utils/elog.h"
 #include "nodes/execnodes.h"
 }
@@ -46,42 +46,32 @@ void OpExprTreeGenerator::InitializeSupportedFunction() {
 
   supported_function_[177] = std::unique_ptr<PGFuncGeneratorInterface>(
       new PGGenericFuncGenerator<int32_t, int32_t>(
-          177,
-          "int4pl",
-          &PGArithFuncGenerator<int32_t, int32_t, int32_t>::AddWithOverflow));
+          177, "int4pl", &PGArithFuncGenerator<int32_t, int32_t, int32_t>::AddWithOverflow));
 
   supported_function_[181] = std::unique_ptr<PGFuncGeneratorInterface>(
       new PGGenericFuncGenerator<int32_t, int32_t>(
-          181,
-          "int4mi",
-          &PGArithFuncGenerator<int32_t, int32_t, int32_t>::SubWithOverflow));
+          181, "int4mi", &PGArithFuncGenerator<int32_t, int32_t, int32_t>::SubWithOverflow));
 
   supported_function_[141] = std::unique_ptr<PGFuncGeneratorInterface>(
       new PGGenericFuncGenerator<int32_t, int32_t>(
-          141,
-          "int4mul",
-          &PGArithFuncGenerator<int32_t, int32_t, int32_t>::MulWithOverflow));
+          141, "int4mul", &PGArithFuncGenerator<int32_t, int32_t, int32_t>::MulWithOverflow));
 }
 
 OpExprTreeGenerator::OpExprTreeGenerator(
     ExprState* expr_state,
-    std::vector<
-        std::unique_ptr<ExprTreeGenerator>>&& arguments)  // NOLINT(build/c++11)
-    :  ExprTreeGenerator(expr_state, ExprTreeNodeType::kOperator),
-       arguments_(std::move(arguments)) {
+    std::vector<std::unique_ptr<ExprTreeGenerator>>& arguments) :
+        arguments_(std::move(arguments)),
+        ExprTreeGenerator(expr_state, ExprTreeNodeType::kOperator) {
 }
 
 bool OpExprTreeGenerator::VerifyAndCreateExprTree(
     ExprState* expr_state,
     ExprContext* econtext,
-    std::unique_ptr<ExprTreeGenerator>* expr_tree) {
-  assert(nullptr != expr_state &&
-         nullptr != expr_state->expr &&
-         T_OpExpr == nodeTag(expr_state->expr) &&
-         nullptr != expr_tree);
+    std::unique_ptr<ExprTreeGenerator>& expr_tree) {
+  assert(nullptr != expr_state && nullptr != expr_state->expr && T_OpExpr == nodeTag(expr_state->expr));
 
-  OpExpr* op_expr = reinterpret_cast<OpExpr*>(expr_state->expr);
-  expr_tree->reset(nullptr);
+  OpExpr* op_expr = (OpExpr*)expr_state->expr;
+  expr_tree.reset(nullptr);
   CodeGenFuncMap::iterator itr =  supported_function_.find(op_expr->opfuncid);
   if (itr == supported_function_.end()) {
     // Operators are stored in pg_proc table. See postgres.bki for more details.
@@ -89,22 +79,29 @@ bool OpExprTreeGenerator::VerifyAndCreateExprTree(
     return false;
   }
 
-  List *arguments = reinterpret_cast<FuncExprState*>(expr_state)->args;
-  assert(nullptr != arguments);
+  List *arguments = ((FuncExprState *)expr_state)->args;
+  if (nullptr == arguments) {
+    elog(DEBUG1, "No argument for the function");
+    return false;
+  }
   // In ExecEvalFuncArgs
-  assert(list_length(arguments) == itr->second->GetTotalArgCount());
+  if (list_length(arguments) != itr->second->GetTotalArgCount()) {
+    elog(DEBUG1, "Wrong number of arguments (!= %d)", itr->second->GetTotalArgCount());
+    return false;
+  }
 
   ListCell   *arg = nullptr;
   bool supported_tree = true;
   std::vector<std::unique_ptr<ExprTreeGenerator>> expr_tree_arguments;
-  foreach(arg, arguments) {
+  foreach(arg, arguments)
+  {
     // retrieve argument's ExprState
-    ExprState  *argstate = reinterpret_cast<ExprState*>(lfirst(arg));
+    ExprState  *argstate = (ExprState *) lfirst(arg);
     assert(nullptr != argstate);
     std::unique_ptr<ExprTreeGenerator> arg(nullptr);
     supported_tree &= ExprTreeGenerator::VerifyAndCreateExprTree(argstate,
                                                                 econtext,
-                                                                &arg);
+                                                                arg);
     if (!supported_tree) {
       break;
     }
@@ -114,8 +111,7 @@ bool OpExprTreeGenerator::VerifyAndCreateExprTree(
   if (!supported_tree) {
     return supported_tree;
   }
-  expr_tree->reset(new OpExprTreeGenerator(expr_state,
-                                           std::move(expr_tree_arguments)));
+  expr_tree.reset(new OpExprTreeGenerator(expr_state, expr_tree_arguments));
   return true;
 }
 
@@ -124,34 +120,31 @@ bool OpExprTreeGenerator::GenerateCode(CodegenUtils* codegen_utils,
                                        llvm::Function* llvm_main_func,
                                        llvm::BasicBlock* llvm_error_block,
                                        llvm::Value* llvm_isnull_arg,
-                                       llvm::Value** llvm_out_value) {
-  assert(nullptr != llvm_out_value);
-  *llvm_out_value = nullptr;
-  OpExpr* op_expr = reinterpret_cast<OpExpr*>(expr_state()->expr);
+                                       llvm::Value* & value) {
+  value = nullptr;
+  OpExpr* op_expr = (OpExpr*)expr_state()->expr;
   CodeGenFuncMap::iterator itr =  supported_function_.find(op_expr->opfuncid);
 
   if (itr == supported_function_.end()) {
-    // Operators are stored in pg_proc table.
-    // See postgres.bki for more details.
-    elog(WARNING, "Unsupported operator %d.", op_expr->opfuncid);
-    return false;
+      // Operators are stored in pg_proc table. See postgres.bki for more details.
+      elog(WARNING, "Unsupported operator %d.", op_expr->opfuncid);
+      return false;
   }
 
   if (arguments_.size() != itr->second->GetTotalArgCount()) {
-    elog(WARNING, "Expected argument size to be %lu\n",
-         itr->second->GetTotalArgCount());
+    elog(WARNING, "Expected argument size to be %d\n", itr->second->GetTotalArgCount());
     return false;
   }
   bool arg_generated = true;
   std::vector<llvm::Value*> llvm_arguments;
-  for (auto& arg : arguments_) {
+  for(auto& arg : arguments_) {
     llvm::Value* llvm_arg = nullptr;
     arg_generated &= arg->GenerateCode(codegen_utils,
                                        econtext,
                                        llvm_main_func,
                                        llvm_error_block,
                                        llvm_isnull_arg,
-                                       &llvm_arg);
+                                       llvm_arg);
     if (!arg_generated) {
       return false;
     }
@@ -161,5 +154,5 @@ bool OpExprTreeGenerator::GenerateCode(CodegenUtils* codegen_utils,
                                    llvm_main_func,
                                    llvm_error_block,
                                    llvm_arguments,
-                                   llvm_out_value);
+                                   value);
 }

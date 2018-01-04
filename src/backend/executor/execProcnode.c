@@ -156,10 +156,10 @@ static CdbVisitOpt planstate_walk_kids(PlanState *planstate,
 					void *context,
 					int flags);
 
-static void
-			EnrollQualList(PlanState *result);
+  void
+ EnrollQualList(PlanState* result);
 
- static void
+ void
  EnrollProjInfoTargetList( ProjectionInfo* ProjInfo);
 
 /*
@@ -853,9 +853,9 @@ ExecInitNode(Plan *node, EState *estate, int eflags)
 }
 
 /* ----------------------------------------------------------------
- *	  EnrollQualList
+ *    EnrollTargetAndQualList
  *
- *	  Enroll Qual List's expr state from PlanState for codegen.
+ *	  Enroll Target and Qual List from PlanState to Codegen
  * ----------------------------------------------------------------
  */
 void
