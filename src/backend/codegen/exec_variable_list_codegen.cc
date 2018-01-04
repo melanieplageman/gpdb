@@ -466,8 +466,7 @@ bool ExecVariableListCodegen::GenerateExecVariableList(
       irb->SetInsertPoint(is_not_null_block);
     }  // End of if ( !thisatt->attnotnull )
 
-    // TODO : hardikar & nikos verify compatibility with 8.3 merge
-    off = att_align_nominal(off, thisatt->attalign);
+    off = att_align(off, thisatt->attalign);
 
     // values[attnum] = fetchatt(thisatt, tp + off) {{{
     llvm::Value* llvm_next_t_data_ptr =
