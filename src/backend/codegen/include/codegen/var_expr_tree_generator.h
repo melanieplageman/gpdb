@@ -13,7 +13,6 @@
 #define GPCODEGEN_VAR_EXPR_TREE_GENERATOR_H_
 
 #include "codegen/expr_tree_generator.h"
-#include "codegen/codegen_wrapper.h"
 
 #include "llvm/IR/Value.h"
 
@@ -29,13 +28,15 @@ namespace gpcodegen {
 class VarExprTreeGenerator : public ExprTreeGenerator {
  public:
   static bool VerifyAndCreateExprTree(
-        const ExprState* expr_state,
-        ExprTreeGeneratorInfo* gen_info,
+        ExprState* expr_state,
+        ExprContext* econtext,
         std::unique_ptr<ExprTreeGenerator>* expr_tree);
 
   bool GenerateCode(gpcodegen::GpCodegenUtils* codegen_utils,
-                    const ExprTreeGeneratorInfo& gen_info,
-                    llvm::Value* llvm_isnull_ptr,
+                    ExprContext* econtext,
+                    llvm::Function* llvm_main_func,
+                    llvm::BasicBlock* llvm_error_block,
+                    llvm::Value* llvm_isnull_arg,
                     llvm::Value** llvm_out_value) final;
  protected:
   /**
@@ -43,7 +44,7 @@ class VarExprTreeGenerator : public ExprTreeGenerator {
    *
    * @param expr_state Expression state
    **/
-  explicit VarExprTreeGenerator(const ExprState* expr_state);
+  explicit VarExprTreeGenerator(ExprState* expr_state);
 };
 
 /** @} */

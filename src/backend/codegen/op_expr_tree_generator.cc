@@ -90,7 +90,7 @@ void OpExprTreeGenerator::InitializeSupportedFunction() {
 }
 
 OpExprTreeGenerator::OpExprTreeGenerator(
-    const ExprState* expr_state,
+    ExprState* expr_state,
     std::vector<
         std::unique_ptr<ExprTreeGenerator>>&& arguments)  // NOLINT(build/c++11)
     :  ExprTreeGenerator(expr_state, ExprTreeNodeType::kOperator),
@@ -98,8 +98,8 @@ OpExprTreeGenerator::OpExprTreeGenerator(
 }
 
 bool OpExprTreeGenerator::VerifyAndCreateExprTree(
-    const ExprState* expr_state,
-    ExprTreeGeneratorInfo* gen_info,
+    ExprState* expr_state,
+    ExprContext* econtext,
     std::unique_ptr<ExprTreeGenerator>* expr_tree) {
   assert(nullptr != expr_state &&
          nullptr != expr_state->expr &&
@@ -115,7 +115,7 @@ bool OpExprTreeGenerator::VerifyAndCreateExprTree(
     return false;
   }
 
-  List *arguments = reinterpret_cast<const FuncExprState*>(expr_state)->args;
+  List *arguments = reinterpret_cast<FuncExprState*>(expr_state)->args;
   assert(nullptr != arguments);
   // In ExecEvalFuncArgs
   assert(list_length(arguments) ==
@@ -130,7 +130,7 @@ bool OpExprTreeGenerator::VerifyAndCreateExprTree(
     assert(nullptr != argstate);
     std::unique_ptr<ExprTreeGenerator> arg(nullptr);
     supported_tree &= ExprTreeGenerator::VerifyAndCreateExprTree(argstate,
-                                                                 gen_info,
+                                                                 econtext,
                                                                  &arg);
     if (!supported_tree) {
       break;
@@ -147,8 +147,10 @@ bool OpExprTreeGenerator::VerifyAndCreateExprTree(
 }
 
 bool OpExprTreeGenerator::GenerateCode(GpCodegenUtils* codegen_utils,
-                                       const ExprTreeGeneratorInfo& gen_info,
-                                       llvm::Value* llvm_isnull_ptr,
+                                       ExprContext* econtext,
+                                       llvm::Function* llvm_main_func,
+                                       llvm::BasicBlock* llvm_error_block,
+                                       llvm::Value* llvm_isnull_arg,
                                        llvm::Value** llvm_out_value) {
   assert(nullptr != llvm_out_value);
   *llvm_out_value = nullptr;
@@ -172,8 +174,10 @@ bool OpExprTreeGenerator::GenerateCode(GpCodegenUtils* codegen_utils,
   for (auto& arg : arguments_) {
     llvm::Value* llvm_arg = nullptr;
     arg_generated &= arg->GenerateCode(codegen_utils,
-                                       gen_info,
-                                       llvm_isnull_ptr,
+                                       econtext,
+                                       llvm_main_func,
+                                       llvm_error_block,
+                                       llvm_isnull_arg,
                                        &llvm_arg);
     if (!arg_generated) {
       return false;
@@ -181,8 +185,8 @@ bool OpExprTreeGenerator::GenerateCode(GpCodegenUtils* codegen_utils,
     llvm_arguments.push_back(llvm_arg);
   }
   return itr->second->GenerateCode(codegen_utils,
-                                   gen_info.llvm_main_func,
-                                   gen_info.llvm_error_block,
+                                   llvm_main_func,
+                                   llvm_error_block,
                                    llvm_arguments,
                                    llvm_out_value);
 }

@@ -10,8 +10,6 @@
 //
 //---------------------------------------------------------------------------
 
-#include <algorithm>
-
 #include "codegen/expr_tree_generator.h"
 #include "codegen/var_expr_tree_generator.h"
 
@@ -28,27 +26,26 @@ using gpcodegen::ExprTreeGenerator;
 using gpcodegen::GpCodegenUtils;
 
 bool VarExprTreeGenerator::VerifyAndCreateExprTree(
-    const ExprState* expr_state,
-    ExprTreeGeneratorInfo* gen_info,
+    ExprState* expr_state,
+    ExprContext* econtext,
     std::unique_ptr<ExprTreeGenerator>* expr_tree) {
   assert(nullptr != expr_state &&
          nullptr != expr_state->expr &&
          T_Var == nodeTag(expr_state->expr) &&
-         nullptr != expr_tree &&
-         nullptr != gen_info);
+         nullptr != expr_tree);
   expr_tree->reset(new VarExprTreeGenerator(expr_state));
-  gen_info->max_attr = std::max(gen_info->max_attr,
-                           reinterpret_cast<Var*>(expr_state->expr)->varattno);
   return true;
 }
 
-VarExprTreeGenerator::VarExprTreeGenerator(const ExprState* expr_state) :
+VarExprTreeGenerator::VarExprTreeGenerator(ExprState* expr_state) :
     ExprTreeGenerator(expr_state, ExprTreeNodeType::kVar) {
 }
 
 bool VarExprTreeGenerator::GenerateCode(GpCodegenUtils* codegen_utils,
-                                        const ExprTreeGeneratorInfo& gen_info,
-                                        llvm::Value* llvm_isnull_ptr,
+                                        ExprContext* econtext,
+                                        llvm::Function* llvm_main_func,
+                                        llvm::BasicBlock* llvm_error_block,
+                                        llvm::Value* llvm_isnull_arg,
                                         llvm::Value** llvm_out_value) {
   assert(nullptr != llvm_out_value);
   *llvm_out_value = nullptr;
@@ -63,15 +60,15 @@ bool VarExprTreeGenerator::GenerateCode(GpCodegenUtils* codegen_utils,
   TupleTableSlot **ptr_to_slot_ptr = NULL;
   switch (var_expr->varno) {
     case INNER:  /* get the tuple from the inner node */
-      ptr_to_slot_ptr = &gen_info.econtext->ecxt_innertuple;
+      ptr_to_slot_ptr = &econtext->ecxt_innertuple;
       break;
 
     case OUTER:  /* get the tuple from the outer node */
-      ptr_to_slot_ptr = &gen_info.econtext->ecxt_outertuple;
+      ptr_to_slot_ptr = &econtext->ecxt_outertuple;
       break;
 
     default:     /* get the tuple from the relation being scanned */
-      ptr_to_slot_ptr = &gen_info.econtext->ecxt_scantuple;
+      ptr_to_slot_ptr = &econtext->ecxt_scantuple;
       break;
   }
 
@@ -82,12 +79,15 @@ bool VarExprTreeGenerator::GenerateCode(GpCodegenUtils* codegen_utils,
   llvm::Value *llvm_variable_varattno = codegen_utils->
       GetConstant<int32_t>(attnum);
 
-  assert(nullptr != gen_info.llvm_slot_getattr_func);
+  // External functions
+  llvm::Function* llvm_slot_getattr =
+      codegen_utils->GetOrRegisterExternalFunction(slot_getattr);
+
   // retrieve variable
   *llvm_out_value = irb->CreateCall(
-      gen_info.llvm_slot_getattr_func, {
+      llvm_slot_getattr, {
           llvm_slot,
           llvm_variable_varattno,
-          llvm_isnull_ptr /* TODO: Fix isNull */ });
+          llvm_isnull_arg /* TODO: Fix isNull */ });
   return true;
 }
