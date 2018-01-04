@@ -71,11 +71,8 @@ class PGFuncBaseGenerator : public PGFuncGeneratorInterface {
     if (llvm_in_args.size() != GetTotalArgCount()) {
       return false;
     }
-    // Convert Datum to given cpp type.
-    llvm_out_args->push_back(codegen_utils->CreateDatumToCppTypeCast
-                             <Arg0>(llvm_in_args[0]));
-    llvm_out_args->push_back(codegen_utils->CreateDatumToCppTypeCast
-                             <Arg1>(llvm_in_args[1]));
+    llvm_out_args->push_back(codegen_utils->CreateCast<Arg0>(llvm_in_args[0]));
+    llvm_out_args->push_back(codegen_utils->CreateCast<Arg1>(llvm_in_args[1]));
     return true;
   }
 
@@ -188,14 +185,13 @@ Arg0, Arg1> {
                     llvm::Value** llvm_out_value) final {
     assert(nullptr != codegen_utils &&
            nullptr != llvm_out_value);
-    std::vector<llvm::Value*> llvm_preproc_args;
-    if (!this->PreProcessArgs(codegen_utils, llvm_args, &llvm_preproc_args)) {
+    if (llvm_args.size() != this->GetTotalArgCount()) {
       return false;
     }
     this->func_ptr()(codegen_utils,
         llvm_main_func,
         llvm_error_block,
-        llvm_preproc_args,
+        llvm_args,
         llvm_out_value);
     return true;
   }
