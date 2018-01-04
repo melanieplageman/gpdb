@@ -159,8 +159,9 @@ bool ExecVariableListCodegen::GenerateExecVariableList(
   }
 
   // So looks like we're going to generate code
-  llvm::Function* ExecVariableList_func = CreateFunction<ExecVariableListFn>(
-      codegen_utils, GetUniqueFuncName());
+  llvm::Function* ExecVariableList_func = codegen_utils->
+      CreateFunction<ExecVariableListFn>(
+          GetUniqueFuncName());
 
   auto irb = codegen_utils->ir_builder();
 
