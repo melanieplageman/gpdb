@@ -73,8 +73,6 @@ static const char *assign_gp_workfile_compress_algorithm(const char *newval, boo
 static const char *assign_optimizer_minidump(const char *newval,
 						  bool doit, GucSource source);
 static bool assign_optimizer(bool newval, bool doit, GucSource source);
-static bool assign_codegen_optimization_level(int newval, bool doit,
-							GucSource source);
 static bool assign_dispatch_log_stats(bool newval, bool doit, GucSource source);
 static bool assign_gp_hashagg_default_nbatches(int newval, bool doit, GucSource source);
 
@@ -466,7 +464,6 @@ bool		init_codegen;
 bool		codegen;
 bool		codegen_validate_functions;
 int		codegen_varlen_tolerance;
-int		codegen_optimization_level;
 
 /* System Information */
 static int	gp_server_version_num;
@@ -516,14 +513,6 @@ static const struct config_enum_entry optimizer_log_failure_options[] = {
 	{"all", OPTIMIZER_ALL_FAIL},
 	{"unexpected", OPTIMIZER_UNEXPECTED_FAIL},
 	{"expected", OPTIMIZER_EXPECTED_FAIL},
-	{NULL, 0}
-};
-
-static const struct config_enum_entry codegen_optimization_level_options[] = {
-	{"none", CODEGEN_OPTIMIZATION_LEVEL_NONE},
-	{"less", CODEGEN_OPTIMIZATION_LEVEL_LESS},
-	{"default", CODEGEN_OPTIMIZATION_LEVEL_DEFAULT},
-	{"aggressive", CODEGEN_OPTIMIZATION_LEVEL_AGGRESSIVE},
 	{NULL, 0}
 };
 
@@ -4739,21 +4728,6 @@ struct config_enum ConfigureNamesEnum_gp[] =
 	},
 
 	{
-		{"codegen_optimization_level", PGC_USERSET, DEVELOPER_OPTIONS,
-			gettext_noop("Sets optimizer level to use when compiling generated code."),
-			gettext_noop("Valid values are none, less, default, aggressive."),
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE | GUC_GPDB_ADDOPT
-		},
-		&codegen_optimization_level,
-#ifdef USE_CODEGEN
-		CODEGEN_OPTIMIZATION_LEVEL_DEFAULT,
-#else
-		CODEGEN_OPTIMIZATION_LEVEL_NONE,
-#endif
-		codegen_optimization_level_options, assign_codegen_optimization_level, NULL
-	},
-
-	{
 		{"optimizer_cost_model", PGC_USERSET, DEVELOPER_OPTIONS,
 			gettext_noop("Set optimizer cost model."),
 			gettext_noop("Valid values are legacy, calibrated"),
@@ -4844,21 +4818,6 @@ assign_pljava_classpath_insecure(bool newval, bool doit, GucSource source)
 			elog(ERROR, "Failed to set insecure PLJAVA classpath");
 		}
 	}
-	return true;
-}
-
-static bool
-assign_codegen_optimization_level(int val, bool assign, GucSource source) {
-#ifndef USE_CODEGEN
-	if (val != CODEGEN_OPTIMIZATION_LEVEL_NONE)
-	{
-		ereport(ERROR,
-			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-				errmsg("Code generation is not supported by this build")));
-		return false;
-	}
-#endif
-
 	return true;
 }
 
