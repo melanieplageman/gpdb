@@ -6,7 +6,7 @@
 //    codegen_manager.h
 //
 //  @doc:
-//    Object that manage all CodegenInterface and GpCodegenUtils
+//    Object that manage all CodegenInterface and CodegenUtils
 //
 //---------------------------------------------------------------------------
 
@@ -25,8 +25,8 @@ namespace gpcodegen {
  *  @{
  */
 
-// Forward declaration of GpCodegenUtils to manage llvm module
-class GpCodegenUtils;
+// Forward declaration of CodegenUtils to manage llvm module
+class CodegenUtils;
 
 // Forward declaration of a CodegenInterface that will be managed by manager
 class CodegenInterface;
@@ -52,7 +52,7 @@ class CodegenManager {
    * @note Manager manages the memory of enrolled generator.
    *
    * @param funcLifespan Life span of the enrolling generator. Based on life span,
-   *                     corresponding GpCodegenUtils will be used for code generation
+   *                     corresponding CodegenUtils will be used for code generation
    * @param generator    Generator that needs to be enrolled with manager.
    * @return true on successful enrollment.
    **/
@@ -100,8 +100,8 @@ class CodegenManager {
   }
 
  private:
-  // GpCodegenUtils provides a facade to LLVM subsystem.
-  std::unique_ptr<gpcodegen::GpCodegenUtils> codegen_utils_;
+  // CodegenUtils provides a facade to LLVM subsystem.
+  std::unique_ptr<gpcodegen::CodegenUtils> codegen_utils_;
 
   std::string module_name_;
 
