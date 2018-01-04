@@ -463,7 +463,6 @@ bool		optimizer_analyze_midlevel_partition;
 bool		init_codegen;
 bool		codegen;
 bool		codegen_validate_functions;
-int		codegen_varlen_tolerance;
 
 /* System Information */
 static int	gp_server_version_num;
@@ -4034,16 +4033,6 @@ struct config_int ConfigureNamesInt_gp[] =
 		},
 		(int *) &gp_indexcheck_vacuum,
 		INDEX_CHECK_NONE, 0, INDEX_CHECK_ALL, NULL, NULL
-	},
-
-	{
-		{"codegen_varlen_tolerance", PGC_USERSET, DEVELOPER_OPTIONS,
-			gettext_noop("Minimum number of initial fixed length attributes in the table to generate code for deforming tuples."),
-			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE | GUC_GPDB_ADDOPT
-		},
-		&codegen_varlen_tolerance,
-		5, 0, INT_MAX, NULL, NULL
 	},
 
 	{
