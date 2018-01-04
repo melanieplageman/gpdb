@@ -48,19 +48,18 @@ using gpcodegen::SlotGetAttrCodegen;
 
 constexpr char ExecEvalExprCodegen::kExecEvalExprPrefix[];
 
-ExecEvalExprCodegen::ExecEvalExprCodegen(
-    CodegenManager* manager,
+ExecEvalExprCodegen::ExecEvalExprCodegen
+(
     ExecEvalExprFn regular_func_ptr,
     ExecEvalExprFn* ptr_to_regular_func_ptr,
     ExprState *exprstate,
     ExprContext *econtext,
-    PlanState* plan_state)
-    : BaseCodegen(manager,
-                  kExecEvalExprPrefix,
-                  regular_func_ptr, ptr_to_regular_func_ptr),
-      exprstate_(exprstate),
-      econtext_(econtext),
-      plan_state_(plan_state) {
+    PlanState* plan_state) :
+    BaseCodegen(kExecEvalExprPrefix,
+                regular_func_ptr, ptr_to_regular_func_ptr),
+                exprstate_(exprstate),
+                econtext_(econtext),
+                plan_state_(plan_state) {
 }
 
 void ExecEvalExprCodegen::PrepareSlotGetAttr(
