@@ -93,10 +93,11 @@ class ExprTreeGenerator {
    **/
   ExprTreeGenerator(ExprState* expr_state,
                     ExprTreeNodeType node_type) :
-                      expr_state_(expr_state) {}
+                      expr_state_(expr_state), node_type_(node_type) {}
 
  private:
   ExprState* expr_state_;
+  ExprTreeNodeType node_type_;
   DISALLOW_COPY_AND_ASSIGN(ExprTreeGenerator);
 };
 

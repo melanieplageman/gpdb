@@ -55,12 +55,6 @@ if (COMPILER_HAS_WNO_C99_EXTENSIONS)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-conversion-null")
 endif()
 
-# Suppress warnings about deprecated keyword register
-CHECK_CXX_COMPILER_FLAG("-Wno-deprecated-register" COMPILER_HAS_WNO_C99_EXTENSIONS)
-if (COMPILER_HAS_WNO_C99_EXTENSIONS)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-register")
-endif()
-
 # Turn on the CODEGEN_DEBUG flag if this is a debug build.
 if (CMAKE_MAJOR_VERSION GREATER 2)
   cmake_policy(SET CMP0043 NEW)
@@ -310,6 +304,7 @@ endif()
 if(EXISTS ${TXT_OBJFILE})
     add_cmockery_gtest(codegen_framework_unittest.t 
         tests/codegen_framework_unittest.cc
+        ${MOCK_DIR}/backend/utils/error/elog_mock.o
     )
 endif()
 

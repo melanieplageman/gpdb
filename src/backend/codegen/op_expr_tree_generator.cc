@@ -92,8 +92,7 @@ bool OpExprTreeGenerator::VerifyAndCreateExprTree(
   List *arguments = reinterpret_cast<FuncExprState*>(expr_state)->args;
   assert(nullptr != arguments);
   // In ExecEvalFuncArgs
-  assert(list_length(arguments) ==
-        static_cast<int>(itr->second->GetTotalArgCount()));
+  assert(list_length(arguments) == itr->second->GetTotalArgCount());
 
   ListCell   *arg = nullptr;
   bool supported_tree = true;
