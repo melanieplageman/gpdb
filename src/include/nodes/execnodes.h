@@ -27,6 +27,7 @@
 #include "utils/rel.h"
 #include "utils/snapshot.h"
 #include "utils/tuplestore.h"
+#include "codegen/codegen_wrapper.h"
 
 #include "gpmon/gpmon.h"                /* gpmon_packet_t */
 
@@ -811,11 +812,6 @@ struct ExprState
 	NodeTag		type;
 	Expr	   *expr;			/* associated Expr node */
 	ExprStateEvalFunc evalfunc; /* routine to run to execute node */
-
-#ifdef USE_CODEGEN
-	void *ExecEvalExpr_code_generator;
-#endif
-
 };
 
 /* ----------------
