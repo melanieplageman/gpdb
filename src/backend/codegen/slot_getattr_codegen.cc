@@ -117,10 +117,9 @@ bool SlotGetAttrCodegen::GenerateSlotGetAttrInternal(
 
   // External functions
   llvm::Function* llvm_memset =
-      codegen_utils->GetOrRegisterExternalFunction(memset, "memset");
+      codegen_utils->GetOrRegisterExternalFunction(memset);
   llvm::Function* llvm_slot_deform_tuple =
-      codegen_utils->GetOrRegisterExternalFunction(slot_deform_tuple,
-                                                   "slot_deform_tuple");
+      codegen_utils->GetOrRegisterExternalFunction(slot_deform_tuple);
 
   // Generation-time constants
   llvm::Value* llvm_slot = codegen_utils->GetConstant(slot);
@@ -580,8 +579,7 @@ bool SlotGetAttrCodegen::GenerateSlotGetAttrInternal(
       llvm_error);
 
   codegen_utils->CreateFallback<SlotGetAttrFn>(
-      codegen_utils->GetOrRegisterExternalFunction(slot_getattr,
-                                                   "slot_getattr"),
+      codegen_utils->GetOrRegisterExternalFunction(slot_getattr),
       slot_getattr_func);
   return true;
 }
