@@ -310,7 +310,6 @@ endif()
 if(EXISTS ${TXT_OBJFILE})
     add_cmockery_gtest(codegen_framework_unittest.t 
         tests/codegen_framework_unittest.cc
-        ${MOCK_DIR}/backend/postmaster/postmaster_mock.o
     )
 endif()
 
