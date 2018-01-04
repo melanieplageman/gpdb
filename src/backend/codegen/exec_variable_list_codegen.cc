@@ -133,7 +133,7 @@ bool ExecVariableListCodegen::GenerateExecVariableList(
       "fallback", exec_variable_list_func);
 
   // External functions
-  llvm::Function* llvm_memset = codegen_utils->GetOrRegisterExternalFunction(memset);
+  llvm::Function* llvm_memset = codegen_utils->RegisterExternalFunction(memset);
 
   // Generation-time constants
   llvm::Value* llvm_max_attr = codegen_utils->GetConstant(max_attr);
@@ -587,7 +587,7 @@ bool ExecVariableListCodegen::GenerateExecVariableList(
       llvm_error);
 
   codegen_utils->CreateFallback<ExecVariableListFn>(
-      codegen_utils->GetOrRegisterExternalFunction(GetRegularFuncPointer()),
+      codegen_utils->RegisterExternalFunction(GetRegularFuncPointer()),
       exec_variable_list_func);
   return true;
 }

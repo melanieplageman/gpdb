@@ -74,7 +74,7 @@ bool ExecQualCodegen::GenerateExecQual(
   codegen_utils->CreateElog(DEBUG1, "Falling back to regular ExecQual.");
 
   codegen_utils->CreateFallback<ExecQualFn>(
-      codegen_utils->GetOrRegisterExternalFunction(GetRegularFuncPointer()),
+      codegen_utils->RegisterExternalFunction(GetRegularFuncPointer()),
 	  exec_qual_func);
   return true;
 }
