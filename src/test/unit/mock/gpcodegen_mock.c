@@ -24,7 +24,7 @@ unsigned int
 CodeGeneratorManagerGenerateCode(void* manager)
 {
 	elog(ERROR, "mock implementation of CodeGeneratorManager_GenerateCode called");
-	return 1;
+	return true;
 }
 
 // compiles and prepares all the code gened function pointers
@@ -32,7 +32,7 @@ unsigned int
 CodeGeneratorManagerPrepareGeneratedFunctions(void* manager)
 {
 	elog(ERROR, "mock implementation of CodeGeneratorManager_PrepareGeneratedFunctions called");
-	return 1;
+	return true;
 }
 
 // notifies a manager that the underlying operator has a parameter change
@@ -40,7 +40,7 @@ unsigned int
 CodeGeneratorManagerNotifyParameterChange(void* manager)
 {
 	elog(ERROR, "mock implementation of CodeGeneratorManager_NotifyParameterChange called");
-	return 1;
+	return true;
 }
 
 // destroys a manager for an operator
@@ -65,7 +65,7 @@ SetActiveCodeGeneratorManager(void* manager)
 	elog(ERROR, "mock implementation of SetActiveCodeGeneratorManager called");
 }
 
-// returns the pointer to the ExecVariableListGenerator
+// returns the pointer to the SlotDeformTupleCodegen
 void*
 ExecVariableListCodegenEnroll(ExecVariableListFn regular_func_ptr,
                               ExecVariableListFn* ptr_to_regular_func_ptr,
@@ -75,16 +75,5 @@ ExecVariableListCodegenEnroll(ExecVariableListFn regular_func_ptr,
   *ptr_to_regular_func_ptr = regular_func_ptr;
 	elog(ERROR, "mock implementation of ExecVariableListEnroll called");
 	return NULL;
-}
-
-// returns the pointer to the ExecQualGenerator
-void*
-ExecQualCodegenEnroll(ExecQualFn regular_func_ptr,
-					  ExecQualFn* ptr_to_regular_func_ptr,
-					  struct PlanState *planstate)
-{
-  *ptr_to_regular_func_ptr = regular_func_ptr;
-  elog(ERROR, "mock implementation of ExecQualCodegenEnroll called");
-  return NULL;
 }
 

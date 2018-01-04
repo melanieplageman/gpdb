@@ -44,12 +44,6 @@
 #include "llvm/IR/Verifier.h"
 #include "llvm/Support/Casting.h"
 
-extern "C" {
-    #include "utils/elog.h"
-    #undef elog
-    #define elog
-}
-
 #include "codegen/utils/codegen_utils.h"
 #include "codegen/utils/utility.h"
 #include "codegen/codegen_manager.h"
@@ -57,7 +51,7 @@ extern "C" {
 #include "codegen/codegen_interface.h"
 #include "codegen/base_codegen.h"
 
-extern bool codegen_validate_functions;
+
 namespace gpcodegen {
 
 typedef int (*SumFunc) (int x, int y);
@@ -174,7 +168,6 @@ class CodegenManagerTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
     manager_.reset(new CodegenManager("CodegenManagerTest"));
-    codegen_validate_functions = true;
   }
 
   template <typename ClassType, typename FuncType>
@@ -232,7 +225,7 @@ TEST_F(CodegenManagerTest, GenerateCodeTest) {
   uncompilable_func_ptr = nullptr;
   EnrollCodegen<UncompilableCodeGenerator<true>, UncompilableFunc>(
       UncompilableFuncRegular, &uncompilable_func_ptr);
-  EXPECT_EQ(1, manager_->GenerateCode());
+  EXPECT_EQ(2, manager_->GenerateCode());
 }
 
 TEST_F(CodegenManagerTest, PrepareGeneratedFunctionsNoCompilationErrorTest) {
@@ -345,17 +338,16 @@ TEST_F(CodegenManagerTest, UnCompilablePassedGenerationTest) {
   EnrollCodegen<UncompilableCodeGenerator<true>, UncompilableFunc>(
       UncompilableFuncRegular, &uncompilable_func_ptr);
 
-  EXPECT_EQ(1, manager_->GenerateCode());
+  EXPECT_EQ(2, manager_->GenerateCode());
 
   // Make sure both the function pointers refer to regular versions
   ASSERT_TRUE(SumFuncRegular == sum_func_ptr);
   ASSERT_TRUE(SumFuncRegular == failed_func_ptr);
   ASSERT_TRUE(UncompilableFuncRegular == uncompilable_func_ptr);
 
-  EXPECT_EQ(1, manager_->PrepareGeneratedFunctions());
-
-  ASSERT_TRUE(SumFuncRegular == failed_func_ptr);
-  ASSERT_TRUE(UncompilableFuncRegular == uncompilable_func_ptr);
+  // This should cause program to exit because of
+  // broken function
+  EXPECT_DEATH(manager_->PrepareGeneratedFunctions(), "");
 
   // Reset the manager, so that all the code generators go away
   manager_.reset(nullptr);
@@ -400,4 +392,3 @@ int main(int argc, char **argv) {
   AddGlobalTestEnvironment(new gpcodegen::CodegenManagerTestEnvironment);
   return RUN_ALL_TESTS();
 }
-

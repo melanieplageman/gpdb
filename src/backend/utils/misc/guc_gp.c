@@ -462,7 +462,6 @@ bool		optimizer_analyze_midlevel_partition;
  **/
 bool		init_codegen;
 bool		codegen;
-bool		codegen_validate_functions;
 
 /* System Information */
 static int	gp_server_version_num;
@@ -2791,21 +2790,6 @@ struct config_bool ConfigureNamesBool_gp[] =
 		},
 		&codegen,
 		false, NULL, NULL
-	},
-
-	{
-		{"codegen_validate_functions", PGC_USERSET, DEVELOPER_OPTIONS,
-			gettext_noop("Perform verify for generated functions to catch any error before compiling"),
-			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
-		},
-		&codegen_validate_functions,
-#ifdef USE_ASSERT_CHECKING
-		true, NULL, NULL	/* true by default on debug builds. */
-#else
-		false, NULL, NULL
-#endif
-
 	},
 	{
 		{"vmem_process_interrupt", PGC_USERSET, DEVELOPER_OPTIONS,

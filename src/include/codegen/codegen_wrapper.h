@@ -28,7 +28,6 @@ struct TupleTableSlot;
 struct ProjectionInfo;
 struct List;
 struct ExprContext;
-struct PlanState;
 
 typedef void (*ExecVariableListFn) (struct ProjectionInfo *projInfo, Datum *values, bool *isnull);
 typedef bool (*ExecQualFn) (struct List *qual, struct ExprContext *econtext, bool resultForNull);
@@ -145,12 +144,12 @@ ExecVariableListCodegenEnroll(ExecVariableListFn regular_func_ptr,
                               struct TupleTableSlot* slot);
 
 /*
- * returns the pointer to the ExecQual generator
+ * returns the pointer to the ExecQual
  */
 void*
 ExecQualCodegenEnroll(ExecQualFn regular_func_ptr,
-					  ExecQualFn* ptr_to_regular_func_ptr,
-					  struct PlanState *planstate);
+                              ExecQualFn* ptr_to_regular_func_ptr,
+                              struct PlanState *planstate);
 
 #ifdef __cplusplus
 }  // extern "C"
