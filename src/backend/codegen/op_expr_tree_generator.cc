@@ -15,11 +15,10 @@
 
 #include "include/codegen/pg_arith_func_generator.h"
 #include "include/codegen/pg_date_func_generator.h"
-
 #include "llvm/IR/Value.h"
 
 extern "C" {
-#include "c.h"  // NOLINT(build/include)
+#include "c.h"
 #include "postgres.h"  // NOLINT(build/include)
 #include "utils/elog.h"
 #include "nodes/execnodes.h"
