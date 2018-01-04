@@ -169,6 +169,7 @@ class GpCodegenUtils : public CodegenUtils {
   llvm::Value* CreateCppTypeToDatumCast(llvm::Value* value,
                                         bool is_src_unsigned = false);
 };
+
 }  // namespace gpcodegen
 
 #endif  // GPCODEGEN_GP_CODEGEN_UTILS_H

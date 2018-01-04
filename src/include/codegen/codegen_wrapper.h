@@ -42,16 +42,14 @@ typedef Datum (*SlotGetAttrFn) (struct TupleTableSlot *slot, int attnum, bool *i
 
 #ifndef USE_CODEGEN
 
-#define InitCodegen() ((void) 1)
-#define CodeGeneratorManagerCreate(module_name) ((void *) NULL)
-#define CodeGeneratorManagerGenerateCode(manager) ((unsigned int) 1)
-#define CodeGeneratorManagerPrepareGeneratedFunctions(manager) ((unsigned int) 1)
-#define CodeGeneratorManagerNotifyParameterChange(manager) ((unsigned int) 1)
-#define CodeGeneratorManagerAccumulateExplainString(manager) ((void) 1)
-#define CodeGeneratorManagerGetExplainString(manager) ((char *) NULL)
-#define CodeGeneratorManagerDestroy(manager) ((void) 1)
-#define GetActiveCodeGeneratorManager() ((void *) NULL)
-#define SetActiveCodeGeneratorManager(manager) ((void) 1)
+#define InitCodegen();
+#define CodeGeneratorManagerCreate(module_name) NULL
+#define CodeGeneratorManagerGenerateCode(manager);
+#define CodeGeneratorManagerPrepareGeneratedFunctions(manager) 1
+#define CodeGeneratorManagerNotifyParameterChange(manager) 1
+#define CodeGeneratorManagerDestroy(manager);
+#define GetActiveCodeGeneratorManager() NULL
+#define SetActiveCodeGeneratorManager(manager);
 
 #define START_CODE_GENERATOR_MANAGER(newManager)
 #define END_CODE_GENERATOR_MANAGER()
@@ -130,19 +128,6 @@ void
 CodeGeneratorManagerDestroy(void* manager);
 
 /*
- * Accumulate the explain string with a dump of all the underlying LLVM modules
- */
-void
-CodeGeneratorManagerAccumulateExplainString(void* manager);
-
-/*
- * Return a copy in CurrentMemoryContext of the previously accumulated explain
- * string
- */
-char*
-CodeGeneratorManagerGetExplainString(void* manager);
-
-/*
  * Get the active code generator manager
  */
 void*
@@ -172,6 +157,7 @@ ExecEvalExprCodegenEnroll(ExecEvalExprFn regular_func_ptr,
                           struct ExprState *exprstate,
                           struct ExprContext *econtext,
                           struct TupleTableSlot* slot);
+
 
 #ifdef __cplusplus
 }  // extern "C"

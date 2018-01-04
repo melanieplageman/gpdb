@@ -483,13 +483,6 @@ class CodegenUtils {
     return llvm::InlineFunction(llvm::CallSite(call_inst), info);
   }
 
-  /*
-   * @brief Dump the IR of all underlying LLVM modules.
-   *
-   * @param out  Stream to send the output to - as required by llvm::Value::print
-   */
-  void PrintUnderlyingModules(llvm::raw_ostream& out); // NOLINT
-
  protected:
   /**
    * @return LLVMContext
