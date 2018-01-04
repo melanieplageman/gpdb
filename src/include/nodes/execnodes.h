@@ -1338,6 +1338,14 @@ typedef struct DomainConstraintState
  * ----------------------------------------------------------------
  */
 
+typedef struct ExecQualCodegenInfo
+{
+	/* Pointer to store ExecQualCodegen from Codegen */
+	void* code_generator;
+	/* Function pointer that points to either regular or generated slot_deform_tuple */
+	ExecQualFn ExecQual_fn;
+} ExecQualCodegenInfo;
+
 /* ----------------
  *		PlanState node
  *
@@ -1406,6 +1414,10 @@ typedef struct PlanState
 	 */
 	int		gpmon_plan_tick;
 	gpmon_packet_t gpmon_pkt;
+
+#ifdef USE_CODEGEN
+	ExecQualCodegenInfo ExecQual_gen_info;
+#endif
 } PlanState;
 
 /* Gpperfmon helper functions defined in execGpmon.c */
