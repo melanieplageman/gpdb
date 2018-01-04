@@ -22,7 +22,6 @@
 #include "codegen/exec_variable_list_codegen.h"
 #include "codegen/expr_tree_generator.h"
 #include "codegen/utils/gp_codegen_utils.h"
-#include "codegen/advance_aggregates_codegen.h"
 
 extern "C" {
 #include "lib/stringinfo.h"
@@ -32,7 +31,6 @@ using gpcodegen::CodegenManager;
 using gpcodegen::BaseCodegen;
 using gpcodegen::ExecVariableListCodegen;
 using gpcodegen::ExecEvalExprCodegen;
-using gpcodegen::AdvanceAggregatesCodegen;
 
 // Current code generator manager that oversees all code generators
 static void* ActiveCodeGeneratorManager = nullptr;
@@ -167,12 +165,5 @@ void* ExecEvalExprCodegenEnroll(
   return generator;
 }
 
-void* AdvanceAggregatesCodegenEnroll(
-    AdvanceAggregatesFn regular_func_ptr,
-    AdvanceAggregatesFn* ptr_to_chosen_func_ptr,
-    AggState *aggstate) {
-  AdvanceAggregatesCodegen* generator = CodegenEnroll<AdvanceAggregatesCodegen>(
-      regular_func_ptr, ptr_to_chosen_func_ptr, aggstate);
-  return generator;
-}
+
 

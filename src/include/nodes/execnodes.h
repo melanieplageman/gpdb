@@ -2412,15 +2412,6 @@ typedef struct SortState
  *	expressions and run the aggregate transition functions.
  * -------------------------
  */
-
-typedef struct AdvanceAggregatesCodegenInfo
-{
-	/* Pointer to store AdvanceAggregatesCodegen from Codegen */
-	void* code_generator;
-	/* Function pointer that points to either regular or generated advance_aggregates */
-	AdvanceAggregatesFn AdvanceAggregates_fn;
-} AdvanceAggregatesCodegenInfo;
-
 /* these structs are private in nodeAgg.c: */
 typedef struct AggStatePerAggData *AggStatePerAgg;
 typedef struct AggStatePerGroupData *AggStatePerGroup;
@@ -2479,9 +2470,6 @@ typedef struct AggState
 	/* set if the operator created workfiles */
 	bool		workfiles_created;
 
-#ifdef USE_CODEGEN
-	AdvanceAggregatesCodegenInfo AdvanceAggregates_gen_info;
-#endif
 } AggState;
 
 /* ----------------
