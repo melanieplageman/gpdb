@@ -18,7 +18,6 @@
 
 #include "codegen/utils/codegen_utils.h"
 #include "codegen/base_codegen.h"
-#include "codegen/pg_func_generator_interface.h"
 
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Value.h"
@@ -47,10 +46,11 @@ class PGDateFuncGenerator {
    * @return true if generation was successful otherwise return false
    *
    **/
-  static bool DateLETimestamp(
-      gpcodegen::GpCodegenUtils* codegen_utils,
-      const PGFuncGeneratorInfo& pg_func_info,
-      llvm::Value** llvm_out_value);
+  static bool DateLETimestamp(gpcodegen::GpCodegenUtils* codegen_utils,
+                              llvm::Function* llvm_main_func,
+                              llvm::BasicBlock* llvm_error_block,
+                              const std::vector<llvm::Value*>& llvm_args,
+                              llvm::Value** llvm_out_value);
 
  private:
   /**
@@ -67,7 +67,9 @@ class PGDateFuncGenerator {
    */
   static llvm::Value* GenerateDate2Timestamp(
       GpCodegenUtils* codegen_utils,
-      const PGFuncGeneratorInfo& pg_func_info);
+      llvm::Function* llvm_main_func,
+      llvm::Value* llvm_arg,
+      llvm::BasicBlock* llvm_error_block);
 };
 
 /** @} */
