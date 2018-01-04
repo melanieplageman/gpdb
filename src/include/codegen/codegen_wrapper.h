@@ -12,8 +12,6 @@
 #ifndef CODEGEN_WRAPPER_H_
 #define CODEGEN_WRAPPER_H_
 
-#include <stddef.h>
-
 #include "pg_config.h"
 #include "c.h"
 

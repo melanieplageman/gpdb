@@ -11,8 +11,6 @@
 //---------------------------------------------------------------------------
 #include "codegen/codegen_interface.h"
 
-#include <string>
-
 using gpcodegen::CodegenInterface;
 
 // Initalization of unique counter

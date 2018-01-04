@@ -12,20 +12,16 @@
 #ifndef GPCODEGEN_PG_DATE_FUNC_GENERATOR_H_  // NOLINT(build/header_guard)
 #define GPCODEGEN_PG_DATE_FUNC_GENERATOR_H_
 
-#include <memory>
 #include <string>
 #include <vector>
+#include <memory>
 
+#include "codegen/utils/codegen_utils.h"
 #include "codegen/base_codegen.h"
 #include "codegen/pg_func_generator_interface.h"
-#include "codegen/utils/codegen_utils.h"
 
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Value.h"
-
-namespace llvm {
-class Value;
-}  // namespace llvm
 
 namespace gpcodegen {
 
@@ -33,14 +29,10 @@ namespace gpcodegen {
  *  @{
  */
 
-class GpCodegenUtils;
-struct PGFuncGeneratorInfo;
-
 /**
  * @brief Class with Static member function to generate code for date
  *        operators.
  **/
-
 class PGDateFuncGenerator {
  public:
   /**

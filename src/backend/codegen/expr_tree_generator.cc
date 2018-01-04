@@ -10,18 +10,17 @@
 //
 //---------------------------------------------------------------------------
 #include <cassert>
-#include <memory>
-
-#include "codegen/const_expr_tree_generator.h"
 #include "codegen/expr_tree_generator.h"
 #include "codegen/op_expr_tree_generator.h"
 #include "codegen/var_expr_tree_generator.h"
+#include "codegen/const_expr_tree_generator.h"
+
+#include "llvm/IR/Value.h"
 
 extern "C" {
 #include "postgres.h"  // NOLINT(build/include)
-#include "nodes/execnodes.h"
 #include "utils/elog.h"
-#include "nodes/nodes.h"
+#include "nodes/execnodes.h"
 }
 
 using gpcodegen::ExprTreeGenerator;

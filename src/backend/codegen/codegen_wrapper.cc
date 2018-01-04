@@ -11,16 +11,10 @@
 //---------------------------------------------------------------------------
 
 #include "codegen/codegen_wrapper.h"
-
-#include <assert.h>
-#include <string>
-#include <type_traits>
-
-#include "codegen/base_codegen.h"
 #include "codegen/codegen_manager.h"
-#include "codegen/exec_eval_expr_codegen.h"
 #include "codegen/exec_variable_list_codegen.h"
-#include "codegen/expr_tree_generator.h"
+#include "codegen/exec_eval_expr_codegen.h"
+
 #include "codegen/utils/gp_codegen_utils.h"
 
 extern "C" {
