@@ -19,7 +19,6 @@
 #include "codegen/utils/utility.h"
 #include "codegen/utils/instance_method_wrappers.h"
 #include "codegen/utils/gp_codegen_utils.h"
-#include "codegen/base_codegen.h"
 
 #include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/APInt.h"
@@ -65,7 +64,9 @@ ExecVariableListCodegen::ExecVariableListCodegen
 
 bool ExecVariableListCodegen::GenerateExecVariableList(
     gpcodegen::GpCodegenUtils* codegen_utils) {
+
   assert(NULL != codegen_utils);
+
   static_assert(sizeof(Datum) == sizeof(int64),
       "sizeof(Datum) doesn't match sizeof(int64)");
 
@@ -103,25 +104,37 @@ bool ExecVariableListCodegen::GenerateExecVariableList(
     return false;
   }
 
+  // So looks like we're going to generate code
   llvm::Function* exec_variable_list_func = CreateFunction<ExecVariableListFn>(
       codegen_utils, GetUniqueFuncName());
 
   auto irb = codegen_utils->ir_builder();
 
-  // BasicBlocks
+  // BasicBlock of function entry.
   llvm::BasicBlock* entry_block = codegen_utils->CreateBasicBlock(
       "entry", exec_variable_list_func);
   // BasicBlock for checking correct slot
   llvm::BasicBlock* slot_check_block = codegen_utils->CreateBasicBlock(
       "slot_check", exec_variable_list_func);
+  // BasicBlock for checking tuple type.
+  llvm::BasicBlock* tuple_type_check_block = codegen_utils->CreateBasicBlock(
+      "tuple_type_check", exec_variable_list_func);
+  // BasicBlock for heap tuple check.
+  llvm::BasicBlock* heap_tuple_check_block = codegen_utils->CreateBasicBlock(
+      "heap_tuple_check", exec_variable_list_func);
   // BasicBlock for main.
   llvm::BasicBlock* main_block = codegen_utils->CreateBasicBlock(
       "main", exec_variable_list_func);
   // BasicBlock for final computations.
   llvm::BasicBlock* final_block = codegen_utils->CreateBasicBlock(
       "final", exec_variable_list_func);
+  // BasicBlock for fall back.
   llvm::BasicBlock* fallback_block = codegen_utils->CreateBasicBlock(
       "fallback", exec_variable_list_func);
+
+  // External functions
+  llvm::Function* llvm_memset = codegen_utils->GetOrRegisterExternalFunction(
+      memset);
 
   // Generation-time constants
   llvm::Value* llvm_max_attr = codegen_utils->GetConstant(max_attr);
@@ -133,21 +146,12 @@ bool ExecVariableListCodegen::GenerateExecVariableList(
   llvm::Value* llvm_values_arg = ArgumentByPosition(exec_variable_list_func, 1);
   llvm::Value* llvm_isnull_arg = ArgumentByPosition(exec_variable_list_func, 2);
 
-
-  // Generate slot_getattr for attributes all the way to max_attr
-  std::string slot_getattr_func_name = "slot_getattr_" + std::to_string(max_attr);
-  llvm::Function* slot_getattr_func = nullptr;
-  if (!ExecVariableListCodegen::WrapGenerateSlotGetAttr(
-      codegen_utils, slot_getattr_func_name, slot_, max_attr, &slot_getattr_func)) {
-    elog(DEBUG1, "Cannot generate code for ExecVariableList"
-                 "because slot_getattr generation failed!");
-    return false;
-  }
-  assert(nullptr != slot_getattr_func);
-
   // Entry block
   // -----------
+
   irb->SetInsertPoint(entry_block);
+  // We start a sequence of checks to ensure that everything is fine and
+  // we do not need to fall back.
   irb->CreateBr(slot_check_block);
 
   // Slot check block
@@ -168,168 +172,8 @@ bool ExecVariableListCodegen::GenerateExecVariableList(
 
   irb->CreateCondBr(
       irb->CreateICmpEQ(llvm_slot, llvm_slot_arg),
-      main_block /* true */,
+      tuple_type_check_block /* true */,
       fallback_block /* false */);
-
-
-  // Main block
-  // ----------
-  irb->SetInsertPoint(main_block);
-  // Allocate a dummy int so that slot_getattr can write isnull out
-  llvm::Value* llvm_dummy_isnull =
-      irb->CreateAlloca(codegen_utils->GetType<bool>());
-  irb->CreateCall(slot_getattr_func, {
-      llvm_slot,
-      llvm_max_attr,
-      llvm_dummy_isnull
-  });
-
-  irb->CreateBr(final_block);
-
-
-  // Final Block
-  // -----------
-  irb->SetInsertPoint(final_block);
-  llvm::Value* llvm_slot_PRIVATE_tts_isnull /* bool* */ =
-      irb->CreateLoad(codegen_utils->GetPointerToMember(
-          llvm_slot, &TupleTableSlot::PRIVATE_tts_isnull));
-  llvm::Value* llvm_slot_PRIVATE_tts_values /* Datum* */ =
-      irb->CreateLoad(codegen_utils->GetPointerToMember(
-          llvm_slot, &TupleTableSlot::PRIVATE_tts_values));
-
-  // This code from ExecVariableList copies the contents of the isnull & values
-  // arrays in the slot to output variable from the function parameters to
-  // ExecVariableList
-  int  *varNumbers = proj_info_->pi_varNumbers;
-  for (int i = list_length(proj_info_->pi_targetlist) - 1; i >= 0; i--) {
-    // *isnull = slot->PRIVATE_tts_isnull[attnum-1];
-    llvm::Value* llvm_isnull_from_slot_val =
-        irb->CreateLoad(irb->CreateInBoundsGEP(
-              llvm_slot_PRIVATE_tts_isnull,
-              {codegen_utils->GetConstant(varNumbers[i] - 1)}));
-    llvm::Value* llvm_isnull_ptr =
-        irb->CreateInBoundsGEP(llvm_isnull_arg,
-                               {codegen_utils->GetConstant(i)});
-    irb->CreateStore(llvm_isnull_from_slot_val, llvm_isnull_ptr);
-
-    // values[i] = slot_getattr(varSlot, varNumber+1, &(isnull[i]));
-    llvm::Value* llvm_value_from_slot_val =
-        irb->CreateLoad(irb->CreateInBoundsGEP(
-              llvm_slot_PRIVATE_tts_values,
-              {codegen_utils->GetConstant(varNumbers[i] - 1)}));
-    llvm::Value* llvm_values_ptr =
-        irb->CreateInBoundsGEP(llvm_values_arg,
-                               {codegen_utils->GetConstant(i)});
-    irb->CreateStore(llvm_value_from_slot_val, llvm_values_ptr);
-  }
-
-  irb->CreateRetVoid();
-
-
-  // Fall back Block
-  // ---------------
-  irb->SetInsertPoint(fallback_block);
-  codegen_utils->CreateElog(
-      DEBUG1,
-      "Falling back to regular ExecVariableList");
-
-  codegen_utils->CreateFallback<ExecVariableListFn>(
-      codegen_utils->GetOrRegisterExternalFunction(GetRegularFuncPointer()),
-      exec_variable_list_func);
-
-  return true;
-}
-
-
-// TODO(shardikar, krajaraman) Remove this wrapper after implementing shared
-// code generation interface
- bool ExecVariableListCodegen::WrapGenerateSlotGetAttr(
-    gpcodegen::GpCodegenUtils* codegen_utils,
-    const std::string& function_name,
-    TupleTableSlot *slot,
-    int max_attr,
-    llvm::Function** out_func) {
-
-  *out_func = nullptr;
-
-  bool ret = ExecVariableListCodegen::GenerateSlotGetAttr(
-      codegen_utils, function_name, slot, max_attr, out_func);
-
-  if (*out_func && !llvm::verifyFunction(**out_func)) {
-    (*out_func)->eraseFromParent();
-  }
-
-  return ret;
-}
-
-
-
-bool ExecVariableListCodegen::GenerateSlotGetAttr(
-    gpcodegen::GpCodegenUtils* codegen_utils,
-    const std::string& function_name,
-    TupleTableSlot *slot,
-    int max_attr,
-    llvm::Function** out_func) {
-
-  // So looks like we're going to generate code
-  llvm::Function* slot_getattr_func =
-      codegen_utils->CreateFunction<SlotGetAttrFn>(function_name);
-
-  auto irb = codegen_utils->ir_builder();
-
-  // BasicBlock of function entry.
-  llvm::BasicBlock* entry_block = codegen_utils->CreateBasicBlock(
-      "entry", slot_getattr_func);
-  // BasicBlock for checking correct slot
-  llvm::BasicBlock* slot_check_block = codegen_utils->CreateBasicBlock(
-      "slot_check", slot_getattr_func);
-  // BasicBlock for checking tuple type.
-  llvm::BasicBlock* tuple_type_check_block = codegen_utils->CreateBasicBlock(
-      "tuple_type_check", slot_getattr_func);
-  // BasicBlock for heap tuple check.
-  llvm::BasicBlock* heap_tuple_check_block = codegen_utils->CreateBasicBlock(
-      "heap_tuple_check", slot_getattr_func);
-  // BasicBlock for main.
-  llvm::BasicBlock* main_block = codegen_utils->CreateBasicBlock(
-      "main", slot_getattr_func);
-  // BasicBlock for final computations.
-  llvm::BasicBlock* final_block = codegen_utils->CreateBasicBlock(
-      "final", slot_getattr_func);
-  // BasicBlock for fall back.
-  llvm::BasicBlock* fallback_block = codegen_utils->CreateBasicBlock(
-      "fallback", slot_getattr_func);
-
-  // External functions
-  llvm::Function* llvm_memset = codegen_utils->GetOrRegisterExternalFunction(memset);
-
-  // Generation-time constants
-  llvm::Value* llvm_slot = codegen_utils->GetConstant(slot);
-  llvm::Value* llvm_max_attr = codegen_utils->GetConstant(max_attr);
-
-  // Function arguments to slot_getattr
-  llvm::Value* llvm_slot_arg = ArgumentByPosition(slot_getattr_func, 0);
-  llvm::Value* llvm_attnum_arg = ArgumentByPosition(slot_getattr_func, 1);
-  llvm::Value* llvm_isnull_ptr_arg = ArgumentByPosition(slot_getattr_func, 2);
-
-  // Entry block
-  // -----------
-
-  irb->SetInsertPoint(entry_block);
-  // We start a sequence of checks to ensure that everything is fine and
-  // we do not need to fall back.
-  irb->CreateBr(tuple_type_check_block);
-
-
-  // Slot check block
-  // ----------------
-  irb->SetInsertPoint(slot_check_block);
-  // Compare slot given during code generation and the one passed
-  // in as an argument to slot_getattr
-  irb->CreateCondBr(
-      irb->CreateICmpEQ(llvm_slot, llvm_slot_arg),
-      main_block /* true */,
-      fallback_block /* false */);
-
 
   // Tuple type check block
   // ----------------------
@@ -440,7 +284,7 @@ bool ExecVariableListCodegen::GenerateSlotGetAttr(
       llvm_heaptuple_t_data, {llvm_heaptuple_t_data_t_hoff});
 
   int off = 0;
-  TupleDesc tupleDesc = slot->tts_tupleDescriptor;
+  TupleDesc tupleDesc = slot_->tts_tupleDescriptor;
   Form_pg_attribute* att = tupleDesc->attrs;
 
   // For each attribute we use three blocks to i) check for null,
@@ -456,7 +300,7 @@ bool ExecVariableListCodegen::GenerateSlotGetAttr(
 
   // block of first attribute
   attribute_block = codegen_utils->CreateBasicBlock(
-      "attribute_block_"+0, slot_getattr_func);
+      "attribute_block_"+0, exec_variable_list_func);
 
   irb->CreateBr(attribute_block);
 
@@ -478,7 +322,7 @@ bool ExecVariableListCodegen::GenerateSlotGetAttr(
     // Create the block of (attnum+1)th attribute and jump to it after
     // you finish with current attribute.
     next_attribute_block = codegen_utils->CreateBasicBlock(
-        "attribute_block_" + std::to_string(attnum+1), slot_getattr_func);
+        "attribute_block_" + std::to_string(attnum+1), exec_variable_list_func);
 
     llvm::Value* llvm_next_values_ptr =
         irb->CreateInBoundsGEP(llvm_slot_PRIVATE_tts_values,
@@ -489,10 +333,10 @@ bool ExecVariableListCodegen::GenerateSlotGetAttr(
     if (!thisatt->attnotnull) {
       // Create blocks
       is_null_block = codegen_utils->CreateBasicBlock(
-          "is_null_block_" + std::to_string(attnum), slot_getattr_func);
+          "is_null_block_" + std::to_string(attnum), exec_variable_list_func);
       is_not_null_block = codegen_utils->CreateBasicBlock(
           "is_not_null_block_" + std::to_string(attnum),
-          slot_getattr_func);
+          exec_variable_list_func);
 
       llvm::Value* llvm_attnum = codegen_utils->GetConstant(attnum);
 
@@ -691,24 +535,38 @@ bool ExecVariableListCodegen::GenerateSlotGetAttr(
 
   // }}}
 
-  // slot_getattr() after calling _slot_getsomeattrs() {{{
+  // slot_getattr() after calling _slot_getsomeattrs() and remainder of
+  // ExecVariableList {{{
   //
-  // TODO (hardikar): We can optimize this further by getting rid of
-  // the follow computation and chanding the signature of this function
+  // This code from ExecVariableList copies the contents of the isnull & values
+  // arrays in the slot to output variable from the function parameters to
+  // ExecVariableList
+  int  *varNumbers = proj_info_->pi_varNumbers;
+  for (int i = list_length(proj_info_->pi_targetlist) - 1; i >= 0; i--) {
+    // *isnull = slot->PRIVATE_tts_isnull[attnum-1];
+    llvm::Value* llvm_isnull_from_slot_val =
+        irb->CreateLoad(irb->CreateInBoundsGEP(
+              llvm_slot_PRIVATE_tts_isnull,
+              {codegen_utils->GetConstant(varNumbers[i] - 1)}));
+    llvm::Value* llvm_isnull_ptr =
+        irb->CreateInBoundsGEP(llvm_isnull_arg,
+                               {codegen_utils->GetConstant(i)});
+    irb->CreateStore(llvm_isnull_from_slot_val, llvm_isnull_ptr);
 
-  // *isnull = slot->PRIVATE_tts_isnull[attnum-1];
-  llvm::Value* llvm_isnull_from_slot_val =
-      irb->CreateLoad(irb->CreateInBoundsGEP(
-            llvm_slot_PRIVATE_tts_isnull,
-            {irb->CreateSub(llvm_attnum_arg, codegen_utils->GetConstant(1))}));
-  irb->CreateStore(llvm_isnull_from_slot_val, llvm_isnull_ptr_arg);
+    // values[i] = slot_getattr(varSlot, varNumber+1, &(isnull[i]));
+    llvm::Value* llvm_value_from_slot_val =
+        irb->CreateLoad(irb->CreateInBoundsGEP(
+              llvm_slot_PRIVATE_tts_values,
+              {codegen_utils->GetConstant(varNumbers[i] - 1)}));
+    llvm::Value* llvm_values_ptr =
+        irb->CreateInBoundsGEP(llvm_values_arg,
+                               {codegen_utils->GetConstant(i)});
+    irb->CreateStore(llvm_value_from_slot_val, llvm_values_ptr);
+  }
 
-  // return slot->PRIVATE_tts_values[attnum-1];
-  llvm::Value* llvm_value_from_slot_val =
-      irb->CreateLoad(irb->CreateInBoundsGEP(
-            llvm_slot_PRIVATE_tts_values,
-            {irb->CreateSub(llvm_attnum_arg, codegen_utils->GetConstant(1))}));
-  irb->CreateRet(llvm_value_from_slot_val);
+
+  // We're all done!
+  codegen_utils->ir_builder()->CreateRetVoid();
 
   // Fall back block
   // ---------------
@@ -725,12 +583,12 @@ bool ExecVariableListCodegen::GenerateSlotGetAttr(
 
   codegen_utils->CreateElog(
       DEBUG1,
-      "Falling back to regular slot_getattr, reason = %d",
+      "Falling back to regular ExecVariableList, reason = %d",
       llvm_error);
 
-  codegen_utils->CreateFallback<SlotGetAttrFn>(
-      codegen_utils->GetOrRegisterExternalFunction(slot_getattr),
-      slot_getattr_func);
+  codegen_utils->CreateFallback<ExecVariableListFn>(
+      codegen_utils->GetOrRegisterExternalFunction(GetRegularFuncPointer()),
+      exec_variable_list_func);
   return true;
 }
 
