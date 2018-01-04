@@ -15,7 +15,6 @@
 
 #include "codegen/codegen_wrapper.h"
 #include "codegen/base_codegen.h"
-#include "codegen/expr_tree_generator.h"
 
 namespace gpcodegen {
 
@@ -43,7 +42,7 @@ class ExecEvalExprCodegen: public BaseCodegen<ExecEvalExprFn> {
                                ExecEvalExprFn* ptr_to_regular_func_ptr,
                                ExprState *exprstate,
                                ExprContext *econtext,
-                               PlanState* plan_state);
+                               TupleTableSlot* slot);
 
   virtual ~ExecEvalExprCodegen() = default;
 
@@ -71,7 +70,7 @@ class ExecEvalExprCodegen: public BaseCodegen<ExecEvalExprFn> {
  private:
   ExprState *exprstate_;
   ExprContext *econtext_;
-  PlanState* plan_state_;
+  TupleTableSlot* slot_;
 
   static constexpr char kExecEvalExprPrefix[] = "ExecEvalExpr";
 
@@ -82,13 +81,6 @@ class ExecEvalExprCodegen: public BaseCodegen<ExecEvalExprFn> {
    * @return true on successful generation.
    **/
   bool GenerateExecEvalExpr(gpcodegen::GpCodegenUtils* codegen_utils);
-
-  /**
-   * @brief Prepare generation of dependent slot_getattr() if necessary
-   * @return true on successful generation.
-   **/
-  void PrepareSlotGetAttr(gpcodegen::GpCodegenUtils* codegen_utils,
-                          ExprTreeGeneratorInfo* gen_info);
 };
 
 /** @} */

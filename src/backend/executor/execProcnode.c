@@ -157,10 +157,10 @@ static CdbVisitOpt planstate_walk_kids(PlanState *planstate,
 					int flags);
 
 static void
-			EnrollQualList(PlanState *result);
+			EnrollQualList(PlanState *result, TupleTableSlot* slot);
 
-static void
-			EnrollProjInfoTargetList(PlanState *result, ProjectionInfo *ProjInfo);
+ static void
+ EnrollProjInfoTargetList( ProjectionInfo* ProjInfo, TupleTableSlot* slot);
 
 /*
  * setSubplanSliceId
@@ -390,10 +390,10 @@ ExecInitNode(Plan *node, EState *estate, int eflags)
 			 * Enroll targetlist & quals' expression evaluation functions
 			 * in codegen_manager
 			 */
-			EnrollQualList(result);
+			EnrollQualList(result, ((ScanState*) result)->ss_ScanTupleSlot);
 			if (NULL !=result)
 			{
-			  EnrollProjInfoTargetList(result, result->ps_ProjInfo);
+			  EnrollProjInfoTargetList(result->ps_ProjInfo, ((ScanState*) result)->ss_ScanTupleSlot);
 			}
 			}
 			END_MEMORY_ACCOUNT();
@@ -660,14 +660,14 @@ ExecInitNode(Plan *node, EState *estate, int eflags)
 			 * Enroll targetlist & quals' expression evaluation functions
 			 * in codegen_manager
 			 */
-			EnrollQualList(result);
+			EnrollQualList(result, ((ScanState*) result)->ss_ScanTupleSlot);
 			if (NULL != result)
 			{
 			  AggState* aggstate = (AggState*)result;
 			  for (int aggno = 0; aggno < aggstate->numaggs; aggno++)
 			  {
 			    AggStatePerAgg peraggstate = &aggstate->peragg[aggno];
-			    EnrollProjInfoTargetList(result, peraggstate->evalproj);
+			    EnrollProjInfoTargetList(peraggstate->evalproj, ((ScanState*) result)->ss_ScanTupleSlot);
 			  }
 			}
 			}
@@ -884,7 +884,7 @@ ExecInitNode(Plan *node, EState *estate, int eflags)
  * ----------------------------------------------------------------
  */
 void
-EnrollQualList(PlanState *result)
+EnrollQualList(PlanState *result, TupleTableSlot* slot)
 {
 #ifdef USE_CODEGEN
 	if (NULL == result ||
@@ -897,14 +897,13 @@ EnrollQualList(PlanState *result)
 
 	foreach(l, result->qual)
 	{
-		ExprState  *exprstate = (ExprState *) lfirst(l);
-
-		enroll_ExecEvalExpr_codegen(exprstate->evalfunc,
-									&exprstate->evalfunc,
-									exprstate,
-									result->ps_ExprContext,
-									result
-			);
+	  ExprState *exprstate = (ExprState*) lfirst(l);
+	  enroll_ExecEvalExpr_codegen(exprstate->evalfunc,
+	                              &exprstate->evalfunc,
+	                              exprstate,
+	                              result->ps_ExprContext,
+	                              slot
+	                              );
 	}
 
 #endif
@@ -917,22 +916,12 @@ EnrollQualList(PlanState *result)
  * ----------------------------------------------------------------
  */
 void
-EnrollProjInfoTargetList(PlanState *result, ProjectionInfo *ProjInfo)
+EnrollProjInfoTargetList(ProjectionInfo* ProjInfo, TupleTableSlot* slot)
 {
 #ifdef USE_CODEGEN
 	if (NULL == ProjInfo ||
 		NULL == ProjInfo->pi_targetlist)
 	{
-		return;
-	}
-	if (ProjInfo->pi_isVarList)
-	{
-		/*
-		 * Skip generating expression evaluation for VAR elements in the
-		 * target list since ExecVariableList will take of that
-		 * TODO(shardikar) Re-evaluate this condition once we codegen
-		 * ExecTargetList
-		 */
 		return;
 	}
 
@@ -951,7 +940,7 @@ EnrollProjInfoTargetList(PlanState *result, ProjectionInfo *ProjInfo)
 									&gstate->arg->evalfunc,
 									gstate->arg,
 									ProjInfo->pi_exprContext,
-									result);
+									slot);
 	}
 #endif
 }
