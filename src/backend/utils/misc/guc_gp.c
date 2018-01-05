@@ -73,7 +73,6 @@ static const char *assign_gp_workfile_compress_algorithm(const char *newval, boo
 static const char *assign_optimizer_minidump(const char *newval,
 						  bool doit, GucSource source);
 static bool assign_optimizer(bool newval, bool doit, GucSource source);
-static bool assign_codegen(bool newval, bool doit, GucSource source);
 static bool assign_codegen_optimization_level(int newval, bool doit,
 							GucSource source);
 static bool assign_dispatch_log_stats(bool newval, bool doit, GucSource source);
@@ -2793,7 +2792,7 @@ struct config_bool ConfigureNamesBool_gp[] =
 #else
 		false,
 #endif
-		assign_codegen, NULL
+		NULL, NULL
 	},
 
 	{
@@ -2803,10 +2802,7 @@ struct config_bool ConfigureNamesBool_gp[] =
 			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE | GUC_GPDB_ADDOPT
 		},
 		&codegen,
-
-		false,
-
-		assign_codegen, NULL
+		false, NULL, NULL
 	},
 
 	{
@@ -2816,12 +2812,12 @@ struct config_bool ConfigureNamesBool_gp[] =
 			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
 		},
 		&codegen_validate_functions,
-#if defined(USE_ASSERT_CHECKING) && defined(USE_CODEGEN)
-		true, 	/* true by default on debug builds. */
+#ifdef USE_ASSERT_CHECKING
+		true, NULL, NULL	/* true by default on debug builds. */
 #else
-		false,
+		false, NULL, NULL
 #endif
-		assign_codegen, NULL
+
 	},
 	{
 		{"vmem_process_interrupt", PGC_USERSET, DEVELOPER_OPTIONS,
@@ -4922,19 +4918,6 @@ assign_optimizer(bool newval, bool doit, GucSource source)
 			return false;
 		}
 	}
-
-	return true;
-}
-
-static bool
-assign_codegen(bool newval, bool doit, GucSource source)
-{
-#ifndef USE_CODEGEN
-	if (newval)
-		ereport(ERROR,
-				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-				 errmsg("Code generation is not supported by this build")));
-#endif
 
 	return true;
 }
