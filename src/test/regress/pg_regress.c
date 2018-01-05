@@ -2282,11 +2282,11 @@ should_exclude_test(char *test)
 }
 
 /*
- * @brief Check whether a feature (i.e., optimizer or codegen) is on or off.
+ * @brief Check whether a feature (e.g. optimizer) is on or off.
  * If the input feature is optimizer, then set the global
  * variable "optimizer_enabled" accordingly.
  *
- * @param feature_name Name of the feature to be checked (i.e., optimizer or codegen)
+ * @param feature_name Name of the feature to be checked (e.g. optimizer)
  * @param feature_value Expected value when the feature is enabled (i.e., on or group)
  * @param on_msg Message to be printed when the feature is enabled
  * @param off_msg Message to be printed when the feature is disabled
