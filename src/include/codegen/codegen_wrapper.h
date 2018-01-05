@@ -151,7 +151,6 @@ ExecEvalExprCodegenEnroll(ExecEvalExprFn regular_func_ptr,
                           struct ExprState *exprstate,
                           struct ExprContext *econtext);
 
-
 #ifdef __cplusplus
 }  // extern "C"
 #endif

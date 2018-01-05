@@ -156,12 +156,6 @@ static CdbVisitOpt planstate_walk_kids(PlanState *planstate,
 					void *context,
 					int flags);
 
-  void
- EnrollQualList(PlanState* result);
-
- void
- EnrollProjInfoTargetList( ProjectionInfo* ProjInfo);
-
 /*
  * setSubplanSliceId
  *	 Set the slice id info for the given subplan.
@@ -367,36 +361,20 @@ ExecInitNode(Plan *node, EState *estate, int eflags)
 			{
 			result = (PlanState *) ExecInitTableScan((TableScan *) node,
 													 estate, eflags);
-
-			/*
-			 * Enroll ExecVariableList in codegen_manager
-			 */
-			if (NULL != result)
-			{
-				ScanState *scanState = (ScanState *) result;
-				ProjectionInfo *projInfo = result->ps_ProjInfo;
-				if (NULL != scanState &&
-				    scanState->tableType == TableTypeHeap &&
-				    NULL != projInfo &&
-				    projInfo->pi_directMap &&
-				    NULL != projInfo->pi_targetlist)
-				{
-					enroll_ExecVariableList_codegen(ExecVariableList,
-							&projInfo->ExecVariableList_gen_info.ExecVariableList_fn, projInfo, scanState->ss_ScanTupleSlot);
-				}
-			}
-
-			/*
-			 * Enroll targetlist & quals' expression evaluation functions
-			 * in codegen_manager
-			 */
-			EnrollQualList(result);
-			if (NULL !=result)
-			{
-			  EnrollProjInfoTargetList(result->ps_ProjInfo);
-			}
 			}
 			END_MEMORY_ACCOUNT();
+#ifdef USE_CODEGEN
+			/* Enroll quals' expression evaluation functions in codegen_manager */
+			if (result && NULL != result->qual)
+			{
+				ListCell   *l;
+				foreach(l, result->qual)
+				{
+					ExprState  *exprstate = (ExprState *) lfirst(l);
+					enroll_ExecEvalExpr_codegen(exprstate->evalfunc, &exprstate->evalfunc, exprstate, result->ps_ExprContext);
+				}
+			}
+#endif
 			break;
 
 		case T_DynamicTableScan:
@@ -656,20 +634,6 @@ ExecInitNode(Plan *node, EState *estate, int eflags)
 			{
 			result = (PlanState *) ExecInitAgg((Agg *) node,
 												 estate, eflags);
-			/*
-			 * Enroll targetlist & quals' expression evaluation functions
-			 * in codegen_manager
-			 */
-			EnrollQualList(result);
-			if (NULL != result)
-			{
-			  AggState* aggstate = (AggState*)result;
-			  for (int aggno = 0; aggno < aggstate->numaggs; aggno++)
-			  {
-			    AggStatePerAgg peraggstate = &aggstate->peragg[aggno];
-			    EnrollProjInfoTargetList(peraggstate->evalproj);
-			  }
-			}
 			}
 			END_MEMORY_ACCOUNT();
 			break;
@@ -851,70 +815,6 @@ ExecInitNode(Plan *node, EState *estate, int eflags)
 
 	return result;
 }
-
-/* ----------------------------------------------------------------
- *    EnrollTargetAndQualList
- *
- *	  Enroll Target and Qual List from PlanState to Codegen
- * ----------------------------------------------------------------
- */
-void
-EnrollQualList(PlanState *result)
-{
-#ifdef USE_CODEGEN
-	if (NULL == result ||
-		NULL == result->qual)
-	{
-		return;
-	}
-
-	ListCell   *l;
-
-	foreach(l, result->qual)
-	{
-	  ExprState *exprstate = (ExprState*) lfirst(l);
-	  enroll_ExecEvalExpr_codegen(exprstate->evalfunc,
-	                              &exprstate->evalfunc,
-	                              exprstate,
-	                              result->ps_ExprContext);
-	}
-
-#endif
-}
-
-/* ----------------------------------------------------------------
- *	  EnrollProjInfoTargetList
- *
- *	  Enroll Targetlist from ProjectionInfo to Codegen
- * ----------------------------------------------------------------
- */
-void
-EnrollProjInfoTargetList(ProjectionInfo* ProjInfo)
-{
-#ifdef USE_CODEGEN
-  if (NULL == ProjInfo ||
-      NULL == ProjInfo->pi_targetlist)
-  {
-    return;
-  }
-  ListCell *l;
-  foreach(l, ProjInfo->pi_targetlist)
-  {
-    GenericExprState *gstate = (GenericExprState *) lfirst(l);
-    if (NULL == gstate->arg ||
-        NULL == gstate->arg->evalfunc)
-      {continue;
-    }
-    enroll_ExecEvalExpr_codegen(gstate->arg->evalfunc,
-                                &gstate->arg->evalfunc,
-                                gstate->arg,
-                                ProjInfo->pi_exprContext);
-
-
-  }
-#endif
-}
-
 
 /* ----------------------------------------------------------------
  *		ExecSliceDependencyNode
