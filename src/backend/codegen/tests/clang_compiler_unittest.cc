@@ -18,8 +18,7 @@
 #include <type_traits>
 
 #include "codegen/utils/clang_compiler.h"
-
-#include "codegen/utils/codegen_utils.h"
+#include "codegen/utils/code_generator.h"
 #include "codegen/utils/instance_method_wrappers.h"
 #include "gtest/gtest.h"
 #include "llvm/ADT/Twine.h"
@@ -53,35 +52,35 @@ enum class UInt16Enum : std::uint16_t {
 class ClangCompilerTestEnvironment : public ::testing::Environment {
  public:
   virtual void SetUp() {
-    ASSERT_TRUE(CodegenUtils::InitializeGlobal());
+    ASSERT_TRUE(CodeGenerator::InitializeGlobal());
   }
 };
 
 class ClangCompilerTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
-    codegen_utils_.reset(new CodegenUtils("test_module"));
-    clang_compiler_.reset(new ClangCompiler(codegen_utils_.get()));
+    code_generator_.reset(new CodeGenerator("test_module"));
+    clang_compiler_.reset(new ClangCompiler(code_generator_.get()));
   }
 
-  // Check whether the auxiliary module specified by 'idx' in 'codegen_utils_'
+  // Check whether the auxiliary module specified by 'idx' in 'code_generator_'
   // has debugging metadata attached.
   bool AuxiliaryModuleHasDebugInfo(const std::size_t idx) {
     // The "compile unit" (i.e. translation unit) level debugging info emitted
     // by the clang frontend is called "llvm.dbg.cu".
-    return codegen_utils_->auxiliary_modules_.at(idx)->getNamedMetadata(
+    return code_generator_->auxiliary_modules_.at(idx)->getNamedMetadata(
                "llvm.dbg.cu")
            != nullptr;
   }
 
   // Helper method for CppTypeFromAnnotatedTypeTest. Checks that invoking
   // ClangCompiler::CppTypeFromAnnotatedType() on the AnnotatedType produced
-  // by CodegenUtils::GetType<T>() returns 'expected_cpp_type'.
+  // by CodeGenerator::GetType<T>() returns 'expected_cpp_type'.
   template <typename T>
   void CheckCppTypeFromAnnotatedType(const std::string& expected_cpp_type) {
     EXPECT_EQ(expected_cpp_type,
               ClangCompiler::CppTypeFromAnnotatedType(
-                  codegen_utils_->GetAnnotatedType<T>()));
+                  code_generator_->GetAnnotatedType<T>()));
   }
 
   template <typename T>
@@ -91,7 +90,7 @@ class ClangCompilerTest : public ::testing::Test {
               clang_compiler_->GetLiteralConstant(original_value));
   }
 
-  std::unique_ptr<CodegenUtils> codegen_utils_;
+  std::unique_ptr<CodeGenerator> code_generator_;
   std::unique_ptr<ClangCompiler> clang_compiler_;
 };
 
@@ -114,12 +113,12 @@ TEST_F(ClangCompilerTest, BasicCompilationTest) {
   EXPECT_TRUE(clang_compiler_->CompileCppSource(kBasicCompilationSource));
 
   // Now do actual codegen and try and call the function.
-  EXPECT_TRUE(codegen_utils_->PrepareForExecution(
-      CodegenUtils::OptimizationLevel::kNone,
+  EXPECT_TRUE(code_generator_->PrepareForExecution(
+      CodeGenerator::OptimizationLevel::kNone,
       false));
 
   unsigned (*binomial_coefficient)(const unsigned, const unsigned)
-      = codegen_utils_->GetFunctionPointer<unsigned,
+      = code_generator_->GetFunctionPointer<unsigned,
                                             const unsigned,
                                             const unsigned>(
           "binomial_coefficient");
@@ -160,12 +159,12 @@ TEST_F(ClangCompilerTest, MultiModuleCompilationTest) {
       kMultiModuleBinomialCoeffecientSource));
 
   // Now do actual codegen and try and call the function.
-  EXPECT_TRUE(codegen_utils_->PrepareForExecution(
-      CodegenUtils::OptimizationLevel::kNone,
+  EXPECT_TRUE(code_generator_->PrepareForExecution(
+      CodeGenerator::OptimizationLevel::kNone,
       false));
 
   unsigned (*binomial_coefficient)(const unsigned, const unsigned)
-      = codegen_utils_->GetFunctionPointer<unsigned,
+      = code_generator_->GetFunctionPointer<unsigned,
                                             const unsigned,
                                             const unsigned>(
           "binomial_coefficient");
@@ -372,17 +371,17 @@ static const char kExternalFunctionBinomialCoefficientSource[] =
 }  // namespace
 
 TEST_F(ClangCompilerTest, ExternalFunctionTest) {
-  codegen_utils_->RegisterExternalFunction(&factorial, "factorial");
+  code_generator_->RegisterExternalFunction(&factorial, "factorial");
   EXPECT_TRUE(clang_compiler_->CompileCppSource(
       llvm::Twine(clang_compiler_->GenerateExternalFunctionDeclarations())
           .concat(kExternalFunctionBinomialCoefficientSource)));
 
-  EXPECT_TRUE(codegen_utils_->PrepareForExecution(
-      CodegenUtils::OptimizationLevel::kNone,
+  EXPECT_TRUE(code_generator_->PrepareForExecution(
+      CodeGenerator::OptimizationLevel::kNone,
       false));
 
   unsigned (*binomial_coefficient)(const unsigned, const unsigned)
-      = codegen_utils_->GetFunctionPointer<unsigned,
+      = code_generator_->GetFunctionPointer<unsigned,
                                             const unsigned,
                                             const unsigned>(
           "binomial_coefficient");
@@ -431,16 +430,16 @@ static const char kExternalMethodInvocationSource[] =
 }  // namespace
 
 TEST_F(ClangCompilerTest, ExternalMethodTest) {
-  codegen_utils_->RegisterExternalFunction(
+  code_generator_->RegisterExternalFunction(
       &WrapNew<Accumulator<double>, double>,
       "new_Accumulator");
-  codegen_utils_->RegisterExternalFunction(
+  code_generator_->RegisterExternalFunction(
       &WrapDelete<Accumulator<double>>,
       "delete_Accumulator");
-  codegen_utils_->RegisterExternalFunction(
+  code_generator_->RegisterExternalFunction(
       &GPCODEGEN_WRAP_METHOD(&Accumulator<double>::Accumulate),
       "Accumulator_Accumulate");
-  codegen_utils_->RegisterExternalFunction(
+  code_generator_->RegisterExternalFunction(
       &GPCODEGEN_WRAP_METHOD(&Accumulator<double>::Get),
       "Accumulator_Get");
 
@@ -448,12 +447,12 @@ TEST_F(ClangCompilerTest, ExternalMethodTest) {
       llvm::Twine(clang_compiler_->GenerateExternalFunctionDeclarations())
           .concat(kExternalMethodInvocationSource)));
 
-  EXPECT_TRUE(codegen_utils_->PrepareForExecution(
-      CodegenUtils::OptimizationLevel::kNone,
+  EXPECT_TRUE(code_generator_->PrepareForExecution(
+      CodeGenerator::OptimizationLevel::kNone,
       false));
 
   double (*AddWithAccumulator)(const double, const double, const double)
-      = codegen_utils_->GetFunctionPointer<double,
+      = code_generator_->GetFunctionPointer<double,
                                             const double,
                                             const double,
                                             const double>("AddWithAccumulator");
