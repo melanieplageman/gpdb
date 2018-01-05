@@ -460,7 +460,6 @@ bool		optimizer_analyze_midlevel_partition;
 /**
  * GUCs related to code generation.
  **/
-bool		init_codegen;
 bool		codegen;
 
 /* System Information */
@@ -2768,23 +2767,8 @@ struct config_bool ConfigureNamesBool_gp[] =
 	},
 
 	{
-		{"init_codegen", PGC_POSTMASTER, DEVELOPER_OPTIONS,
-			gettext_noop("Enable just-in-time code generation."),
-			NULL,
-			GUC_NOT_IN_SAMPLE
-		},
-		&init_codegen,
-#ifdef USE_CODEGEN
-		true,
-#else
-		false,
-#endif
-		NULL, NULL
-	},
-
-	{
 		{"codegen", PGC_USERSET, DEVELOPER_OPTIONS,
-			gettext_noop("Perform just-in-time code generation."),
+			gettext_noop("Enable just-in-time code generation."),
 			NULL,
 			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
 		},

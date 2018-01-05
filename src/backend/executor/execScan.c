@@ -15,7 +15,6 @@
  *-------------------------------------------------------------------------
  */
 #include "postgres.h"
-#include "codegen/codegen_wrapper.h"
 
 #include "executor/executor.h"
 #include "miscadmin.h"
@@ -294,15 +293,6 @@ InitScanStateRelationDetails(ScanState *scanState, Plan *plan, EState *estate)
 	scanState->ss_currentRelation = currentRelation;
 	ExecAssignScanType(scanState, RelationGetDescr(currentRelation));
 	ExecAssignScanProjectionInfo(scanState);
-
-	ProjectionInfo *projInfo = scanState->ps.ps_ProjInfo;
-	if (NULL != projInfo &&
-	    projInfo->pi_directMap &&
-	    NULL != projInfo->pi_targetlist)
-	{
-		enroll_ExecVariableList_codegen(ExecVariableList,
-				&projInfo->ExecVariableList_gen_info.ExecVariableList_fn, projInfo, scanState->ss_ScanTupleSlot);
-	}
 
 	scanState->tableType = getTableType(scanState->ss_currentRelation);
 }

@@ -495,7 +495,6 @@ extern bool optimizer_use_gpdb_allocators;
 /**
  * GUCs related to code generation.
  **/
-extern bool init_codegen;
 extern bool codegen;
 
 /**
