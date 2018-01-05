@@ -27,7 +27,6 @@
 #include "utils/rel.h"
 #include "utils/snapshot.h"
 #include "utils/tuplestore.h"
-#include "codegen/codegen_wrapper.h"
 
 #include "gpmon/gpmon.h"                /* gpmon_packet_t */
 
@@ -1377,9 +1376,6 @@ typedef struct PlanState
 	TupleTableSlot *ps_ResultTupleSlot; /* slot for my result tuples */
 	ExprContext *ps_ExprContext;	/* node's expression-evaluation context */
 	ProjectionInfo *ps_ProjInfo;	/* info for doing tuple projection */
-
-	/* The manager manages all the code generators and generation process */
-	void *CodegenManager;
 
 	/*
 	 * EXPLAIN ANALYZE statistics collection

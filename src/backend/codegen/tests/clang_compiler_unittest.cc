@@ -119,7 +119,9 @@ TEST_F(ClangCompilerTest, BasicCompilationTest) {
       false));
 
   unsigned (*binomial_coefficient)(const unsigned, const unsigned)
-      = codegen_utils_->GetFunctionPointer<decltype(binomial_coefficient)>(
+      = codegen_utils_->GetFunctionPointer<unsigned,
+                                            const unsigned,
+                                            const unsigned>(
           "binomial_coefficient");
   ASSERT_NE(binomial_coefficient, nullptr);
 
@@ -163,7 +165,9 @@ TEST_F(ClangCompilerTest, MultiModuleCompilationTest) {
       false));
 
   unsigned (*binomial_coefficient)(const unsigned, const unsigned)
-      = codegen_utils_->GetFunctionPointer<decltype(binomial_coefficient)>(
+      = codegen_utils_->GetFunctionPointer<unsigned,
+                                            const unsigned,
+                                            const unsigned>(
           "binomial_coefficient");
   ASSERT_NE(binomial_coefficient, nullptr);
 
@@ -378,7 +382,9 @@ TEST_F(ClangCompilerTest, ExternalFunctionTest) {
       false));
 
   unsigned (*binomial_coefficient)(const unsigned, const unsigned)
-      = codegen_utils_->GetFunctionPointer<decltype(binomial_coefficient)>(
+      = codegen_utils_->GetFunctionPointer<unsigned,
+                                            const unsigned,
+                                            const unsigned>(
           "binomial_coefficient");
   ASSERT_NE(binomial_coefficient, nullptr);
 
@@ -447,8 +453,10 @@ TEST_F(ClangCompilerTest, ExternalMethodTest) {
       false));
 
   double (*AddWithAccumulator)(const double, const double, const double)
-      = codegen_utils_->GetFunctionPointer<
-      decltype(AddWithAccumulator)>("AddWithAccumulator");
+      = codegen_utils_->GetFunctionPointer<double,
+                                            const double,
+                                            const double,
+                                            const double>("AddWithAccumulator");
   ASSERT_NE(AddWithAccumulator, nullptr);
 
   EXPECT_EQ(1.2 + 2.3 + 3.4, (*AddWithAccumulator)(1.2, 2.3, 3.4));

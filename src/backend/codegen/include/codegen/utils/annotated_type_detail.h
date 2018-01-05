@@ -15,7 +15,7 @@
 //
 //---------------------------------------------------------------------------
 
-#ifndef GPCODEGEN_ANNOTATED_TYPE_DETAIL_H_  // NOLINT(build/header_guard)
+#ifndef GPCODEGEN_ANNOTATED_TYPE_DETAIL_H_
 #define GPCODEGEN_ANNOTATED_TYPE_DETAIL_H_
 
 #include <type_traits>

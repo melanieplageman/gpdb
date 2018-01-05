@@ -493,11 +493,6 @@ extern bool optimizer_use_gpdb_allocators;
 
 
 /**
- * GUCs related to code generation.
- **/
-extern bool codegen;
-
-/**
  * Enable logging of DPE match in optimizer.
  */
 extern bool	optimizer_partition_selection_log;

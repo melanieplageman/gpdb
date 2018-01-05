@@ -721,7 +721,7 @@ class CodegenUtilsTest : public ::testing::Test {
       const std::vector<std::uintptr_t>& pointer_check_addresses) {
     for (std::size_t idx = 0; idx < pointer_check_addresses.size(); ++idx) {
       std::uintptr_t (*check_fn)()
-          = codegen_utils_->GetFunctionPointer<decltype(check_fn)>(
+          = codegen_utils_->GetFunctionPointer<std::uintptr_t>(
               GlobalConstantAccessorName(idx));
       EXPECT_EQ(pointer_check_addresses[idx], (*check_fn)());
     }
@@ -755,9 +755,9 @@ class CodegenUtilsTest : public ::testing::Test {
       // GlobalVariable. Later on, we will compile all such functions and check
       // that they return the expected addresses.
       EXPECT_TRUE(llvm::isa<llvm::GlobalVariable>(constant));
-      typedef std::uintptr_t (*GloablAccessorFn) ();
+
       llvm::Function* global_accessor_fn
-          = codegen_utils_->CreateFunction<GloablAccessorFn>(
+          = codegen_utils_->CreateFunction<std::uintptr_t>(
               GlobalConstantAccessorName(pointer_check_addresses->size()));
       llvm::BasicBlock* global_accessor_fn_body
           = codegen_utils_->CreateBasicBlock("body", global_accessor_fn);
@@ -827,9 +827,8 @@ class CodegenUtilsTest : public ::testing::Test {
     // Create a wrapper function in 'codegen_utils_' with the same
     // type-signature that merely forwards its arguments to the external
     // function as-is.
-    typedef ReturnType (*WrapperFn) (ArgumentTypes...);
     llvm::Function* wrapper_function
-        = codegen_utils_->CreateFunction<WrapperFn>(
+        = codegen_utils_->CreateFunction<ReturnType, ArgumentTypes...>(
             wrapper_function_name);
 
     llvm::BasicBlock* wrapper_function_body
@@ -880,9 +879,8 @@ class CodegenUtilsTest : public ::testing::Test {
 
     // Generate a function that returns the (constant) address of the member
     // field inside the struct.
-    typedef std::uintptr_t (*GlobalAccessorFn) ();
     llvm::Function* global_member_accessor_fn
-        = codegen_utils_->CreateFunction<GlobalAccessorFn>(
+        = codegen_utils_->CreateFunction<std::uintptr_t>(
             GlobalConstantAccessorName(pointer_check_addresses->size()));
     llvm::BasicBlock* global_member_accessor_fn_body
         = codegen_utils_->CreateBasicBlock("body", global_member_accessor_fn);
@@ -912,9 +910,8 @@ class CodegenUtilsTest : public ::testing::Test {
   void MakeStructMemberAccessorFunction(
       const std::string& function_name,
       PointerToMemberTypes&&... pointers_to_members) {
-    typedef MemberType (*AccessorFn) (const StructType*);
     llvm::Function* accessor_function
-        = codegen_utils_->CreateFunction<AccessorFn>(
+        = codegen_utils_->CreateFunction<MemberType, const StructType*>(
             function_name);
     llvm::BasicBlock* accessor_function_body
         = codegen_utils_->CreateBasicBlock("accessor_fn_body",
@@ -967,9 +964,8 @@ class CodegenUtilsTest : public ::testing::Test {
   void GenerateScalarArrayProjectionFunction(
       const std::string& project_func_name,
       size_t* projection_indices, size_t projection_count) {
-    typedef void (*ProjectScalarFn) (InputType*, InputType*);
     llvm::Function* project_scalar_function
-      = codegen_utils_->CreateFunction<ProjectScalarFn>(
+      = codegen_utils_->CreateFunction<void, InputType*, InputType*>(
           project_func_name);
 
     // BasicBlocks for function entry.
@@ -1023,8 +1019,8 @@ class CodegenUtilsTest : public ::testing::Test {
         CodegenUtils::OptimizationLevel::kNone, true));
 
     void (*project_scalar_function_compiled)(InputType*, InputType*)
-         = codegen_utils_->GetFunctionPointer<
-         decltype(project_scalar_function_compiled)>("func_project");
+         = codegen_utils_->GetFunctionPointer<void, InputType*, InputType*>(
+             "func_project");
 
     // Call the generated projection function
     (*project_scalar_function_compiled)(input_array, output_array);
@@ -1691,9 +1687,8 @@ TEST_F(CodegenUtilsTest, GetFunctionTypeTest) {
 
 TEST_F(CodegenUtilsTest, TrivialCompilationTest) {
   // Create an IR function that takes no arguments and returns int.
-  typedef int (*SimpleFn) ();
   llvm::Function* simple_fn
-      = codegen_utils_->CreateFunction<SimpleFn>("simple_fn");
+      = codegen_utils_->CreateFunction<int>("simple_fn");
 
   // Construct a single BasicBlock for the function's body.
   llvm::BasicBlock* simple_fn_body
@@ -1714,16 +1709,15 @@ TEST_F(CodegenUtilsTest, TrivialCompilationTest) {
       CodegenUtils::OptimizationLevel::kNone,
       true));
   EXPECT_EQ(nullptr, codegen_utils_->module());
-  typedef void (*VoidFn)();
-  typedef int (*IntFn)();
+
   // Try looking up function names that don't exist.
-  EXPECT_EQ(nullptr, codegen_utils_->GetFunctionPointer<VoidFn>("foo"));
+  EXPECT_EQ(nullptr, codegen_utils_->GetFunctionPointer<void>("foo"));
   EXPECT_EQ(nullptr,
-            codegen_utils_->GetFunctionPointer<VoidFn>("simple_fn_body"));
+            codegen_utils_->GetFunctionPointer<void>("simple_fn_body"));
 
   // Cast to the actual function type and call the generated function.
   int (*function_ptr)()
-      = codegen_utils_->GetFunctionPointer<IntFn>("simple_fn");
+      = codegen_utils_->GetFunctionPointer<int>("simple_fn");
   ASSERT_NE(function_ptr, nullptr);
 
   EXPECT_EQ(42, (*function_ptr)());
@@ -1750,7 +1744,7 @@ TEST_F(CodegenUtilsTest, ExternalFunctionTest) {
 
   // Try calling std::fabs() through the generated wrapper.
   double (*fabs_double_wrapper)(double)  // NOLINT(readability/casting)
-      = codegen_utils_->GetFunctionPointer<decltype(fabs_double_wrapper)>(
+      = codegen_utils_->GetFunctionPointer<double, double>(
           "fabs_double_wrapper");
   ASSERT_NE(fabs_double_wrapper, nullptr);
   EXPECT_EQ(12.34, (*fabs_double_wrapper)(12.34));
@@ -1758,7 +1752,7 @@ TEST_F(CodegenUtilsTest, ExternalFunctionTest) {
 
   // Try calling std::mktime() through the generated wrapper.
   std::time_t (*mktime_wrapper)(std::tm*)
-      = codegen_utils_->GetFunctionPointer<decltype(mktime_wrapper)>(
+      = codegen_utils_->GetFunctionPointer<std::time_t, std::tm*>(
           "mktime_wrapper");
   ASSERT_NE(mktime_wrapper, nullptr);
   std::tm broken_time = {};
@@ -1769,7 +1763,7 @@ TEST_F(CodegenUtilsTest, ExternalFunctionTest) {
 
   StaticIntWrapper::Set(0);
   void (*static_int_set_wrapper)(const int)
-      = codegen_utils_->GetFunctionPointer<decltype(static_int_set_wrapper)>(
+      = codegen_utils_->GetFunctionPointer<void, const int>(
           "StaticIntWrapper::Set_wrapper");
   ASSERT_NE(static_int_set_wrapper, nullptr);
   (*static_int_set_wrapper)(42);
@@ -1778,9 +1772,8 @@ TEST_F(CodegenUtilsTest, ExternalFunctionTest) {
 
 TEST_F(CodegenUtilsTest, RecursionTest) {
   // Test a version of the factorial function that works by recursion.
-  typedef unsigned (*FactorialRecursiveFn) (unsigned);
   llvm::Function* factorial_recursive
-      = codegen_utils_->CreateFunction<FactorialRecursiveFn>(
+      = codegen_utils_->CreateFunction<unsigned, unsigned>(
           "factorial_recursive");
 
   // Create a BasicBlock for the function's entry point that will branch to a
@@ -1836,8 +1829,8 @@ TEST_F(CodegenUtilsTest, RecursionTest) {
       CodegenUtils::OptimizationLevel::kNone,
       true));
   unsigned (*factorial_recursive_compiled)(unsigned)
-      = codegen_utils_->GetFunctionPointer<
-      decltype(factorial_recursive_compiled)>("factorial_recursive");
+      = codegen_utils_->GetFunctionPointer<unsigned, unsigned>(
+          "factorial_recursive");
 
   // Test out the compiled function.
   EXPECT_EQ(1u, (*factorial_recursive_compiled)(0u));
@@ -1850,9 +1843,8 @@ TEST_F(CodegenUtilsTest, SwitchTest) {
   // Test that generates IR code with a SWITCH statement.
   // It takes a char as input and returns 1 if input = 'A',
   // 2 if input is 'B'; -1 otherwise.
-  typedef int (*SwitchFn) (char);
   llvm::Function* switch_function
-      = codegen_utils_->CreateFunction<SwitchFn>(
+      = codegen_utils_->CreateFunction<int, char>(
           "switch_function");
 
   // BasicBlocks for function entry, for each case of switch instruction,
@@ -1926,7 +1918,7 @@ TEST_F(CodegenUtilsTest, SwitchTest) {
       true));
 
   int (*switch_function_compiled)(char)  // NOLINT(readability/casting)
-      = codegen_utils_->GetFunctionPointer<decltype(switch_function_compiled)>(
+      = codegen_utils_->GetFunctionPointer<int, char>(
           "switch_function");
 
   // Test out the compiled function.
@@ -1953,9 +1945,8 @@ TEST_F(CodegenUtilsTest, ProjectScalarCharArrayTest) {
 
 TEST_F(CodegenUtilsTest, IterationTest) {
   // Test a version of the factorial function works with an iterative loop.
-  typedef unsigned (*FactorialIterFn) (unsigned);
   llvm::Function* factorial_iterative
-      = codegen_utils_->CreateFunction<FactorialIterFn>(
+      = codegen_utils_->CreateFunction<unsigned, unsigned>(
           "factorial_iterative");
 
   // BasicBlocks for function entry, for the start of the loop where the
@@ -2037,8 +2028,8 @@ TEST_F(CodegenUtilsTest, IterationTest) {
       CodegenUtils::OptimizationLevel::kNone,
       true));
   unsigned (*factorial_iterative_compiled)(unsigned)
-      = codegen_utils_->GetFunctionPointer<
-      decltype(factorial_iterative_compiled)>("factorial_iterative");
+      = codegen_utils_->GetFunctionPointer<unsigned, unsigned>(
+          "factorial_iterative");
 
   // Test out the compiled function.
   EXPECT_EQ(1u, (*factorial_iterative_compiled)(0u));
@@ -2050,7 +2041,7 @@ TEST_F(CodegenUtilsTest, IterationTest) {
 // Macro that provides some syntactic sugar for a call to
 // CheckGetPointerToMemberConstant(). Automates deduction of the expected
 // member type and calculation of the expected offset within the struct.
-#define GPCODEGEN_TEST_GET_POINTER_TO_STRUCT_ELEMENT(struct_ptr, element_name) \
+#define GPCODEGEN_TEST_GET_POINTER_TO_STRUCT_ELEMENT(struct_ptr, element_name)  \
   CheckGetPointerToMemberConstant<                                             \
       std::remove_reference<decltype((struct_ptr)->element_name)>::type>(      \
           &pointer_check_addresses,                                            \
@@ -2061,7 +2052,7 @@ TEST_F(CodegenUtilsTest, IterationTest) {
 
 // Similar to above, but tests accesing a field nested inside a struct member of
 // the top-level struct.
-#define GPCODEGEN_TEST_GET_POINTER_TO_NESTED_STRUCT_ELEMENT(                   \
+#define GPCODEGEN_TEST_GET_POINTER_TO_NESTED_STRUCT_ELEMENT(                    \
     struct_ptr,                                                                \
     top_element_name,                                                          \
     nested_element_name)                                                       \
@@ -2212,18 +2203,18 @@ TEST_F(CodegenUtilsTest, GetPointerToMemberTest) {
       true));
 
   int (*Get_DummyStruct_int_field)(const DummyStruct*)
-      = codegen_utils_->GetFunctionPointer<
-      decltype(Get_DummyStruct_int_field)>("Get_DummyStruct::int_field");
+      = codegen_utils_->GetFunctionPointer<int, const DummyStruct*>(
+          "Get_DummyStruct::int_field");
   ASSERT_NE(Get_DummyStruct_int_field, nullptr);
 
   bool (*Get_DummyStruct_bool_field)(const DummyStruct*)
-      = codegen_utils_->GetFunctionPointer<
-      decltype(Get_DummyStruct_bool_field)>("Get_DummyStruct::bool_field");
+      = codegen_utils_->GetFunctionPointer<bool, const DummyStruct*>(
+          "Get_DummyStruct::bool_field");
   ASSERT_NE(Get_DummyStruct_bool_field, nullptr);
 
   double (*Get_DummyStruct_double_field)(const DummyStruct*)
-      = codegen_utils_->GetFunctionPointer<
-      decltype(Get_DummyStruct_double_field)>("Get_DummyStruct::double_field");
+      = codegen_utils_->GetFunctionPointer<double, const DummyStruct*>(
+          "Get_DummyStruct::double_field");
   ASSERT_NE(Get_DummyStruct_double_field, nullptr);
 
   // Call generated accessor function and make sure they read values from the
@@ -2247,9 +2238,8 @@ TEST_F(CodegenUtilsTest, GetPointerToMemberTest) {
 TEST_F(CodegenUtilsTest, OptimizationTest) {
   // Create an ultra-simple function that just adds 2 ints. We expect this to be
   // automatically inlined at call sites during optimization.
-  typedef int (*Add2Fn) (int, int);
   llvm::Function* add2_func
-      = codegen_utils_->CreateFunction<Add2Fn>("add2");
+      = codegen_utils_->CreateFunction<int, int, int>("add2");
   llvm::BasicBlock* add2_body = codegen_utils_->CreateBasicBlock("body",
                                                                   add2_func);
   codegen_utils_->ir_builder()->SetInsertPoint(add2_body);
@@ -2259,9 +2249,8 @@ TEST_F(CodegenUtilsTest, OptimizationTest) {
   codegen_utils_->ir_builder()->CreateRet(add2_sum);
 
   // Create another function that adds 3 ints by making 2 calls to add2.
-  typedef int (*Add3Fn) (int, int, int);
   llvm::Function* add3_func
-      = codegen_utils_->CreateFunction<Add3Fn>("add3");
+      = codegen_utils_->CreateFunction<int, int, int, int>("add3");
   llvm::BasicBlock* add3_body = codegen_utils_->CreateBasicBlock("body",
                                                                   add3_func);
   codegen_utils_->ir_builder()->SetInsertPoint(add3_body);
@@ -2298,7 +2287,7 @@ TEST_F(CodegenUtilsTest, OptimizationTest) {
       CodegenUtils::OptimizationLevel::kLess,
       false));
   int (*add3_compiled)(int, int, int)
-      = codegen_utils_->GetFunctionPointer<decltype(add3_compiled)>("add3");
+      = codegen_utils_->GetFunctionPointer<int, int, int, int>("add3");
   EXPECT_EQ(758, (*add3_compiled)(12, -67, 813));
 }
 
@@ -2319,9 +2308,8 @@ TEST_F(CodegenUtilsTest, CppClassObjectTest) {
       = codegen_utils_->RegisterExternalFunction(
           &GPCODEGEN_WRAP_METHOD(&Accumulator<double>::Get));
 
-  typedef double (*AccumulateTestFn) (double);
   llvm::Function* accumulate_test_fn
-      = codegen_utils_->CreateFunction<AccumulateTestFn>("accumulate_test_fn");
+      = codegen_utils_->CreateFunction<double, double>("accumulate_test_fn");
   llvm::BasicBlock* body
       = codegen_utils_->CreateBasicBlock("body", accumulate_test_fn);
   codegen_utils_->ir_builder()->SetInsertPoint(body);
@@ -2367,8 +2355,8 @@ TEST_F(CodegenUtilsTest, CppClassObjectTest) {
       true));
 
   double (*accumulate_test_fn_compiled)(double)  // NOLINT(readability/casting)
-      = codegen_utils_->GetFunctionPointer<
-      decltype(accumulate_test_fn_compiled)>("accumulate_test_fn");
+      = codegen_utils_->GetFunctionPointer<double, double>(
+          "accumulate_test_fn");
 
   // Actually invoke the function and make sure that the wrapped behavior of
   // Accumulator is as expected.
@@ -2382,9 +2370,8 @@ TEST_F(CodegenUtilsTest, CppClassObjectTest) {
 TEST_F(CodegenUtilsDeathTest, WrongFunctionTypeTest) {
   // Create a function identical to the one in TrivialCompilationTest, but try
   // GetFunctionPointer() with the wrong type-signature.
-  typedef int (*SimpleFn) ();
   llvm::Function* simple_fn
-      = codegen_utils_->CreateFunction<SimpleFn>("simple_fn");
+      = codegen_utils_->CreateFunction<int>("simple_fn");
   llvm::BasicBlock* simple_fn_body
       = codegen_utils_->CreateBasicBlock("simple_fn_body", simple_fn);
   codegen_utils_->ir_builder()->SetInsertPoint(simple_fn_body);
@@ -2393,8 +2380,8 @@ TEST_F(CodegenUtilsDeathTest, WrongFunctionTypeTest) {
   EXPECT_TRUE(codegen_utils_->PrepareForExecution(
       CodegenUtils::OptimizationLevel::kNone,
       true));
-  typedef float (*FloatFn) ();
-  EXPECT_DEATH(codegen_utils_->GetFunctionPointer<FloatFn>("simple_fn"), "");
+
+  EXPECT_DEATH(codegen_utils_->GetFunctionPointer<float>("simple_fn"), "");
 }
 
 TEST_F(CodegenUtilsDeathTest, ModifyExternalFunctionTest) {
@@ -2408,9 +2395,8 @@ TEST_F(CodegenUtilsDeathTest, ModifyExternalFunctionTest) {
 
 TEST_F(CodegenUtilsDeathTest, GetPointerToMemberFromNullBasePointerTest) {
   // Set up a dummy function and BasicBlock to hold instructions.
-  typedef void (*DummFn) ();
   llvm::Function* dummy_fn
-      = codegen_utils_->CreateFunction<DummFn>("dummy_fn");
+      = codegen_utils_->CreateFunction<void>("dummy_fn");
   llvm::BasicBlock* dummy_fn_body
       = codegen_utils_->CreateBasicBlock("dummy_fn_body", dummy_fn);
   codegen_utils_->ir_builder()->SetInsertPoint(dummy_fn_body);
@@ -2422,9 +2408,8 @@ TEST_F(CodegenUtilsDeathTest, GetPointerToMemberFromNullBasePointerTest) {
 
 TEST_F(CodegenUtilsDeathTest, GetPointerToMemberFromWrongTypeBasePointerTest) {
   // Set up a dummy function and BasicBlock to hold instructions.
-  typedef void (*DummyFn) ();
   llvm::Function* dummy_fn
-      = codegen_utils_->CreateFunction<DummyFn>("dummy_fn");
+      = codegen_utils_->CreateFunction<void>("dummy_fn");
   llvm::BasicBlock* dummy_fn_body
       = codegen_utils_->CreateBasicBlock("dummy_fn_body", dummy_fn);
   codegen_utils_->ir_builder()->SetInsertPoint(dummy_fn_body);

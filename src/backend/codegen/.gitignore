@@ -26,7 +26,6 @@
 *.exe
 *.out
 *.app
-*.t
 
 # Mac Finder cache
 .DS_Store

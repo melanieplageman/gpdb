@@ -2805,11 +2805,6 @@ regression_main(int argc, char *argv[], init_function ifunc, test_function tfunc
 			"Resource group disabled. Using default answer files");
 
 	/*
-	 * Find out if codegen is on or off
-	 */
-	check_feature_status("codegen", "on", "Codegen enabled", "Codegen disabled");
-
-	/*
 	 * Ready to run the tests
 	 */
 	header(_("running regression test queries"));

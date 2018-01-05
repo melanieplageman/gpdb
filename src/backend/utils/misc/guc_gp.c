@@ -457,11 +457,6 @@ bool		optimizer_enable_space_pruning;
 bool		optimizer_analyze_root_partition;
 bool		optimizer_analyze_midlevel_partition;
 
-/**
- * GUCs related to code generation.
- **/
-bool		codegen;
-
 /* System Information */
 static int	gp_server_version_num;
 static char *gp_server_version_string;
@@ -2766,15 +2761,6 @@ struct config_bool ConfigureNamesBool_gp[] =
 		false, NULL, NULL
 	},
 
-	{
-		{"codegen", PGC_USERSET, DEVELOPER_OPTIONS,
-			gettext_noop("Enable just-in-time code generation."),
-			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
-		},
-		&codegen,
-		false, NULL, NULL
-	},
 	{
 		{"vmem_process_interrupt", PGC_USERSET, DEVELOPER_OPTIONS,
 			gettext_noop("Checks for interrupts before reserving VMEM"),
