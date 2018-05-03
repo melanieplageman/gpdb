@@ -331,7 +331,9 @@ CTranslatorScalarToDXL::PdxlnScDistCmpFromDistExpr
 	CDXLScalarDistinctComp *pdxlop = GPOS_NEW(m_pmp) CDXLScalarDistinctComp
 														(
 														m_pmp,
-														GPOS_NEW(m_pmp) CMDIdGPDB(pdistexpr->opno)
+														GPOS_NEW(m_pmp) CMDIdGPDB(pdistexpr->opno),
+														pdistexpr->opcollid,
+														pdistexpr->inputcollid
 														);
 
 	// create the DXL node holding the scalar distinct comparison operator
@@ -382,7 +384,7 @@ CTranslatorScalarToDXL::PdxlnScCmpFromOpExpr
 	// get operator name
 	const CWStringConst *pstr = PstrOpName(pmdid);
 
-	CDXLScalarComp *pdxlop = GPOS_NEW(m_pmp) CDXLScalarComp(m_pmp, pmdid, GPOS_NEW(m_pmp) CWStringConst(pstr->Wsz()));
+	CDXLScalarComp *pdxlop = GPOS_NEW(m_pmp) CDXLScalarComp(m_pmp, pmdid, GPOS_NEW(m_pmp) CWStringConst(pstr->Wsz()), popexpr->opcollid, popexpr->inputcollid);
 
 	// create the DXL node holding the scalar comparison operator
 	CDXLNode *pdxln = GPOS_NEW(m_pmp) CDXLNode(m_pmp, pdxlop);
@@ -551,7 +553,7 @@ CTranslatorScalarToDXL::PdxlnScArrayCompFromExpr
 		edxlarraycomptype = Edxlarraycomptypeall;
 	}
 
-	CDXLScalarArrayComp *pdxlop = GPOS_NEW(m_pmp) CDXLScalarArrayComp(m_pmp, GPOS_NEW(m_pmp) CMDIdGPDB(pscarrayopexpr->opno), GPOS_NEW(m_pmp) CWStringConst(pstr->Wsz()), edxlarraycomptype);
+	CDXLScalarArrayComp *pdxlop = GPOS_NEW(m_pmp) CDXLScalarArrayComp(m_pmp, GPOS_NEW(m_pmp) CMDIdGPDB(pscarrayopexpr->opno), GPOS_NEW(m_pmp) CWStringConst(pstr->Wsz()), edxlarraycomptype, pscarrayopexpr->inputcollid);
 
 	// create the DXL node holding the scalar opexpr
 	CDXLNode *pdxln = GPOS_NEW(m_pmp) CDXLNode(m_pmp, pdxlop);

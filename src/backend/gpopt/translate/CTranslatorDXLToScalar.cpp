@@ -1916,9 +1916,8 @@ CTranslatorDXLToScalar::PopexprFromDXLNodeScCmp
 
 	popexpr->args = ListMake2(pexprLeft, pexprRight);
 
-	// GDPB_91_MERGE_FIXME: collation?
-	popexpr->inputcollid = gpdb::OidExprCollation((Node *) popexpr->args);
-	popexpr->opcollid = gpdb::OidTypeCollation(popexpr->opresulttype);;
+	popexpr->inputcollid = pdxlop->OidInputCollation();
+	popexpr->opcollid = pdxlop->OidCollation(); 
 
 	return (Expr *) popexpr;
 }
