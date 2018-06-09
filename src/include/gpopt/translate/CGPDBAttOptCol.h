@@ -47,8 +47,8 @@ namespace gpdxl
 
 		public:
 			// ctor
-			CGPDBAttOptCol(CGPDBAttInfo *pgpdbattinfo, COptColInfo *poptcolinfo)
-				: m_pgpdbattinfo(pgpdbattinfo), m_poptcolinfo(poptcolinfo)
+			CGPDBAttOptCol(CGPDBAttInfo *gpdb_att_info, COptColInfo *opt_col_info)
+				: m_pgpdbattinfo(gpdb_att_info), m_poptcolinfo(opt_col_info)
 			{
 				GPOS_ASSERT(NULL != m_pgpdbattinfo);
 				GPOS_ASSERT(NULL != m_poptcolinfo);
@@ -69,7 +69,7 @@ namespace gpdxl
 			}
 
 			// accessor
-			const COptColInfo *Poptcolinfo() const
+			const COptColInfo *GetOptColInfo() const
 			{
 				return m_poptcolinfo;
 			}

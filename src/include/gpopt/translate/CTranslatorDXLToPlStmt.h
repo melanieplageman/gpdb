@@ -86,7 +86,7 @@ namespace gpdxl
 	class CTranslatorDXLToPlStmt
 	{
 		// shorthand for functions for translating DXL operator nodes into planner trees
-		typedef Plan * (CTranslatorDXLToPlStmt::*PfPplan)(const CDXLNode *pdxln, CDXLTranslateContext *pdxltrctxOut, DrgPdxltrctx *pdrgpdxltrctxPrevSiblings);
+		typedef Plan * (CTranslatorDXLToPlStmt::*PfPplan)(const CDXLNode *dxlnode, CDXLTranslateContext *pdxltrctxOut, DrgPdxltrctx *pdrgpdxltrctxPrevSiblings);
 
 		private:
 
@@ -113,19 +113,19 @@ namespace gpdxl
 				SContextIndexVarAttno
 					(
 					const IMDRelation *pmdrel,
-					const IMDIndex *pmdindex
+					const IMDIndex *index
 					)
 					:
 					m_pmdrel(pmdrel),
-					m_pmdindex(pmdindex)
+					m_pmdindex(index)
 				{
 					GPOS_ASSERT(NULL != pmdrel);
-					GPOS_ASSERT(NULL != pmdindex);
+					GPOS_ASSERT(NULL != index);
 				}
 			}; // SContextIndexVarAttno
 
 			// memory pool
-			IMemoryPool *m_pmp;
+			IMemoryPool *m_memory_pool;
 
 			// meta data accessor
 			CMDAccessor *m_pmda;
@@ -151,7 +151,7 @@ namespace gpdxl
 			ULONG m_ulExternalScanCounter;
 			
 			// number of segments
-			ULONG m_ulSegments;
+			ULONG m_num_of_segments;
 
 			// partition selector counter
 			ULONG m_ulPartitionSelectorCounter;
@@ -165,7 +165,7 @@ namespace gpdxl
 
 		public:
 			// ctor
-			CTranslatorDXLToPlStmt(IMemoryPool *pmp, CMDAccessor *pmda, CContextDXLToPlStmt *pctxdxltoplstmt, ULONG ulSegments);
+			CTranslatorDXLToPlStmt(IMemoryPool *memory_pool, CMDAccessor *md_accessor, CContextDXLToPlStmt *pctxdxltoplstmt, ULONG ulSegments);
 
 			// dtor
 			~CTranslatorDXLToPlStmt();
@@ -173,16 +173,16 @@ namespace gpdxl
 			// translate DXL operator node into a Plan node
 			Plan *PplFromDXL
 				(
-				const CDXLNode *pdxln,
+				const CDXLNode *dxlnode,
 				CDXLTranslateContext *pdxltrctxOut,
 				DrgPdxltrctx *pdrgpdxltrctxPrevSiblings // translation contexts of previous siblings
 				);
 
 			// main translation routine for DXL tree -> PlannedStmt
-			PlannedStmt *PplstmtFromDXL(const CDXLNode *pdxln, bool canSetTag);
+			PlannedStmt *PplstmtFromDXL(const CDXLNode *dxlnode, bool canSetTag);
 
 			// translate the join types from its DXL representation to the GPDB one
-			static JoinType JtFromEdxljt(EdxlJoinType edxljt);
+			static JoinType JtFromEdxljt(EdxlJoinType join_type);
 
 		private:
 
@@ -300,7 +300,7 @@ namespace gpdxl
 			// translate a DXL node into a Hash node
 			Plan *PhhashFromDXL
 				(
-				const CDXLNode *pdxln,
+				const CDXLNode *dxlnode,
 				CDXLTranslateContext *pdxltrctxOut,
 				DrgPdxltrctx *pdrgpdxltrctxPrevSiblings // translation contexts of previous siblings
 				);
@@ -490,8 +490,8 @@ namespace gpdxl
 			// create range table entry from a table descriptor
 			RangeTblEntry *PrteFromTblDescr
 				(
-				const CDXLTableDescr *pdxltabdesc,
-				const CDXLIndexDescr *pdxlid,
+				const CDXLTableDescr *table_descr,
+				const CDXLIndexDescr *index_descr_dxl,
 				Index iRel,
 				CDXLTranslateContextBaseTable *pdxltrctxbtOut
 				);
@@ -499,27 +499,27 @@ namespace gpdxl
 			// translate DXL projection list into a target list
 			List *PlTargetListFromProjList
 				(
-				const CDXLNode *pdxlnPrL,
+				const CDXLNode *project_list_dxl,
 				const CDXLTranslateContextBaseTable *pdxltrctxbt,
 				DrgPdxltrctx *pdrgpdxltrctx,
 				CDXLTranslateContext *pdxltrctxOut
 				);
 			
 			// insert NULL values for dropped attributes to construct the target list for a DML statement
-			List *PlTargetListWithDroppedCols(List *plTargetList, const IMDRelation *pmdrel);
+			List *PlTargetListWithDroppedCols(List *target_list, const IMDRelation *pmdrel);
 
 			// create a target list containing column references for a hash node from the
 			// project list of its child node
 			List *PlTargetListForHashNode
 				(
-				const CDXLNode *pdxlnPrL,
+				const CDXLNode *project_list_dxl,
 				CDXLTranslateContext *pdxltrctxChild,
 				CDXLTranslateContext *pdxltrctxOut
 				);
 			
 			List *PlQualFromFilter
 				(
-				const CDXLNode *pdxlnFilter,
+				const CDXLNode *filter_dxlnode,
 				const CDXLTranslateContextBaseTable *pdxltrctxbt,
 				DrgPdxltrctx *pdrgpdxltrctx,
 				CDXLTranslateContext *pdxltrctxOut
@@ -540,8 +540,8 @@ namespace gpdxl
 			// shortcut for translating both the projection list and the filter
 			void TranslateProjListAndFilter
 				(
-				const CDXLNode *pdxlnPrL,
-				const CDXLNode *pdxlnFilter,
+				const CDXLNode *project_list_dxl,
+				const CDXLNode *filter_dxlnode,
 				const CDXLTranslateContextBaseTable *pdxltrctxbt,
 				DrgPdxltrctx *pdrgpdxltrctx,
 				List **pplTargetListOut,
@@ -565,7 +565,7 @@ namespace gpdxl
 				const CDXLNode *pdxlnBitmapAccessPath,
 				CDXLTranslateContext *pdxltrctxOut,
 				const IMDRelation *pmdrel,
-				const CDXLTableDescr *pdxltabdesc,
+				const CDXLTableDescr *table_descr,
 				CDXLTranslateContextBaseTable *pdxltrctxbt,
 				DrgPdxltrctx *pdrgpdxltrctxPrevSiblings,
 				BitmapTableScan *pdbts
@@ -577,7 +577,7 @@ namespace gpdxl
 				const CDXLNode *pdxlnBitmapBoolOp,
 				CDXLTranslateContext *pdxltrctxOut,
 				const IMDRelation *pmdrel,
-				const CDXLTableDescr *pdxltabdesc,
+				const CDXLTableDescr *table_descr,
 				CDXLTranslateContextBaseTable *pdxltrctxbt,
 				DrgPdxltrctx *pdrgpdxltrctxPrevSiblings,
 				BitmapTableScan *pdbts
@@ -589,7 +589,7 @@ namespace gpdxl
 				const CDXLNode *pdxlnBitmapIndexProbe,
 				CDXLTranslateContext *pdxltrctxOut,
 				const IMDRelation *pmdrel,
-				const CDXLTableDescr *pdxltabdesc,
+				const CDXLTableDescr *table_descr,
 				CDXLTranslateContextBaseTable *pdxltrctxbt,
 				DrgPdxltrctx *pdrgpdxltrctxPrevSiblings,
 				BitmapTableScan *pdbts
@@ -597,7 +597,7 @@ namespace gpdxl
 
 			void TranslateSortCols
 				(
-				const CDXLNode *pdxlnSortColList,
+				const CDXLNode *sort_col_list_dxl,
 				const CDXLTranslateContext *pdxltrctxChild,
 				AttrNumber *pattnoSortColIds,
 				Oid *poidSortOpIds,
@@ -607,7 +607,7 @@ namespace gpdxl
 
 			List *PlQualFromScalarCondNode
 				(
-				const CDXLNode *pdxlnFilter,
+				const CDXLNode *filter_dxlnode,
 				const CDXLTranslateContextBaseTable *pdxltrctxbt,
 				DrgPdxltrctx *pdrgpdxltrctx,
 				CDXLTranslateContext *pdxltrctxOut
@@ -615,7 +615,7 @@ namespace gpdxl
 
 			// parse string value into a Const
 			static
-			Cost CostFromStr(const CWStringBase *pstr);
+			Cost CostFromStr(const CWStringBase *str);
 
 			// check if the given operator is a DML operator on a distributed table
 			BOOL FTargetTableDistributed(CDXLOperator *pdxlop);
@@ -625,7 +625,7 @@ namespace gpdxl
 				(
 				List **pplTargetList, 
 				CDXLTranslateContext *pdxltrctx, 
-				ULONG ulColId, 
+				ULONG col_id, 
 				BOOL fResjunk
 				);
 			
@@ -635,7 +635,7 @@ namespace gpdxl
 				CDXLNode *pdxlnIndexCondList,
 				const CDXLTableDescr *pdxltd,
 				BOOL fIndexOnlyScan,
-				const IMDIndex *pmdindex,
+				const IMDIndex *index,
 				const IMDRelation *pmdrel,
 				CDXLTranslateContext *pdxltrctxOut,
 				CDXLTranslateContextBaseTable *pdxltrctxbt,
@@ -649,7 +649,7 @@ namespace gpdxl
 			// translate the index filters
 			List *PlTranslateIndexFilter
 				(
-				CDXLNode *pdxlnFilter,
+				CDXLNode *filter_dxlnode,
 				CDXLTranslateContext *pdxltrctxOut,
 				CDXLTranslateContextBaseTable *pdxltrctxbt,
 				DrgPdxltrctx *pdrgpdxltrctxPrevSiblings
@@ -658,7 +658,7 @@ namespace gpdxl
 			// translate the assert constraints
 			List *PlTranslateAssertConstraints
 				(
-				CDXLNode *pdxlnFilter,
+				CDXLNode *filter_dxlnode,
 				CDXLTranslateContext *pdxltrctxOut,
 				DrgPdxltrctx *pdrgpdxltrctx
 				);
@@ -673,7 +673,7 @@ namespace gpdxl
 			
 			// sets the vartypmod fields in the target entries of the given target list
 			static
-			void SetVarTypMod(const CDXLPhysicalCTAS *pdxlop, List *plTargetList);
+			void SetVarTypMod(const CDXLPhysicalCTAS *pdxlop, List *target_list);
 
 			// translate the into clause for a DXL physical CTAS operator
 			IntoClause *PintoclFromCtas(const CDXLPhysicalCTAS *pdxlop);
@@ -682,13 +682,13 @@ namespace gpdxl
 			GpPolicy *PdistrpolicyFromCtas(const CDXLPhysicalCTAS *pdxlop);
 
 			// translate CTAS storage options
-			List *PlCtasOptions(CDXLCtasStorageOptions::DrgPctasOpt *pdrgpctasopt);
+			List *PlCtasOptions(CDXLCtasStorageOptions::DXLCtasOptionArray *pdrgpctasopt);
 			
 			// compute directed dispatch segment ids
 			List *PlDirectDispatchSegIds(CDXLDirectDispatchInfo *pdxlddinfo);
 			
 			// hash a DXL datum with GPDB's hash function
-			ULONG UlCdbHash(DrgPdxldatum *pdrgpdxldatum);
+			ULONG UlCdbHash(DXLDatumArray *pdrgpdxldatum);
 
 	};
 }

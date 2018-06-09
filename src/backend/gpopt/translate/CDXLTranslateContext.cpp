@@ -28,16 +28,16 @@ using namespace gpos;
 //---------------------------------------------------------------------------
 CDXLTranslateContext::CDXLTranslateContext
 	(
-	IMemoryPool *pmp,
+	IMemoryPool *memory_pool,
 	BOOL fChildAggNode
 	)
 	:
-	m_pmp(pmp),
+	m_memory_pool(memory_pool),
 	m_fChildAggNode(fChildAggNode)
 {
 	// initialize hash table
-	m_phmulte = GPOS_NEW(m_pmp) HMUlTe(m_pmp);
-	m_phmcolparam = GPOS_NEW(m_pmp) HMColParam(m_pmp);
+	m_phmulte = GPOS_NEW(m_memory_pool) HMUlTe(m_memory_pool);
+	m_phmcolparam = GPOS_NEW(m_memory_pool) HMColParam(m_memory_pool);
 }
 
 //---------------------------------------------------------------------------
@@ -50,16 +50,16 @@ CDXLTranslateContext::CDXLTranslateContext
 //---------------------------------------------------------------------------
 CDXLTranslateContext::CDXLTranslateContext
 	(
-	IMemoryPool *pmp,
+	IMemoryPool *memory_pool,
 	BOOL fChildAggNode,
 	HMColParam *phmOriginal
 	)
 	:
-	m_pmp(pmp),
+	m_memory_pool(memory_pool),
 	m_fChildAggNode(fChildAggNode)
 {
-	m_phmulte = GPOS_NEW(m_pmp) HMUlTe(m_pmp);
-	m_phmcolparam = GPOS_NEW(m_pmp) HMColParam(m_pmp);
+	m_phmulte = GPOS_NEW(m_memory_pool) HMUlTe(m_memory_pool);
+	m_phmcolparam = GPOS_NEW(m_memory_pool) HMColParam(m_memory_pool);
 	CopyParamHashmap(phmOriginal);
 }
 
@@ -107,14 +107,14 @@ CDXLTranslateContext::CopyParamHashmap
 {
 	// iterate over full map
 	HMColParamIter hashmapiter(phmOriginal);
-	while (hashmapiter.FAdvance())
+	while (hashmapiter.Advance())
 	{
-		CMappingElementColIdParamId *pmecolidparamid = const_cast<CMappingElementColIdParamId *>(hashmapiter.Pt());
+		CMappingElementColIdParamId *pmecolidparamid = const_cast<CMappingElementColIdParamId *>(hashmapiter.Value());
 
-		const ULONG ulColId = pmecolidparamid->UlColId();
-		ULONG *pulKey = GPOS_NEW(m_pmp) ULONG(ulColId);
+		const ULONG col_id = pmecolidparamid->GetColId();
+		ULONG *pulKey = GPOS_NEW(m_memory_pool) ULONG(col_id);
 		pmecolidparamid->AddRef();
-		m_phmcolparam->FInsert(pulKey, pmecolidparamid);
+		m_phmcolparam->Insert(pulKey, pmecolidparamid);
 	}
 }
 
@@ -129,11 +129,11 @@ CDXLTranslateContext::CopyParamHashmap
 const TargetEntry *
 CDXLTranslateContext::Pte
 	(
-	ULONG ulColId
+	ULONG col_id
 	)
 	const
 {
-	return m_phmulte->PtLookup(&ulColId);
+	return m_phmulte->Find(&col_id);
 }
 
 //---------------------------------------------------------------------------
@@ -147,11 +147,11 @@ CDXLTranslateContext::Pte
 const CMappingElementColIdParamId *
 CDXLTranslateContext::Pmecolidparamid
 	(
-	ULONG ulColId
+	ULONG col_id
 	)
 	const
 {
-	return m_phmcolparam->PtLookup(&ulColId);
+	return m_phmcolparam->Find(&col_id);
 }
 
 //---------------------------------------------------------------------------
@@ -165,17 +165,17 @@ CDXLTranslateContext::Pmecolidparamid
 void
 CDXLTranslateContext::InsertMapping
 	(
-	ULONG ulColId,
-	TargetEntry *pte
+	ULONG col_id,
+	TargetEntry *target_entry
 	)
 {
 	// copy key
-	ULONG *pulKey = GPOS_NEW(m_pmp) ULONG(ulColId);
+	ULONG *pulKey = GPOS_NEW(m_memory_pool) ULONG(col_id);
 
 	// insert colid->target entry mapping in the hash map
-	BOOL fResult = m_phmulte->FInsert(pulKey, pte);
+	BOOL result = m_phmulte->Insert(pulKey, target_entry);
 
-	if (!fResult)
+	if (!result)
 	{
 		GPOS_DELETE(pulKey);
 	}
@@ -192,15 +192,15 @@ CDXLTranslateContext::InsertMapping
 BOOL
 CDXLTranslateContext::FInsertParamMapping
 	(
-	ULONG ulColId,
+	ULONG col_id,
 	CMappingElementColIdParamId *pmecolidparamid
 	)
 {
 	// copy key
-	ULONG *pulKey = GPOS_NEW(m_pmp) ULONG(ulColId);
+	ULONG *pulKey = GPOS_NEW(m_memory_pool) ULONG(col_id);
 
 	// insert colid->target entry mapping in the hash map
-	return m_phmcolparam->FInsert(pulKey, pmecolidparamid);
+	return m_phmcolparam->Insert(pulKey, pmecolidparamid);
 }
 
 // EOF

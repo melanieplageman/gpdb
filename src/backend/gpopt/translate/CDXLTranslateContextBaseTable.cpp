@@ -29,15 +29,15 @@ using namespace gpos;
 //---------------------------------------------------------------------------
 CDXLTranslateContextBaseTable::CDXLTranslateContextBaseTable
 	(
-	IMemoryPool *pmp
+	IMemoryPool *memory_pool
 	)
 	:
-	m_pmp(pmp),
+	m_memory_pool(memory_pool),
 	m_oid(InvalidOid),
 	m_iRel(0)
 {
 	// initialize hash table
-	m_phmuli = GPOS_NEW(m_pmp) HMUlI(m_pmp);
+	m_phmuli = GPOS_NEW(m_memory_pool) HMUlI(m_memory_pool);
 }
 
 //---------------------------------------------------------------------------
@@ -131,11 +131,11 @@ CDXLTranslateContextBaseTable::IRel() const
 INT
 CDXLTranslateContextBaseTable::IAttnoForColId
 	(
-	ULONG ulColId
+	ULONG col_id
 	)
 	const
 {
-	const INT *pi = m_phmuli->PtLookup(&ulColId);
+	const INT *pi = m_phmuli->Find(&col_id);
 	if (NULL != pi)
 	{
 		return *pi;
@@ -162,12 +162,12 @@ CDXLTranslateContextBaseTable::FInsertMapping
 	)
 {
 	// copy key and value
-	ULONG *pulKey = GPOS_NEW(m_pmp) ULONG(ulDXLColId);
-	INT *piValue = GPOS_NEW(m_pmp) INT(iAttno);
+	ULONG *pulKey = GPOS_NEW(m_memory_pool) ULONG(ulDXLColId);
+	INT *piValue = GPOS_NEW(m_memory_pool) INT(iAttno);
 
 	// insert colid-idx mapping in the hash map
 
-	BOOL fRes = m_phmuli->FInsert(pulKey, piValue);
+	BOOL fRes = m_phmuli->Insert(pulKey, piValue);
 
 	GPOS_ASSERT(fRes);
 

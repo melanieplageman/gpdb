@@ -33,14 +33,14 @@ namespace gpdxl
 	using namespace gpos;
 
 	// hash maps mapping ULONG -> TargetEntry
-	typedef CHashMap<ULONG, TargetEntry, gpos::UlHash<ULONG>, gpos::FEqual<ULONG>,
+	typedef CHashMap<ULONG, TargetEntry, gpos::HashValue<ULONG>, gpos::Equals<ULONG>,
 		CleanupDelete<ULONG>, CleanupNULL > HMUlTe;
 
 	// hash maps mapping ULONG -> CMappingElementColIdParamId
-	typedef CHashMap<ULONG, CMappingElementColIdParamId, gpos::UlHash<ULONG>, gpos::FEqual<ULONG>,
+	typedef CHashMap<ULONG, CMappingElementColIdParamId, gpos::HashValue<ULONG>, gpos::Equals<ULONG>,
 		CleanupDelete<ULONG>, CleanupRelease<CMappingElementColIdParamId> > HMColParam;
 
-	typedef CHashMapIter<ULONG, CMappingElementColIdParamId, gpos::UlHash<ULONG>, gpos::FEqual<ULONG>,
+	typedef CHashMapIter<ULONG, CMappingElementColIdParamId, gpos::HashValue<ULONG>, gpos::Equals<ULONG>,
 					CleanupDelete<ULONG>, CleanupRelease<CMappingElementColIdParamId> > HMColParamIter;
 
 
@@ -57,7 +57,7 @@ namespace gpdxl
 	{
 
 		private:
-			IMemoryPool *m_pmp;
+			IMemoryPool *m_memory_pool;
 
 			// private copy ctor
 			CDXLTranslateContext(const CDXLTranslateContext&);
@@ -80,9 +80,9 @@ namespace gpdxl
 
 		public:
 			// ctor/dtor
-			CDXLTranslateContext(IMemoryPool *pmp, BOOL fChildAggNode);
+			CDXLTranslateContext(IMemoryPool *memory_pool, BOOL fChildAggNode);
 
-			CDXLTranslateContext(IMemoryPool *pmp, BOOL fChildAggNode, HMColParam *phmOriginal);
+			CDXLTranslateContext(IMemoryPool *memory_pool, BOOL fChildAggNode, HMColParam *phmOriginal);
 
 			~CDXLTranslateContext();
 
@@ -96,16 +96,16 @@ namespace gpdxl
 			}
 
 			// return the target entry corresponding to the given ColId
-			const TargetEntry *Pte(ULONG ulColId) const;
+			const TargetEntry *Pte(ULONG col_id) const;
 
 			// return the param id corresponding to the given ColId
-			const CMappingElementColIdParamId *Pmecolidparamid(ULONG ulColId) const;
+			const CMappingElementColIdParamId *Pmecolidparamid(ULONG col_id) const;
 
 			// store the mapping of the given column id and target entry
-			void InsertMapping(ULONG ulColId, TargetEntry *pte);
+			void InsertMapping(ULONG col_id, TargetEntry *target_entry);
 
 			// store the mapping of the given column id and param id
-			BOOL FInsertParamMapping(ULONG ulColId, CMappingElementColIdParamId *pmecolidparamid);
+			BOOL FInsertParamMapping(ULONG col_id, CMappingElementColIdParamId *pmecolidparamid);
 	};
 
 

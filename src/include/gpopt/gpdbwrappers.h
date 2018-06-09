@@ -167,7 +167,7 @@ namespace gpdb {
 
 	// replace Vars that reference JOIN outputs with references to the original
 	// relation variables instead
-	Query *PqueryFlattenJoinAliasVar(Query *pquery, gpos::ULONG ulQueryLevel);
+	Query *PqueryFlattenJoinAliasVar(Query *query, gpos::ULONG query_level);
 
 	// is aggregate ordered
 	bool FOrderedAgg(Oid aggid);
@@ -370,7 +370,7 @@ namespace gpdb {
 	ListCell *PlcListTail(List *l);
 
 	// number of items in a list
-	uint32 UlListLength(List *l);
+	uint32 ListLength(List *l);
 
 	// return the nth element in a list of pointers
 	void *PvListNth(List *list, int n);

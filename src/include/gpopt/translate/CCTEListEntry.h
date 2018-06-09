@@ -40,14 +40,14 @@ namespace gpdxl
 		const CHAR *sz
 		)
 	{
-		return gpos::UlHashByteArray((BYTE *) sz, clib::UlStrLen(sz));
+		return gpos::HashByteArray((BYTE *) sz, clib::Strlen(sz));
 	}
 	
 	// equality on character arrays
 	inline
 	BOOL FEqualSz(const CHAR *szA, const CHAR *szB)
 	{
-		return (0 == clib::IStrCmp(szA, szB));
+		return (0 == clib::Strcmp(szA, szB));
 	}
 	
 
@@ -74,11 +74,11 @@ namespace gpdxl
 				SCTEProducerInfo
 					(
 					const CDXLNode *pdxlnCTEProducer,
-					List *plTargetList
+					List *target_list
 					)
 					:
 					m_pdxlnCTEProducer(pdxlnCTEProducer),
-					m_plTargetList(plTargetList)
+					m_plTargetList(target_list)
 				{}
 			};
 			
@@ -93,10 +93,10 @@ namespace gpdxl
 
 		public:
 			// ctor: single CTE 
-			CCTEListEntry(IMemoryPool *pmp, ULONG ulQueryLevel, CommonTableExpr *pcte, CDXLNode *pdxlnCTEProducer);
+			CCTEListEntry(IMemoryPool *memory_pool, ULONG query_level, CommonTableExpr *pcte, CDXLNode *pdxlnCTEProducer);
 			
 			// ctor: multiple CTEs
-			CCTEListEntry(IMemoryPool *pmp, ULONG ulQueryLevel, List *plCTE, DrgPdxln *pdrgpdxln);
+			CCTEListEntry(IMemoryPool *memory_pool, ULONG query_level, List *plCTE, DXLNodeArray *pdrgpdxln);
 
 			// dtor
 			virtual
@@ -106,7 +106,7 @@ namespace gpdxl
 			};
 
 			// the query level
-			ULONG UlQueryLevel() const
+			ULONG QueryLevel() const
 			{
 				return m_ulQueryLevel;
 			}
@@ -118,15 +118,15 @@ namespace gpdxl
 			List *PlCTEProducerTL(const CHAR *szCTE) const;
 
 			// add a new CTE producer for this level
-			void AddCTEProducer(IMemoryPool *pmp, CommonTableExpr *pcte, const CDXLNode *pdxlnCTEProducer);
+			void AddCTEProducer(IMemoryPool *memory_pool, CommonTableExpr *pcte, const CDXLNode *pdxlnCTEProducer);
 	};
 
 	// hash maps mapping ULONG -> CCTEListEntry
-	typedef CHashMap<ULONG, CCTEListEntry, gpos::UlHash<ULONG>, gpos::FEqual<ULONG>,
+	typedef CHashMap<ULONG, CCTEListEntry, gpos::HashValue<ULONG>, gpos::Equals<ULONG>,
 	CleanupDelete<ULONG>, CleanupRelease > HMUlCTEListEntry;
 
 	// iterator
-	typedef CHashMapIter<ULONG, CCTEListEntry, gpos::UlHash<ULONG>, gpos::FEqual<ULONG>,
+	typedef CHashMapIter<ULONG, CCTEListEntry, gpos::HashValue<ULONG>, gpos::Equals<ULONG>,
 	CleanupDelete<ULONG>, CleanupRelease > HMIterUlCTEListEntry;
 
 	}

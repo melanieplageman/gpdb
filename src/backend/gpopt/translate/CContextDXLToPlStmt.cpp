@@ -35,7 +35,7 @@ using namespace gpdxl;
 //---------------------------------------------------------------------------
 CContextDXLToPlStmt::CContextDXLToPlStmt
 	(
-	IMemoryPool *pmp,
+	IMemoryPool *memory_pool,
 	CIdGenerator *pidgtorPlan,
 	CIdGenerator *pidgtorMotion,
 	CIdGenerator *pidgtorParam,
@@ -43,7 +43,7 @@ CContextDXLToPlStmt::CContextDXLToPlStmt
 	List **plSubPlan
 	)
 	:
-	m_pmp(pmp),
+	m_memory_pool(memory_pool),
 	m_pidgtorPlan(pidgtorPlan),
 	m_pidgtorMotion(pidgtorMotion),
 	m_pidgtorParam(pidgtorParam),
@@ -55,8 +55,8 @@ CContextDXLToPlStmt::CContextDXLToPlStmt
 	m_pintocl(NULL),
 	m_pdistrpolicy(NULL)
 {
-	m_phmulcteconsumerinfo = GPOS_NEW(m_pmp) HMUlCTEConsumerInfo(m_pmp);
-	m_pdrgpulNumSelectors = GPOS_NEW(m_pmp) DrgPul(m_pmp);
+	m_phmulcteconsumerinfo = GPOS_NEW(m_memory_pool) HMUlCTEConsumerInfo(m_memory_pool);
+	m_pdrgpulNumSelectors = GPOS_NEW(m_memory_pool) ULongPtrArray(m_memory_pool);
 }
 
 //---------------------------------------------------------------------------
@@ -84,7 +84,7 @@ CContextDXLToPlStmt::~CContextDXLToPlStmt()
 ULONG
 CContextDXLToPlStmt::UlNextPlanId()
 {
-	return m_pidgtorPlan->UlNextId();
+	return m_pidgtorPlan->next_id();
 }
 
 //---------------------------------------------------------------------------
@@ -98,7 +98,7 @@ CContextDXLToPlStmt::UlNextPlanId()
 ULONG
 CContextDXLToPlStmt::UlCurrentMotionId()
 {
-	return m_pidgtorMotion->UlCurrentId();
+	return m_pidgtorMotion->current_id();
 }
 
 //---------------------------------------------------------------------------
@@ -112,7 +112,7 @@ CContextDXLToPlStmt::UlCurrentMotionId()
 ULONG
 CContextDXLToPlStmt::UlNextMotionId()
 {
-	return m_pidgtorMotion->UlNextId();
+	return m_pidgtorMotion->next_id();
 }
 
 //---------------------------------------------------------------------------
@@ -126,7 +126,7 @@ CContextDXLToPlStmt::UlNextMotionId()
 ULONG
 CContextDXLToPlStmt::UlNextParamId()
 {
-	return m_pidgtorParam->UlNextId();
+	return m_pidgtorParam->next_id();
 }
 
 //---------------------------------------------------------------------------
@@ -140,7 +140,7 @@ CContextDXLToPlStmt::UlNextParamId()
 ULONG
 CContextDXLToPlStmt::UlCurrentParamId()
 {
-	return m_pidgtorParam->UlCurrentId();
+	return m_pidgtorParam->current_id();
 }
 
 //---------------------------------------------------------------------------
@@ -160,7 +160,7 @@ CContextDXLToPlStmt::AddCTEConsumerInfo
 {
 	GPOS_ASSERT(NULL != pshscan);
 
-	SCTEConsumerInfo *pcteinfo = m_phmulcteconsumerinfo->PtLookup(&ulCteId);
+	SCTEConsumerInfo *pcteinfo = m_phmulcteconsumerinfo->Find(&ulCteId);
 	if (NULL != pcteinfo)
 	{
 		pcteinfo->AddCTEPlan(pshscan);
@@ -169,13 +169,13 @@ CContextDXLToPlStmt::AddCTEConsumerInfo
 
 	List *plPlanCTE = ListMake1(pshscan);
 
-	ULONG *pulKey = GPOS_NEW(m_pmp) ULONG(ulCteId);
+	ULONG *pulKey = GPOS_NEW(m_memory_pool) ULONG(ulCteId);
 #ifdef GPOS_DEBUG
-	BOOL fResult =
+	BOOL result =
 #endif
-			m_phmulcteconsumerinfo->FInsert(pulKey, GPOS_NEW(m_pmp) SCTEConsumerInfo(plPlanCTE));
+			m_phmulcteconsumerinfo->Insert(pulKey, GPOS_NEW(m_memory_pool) SCTEConsumerInfo(plPlanCTE));
 
-	GPOS_ASSERT(fResult);
+	GPOS_ASSERT(result);
 }
 
 //---------------------------------------------------------------------------
@@ -193,7 +193,7 @@ CContextDXLToPlStmt::PshscanCTEConsumer
 	)
 	const
 {
-	SCTEConsumerInfo *pcteinfo = m_phmulcteconsumerinfo->PtLookup(&ulCteId);
+	SCTEConsumerInfo *pcteinfo = m_phmulcteconsumerinfo->Find(&ulCteId);
 	if (NULL != pcteinfo)
 	{
 		return pcteinfo->m_plSis;
@@ -253,7 +253,7 @@ CContextDXLToPlStmt::AddRTE
 	{
 		GPOS_ASSERT(0 == m_ulResultRelation && "Only one result relation supported");
 		prte->inFromCl = false;
-		m_ulResultRelation = gpdb::UlListLength(*(m_pplRTable));
+		m_ulResultRelation = gpdb::ListLength(*(m_pplRTable));
 	}
 }
 
@@ -288,18 +288,18 @@ CContextDXLToPlStmt::AddPartitionedTable
 void
 CContextDXLToPlStmt::IncrementPartitionSelectors
 	(
-	ULONG ulScanId
+	ULONG scan_id
 	)
 {
 	// add extra elements to the array if necessary
-	const ULONG ulLen = m_pdrgpulNumSelectors->UlLength();
-	for (ULONG ul = ulLen; ul <= ulScanId; ul++)
+	const ULONG ulLen = m_pdrgpulNumSelectors->Size();
+	for (ULONG ul = ulLen; ul <= scan_id; ul++)
 	{
-		ULONG *pul = GPOS_NEW(m_pmp) ULONG(0);
+		ULONG *pul = GPOS_NEW(m_memory_pool) ULONG(0);
 		m_pdrgpulNumSelectors->Append(pul);
 	}
 
-	ULONG *pul = (*m_pdrgpulNumSelectors)[ulScanId];
+	ULONG *pul = (*m_pdrgpulNumSelectors)[scan_id];
 	(*pul) ++;
 }
 
@@ -315,7 +315,7 @@ List *
 CContextDXLToPlStmt::PlNumPartitionSelectors() const
 {
 	List *pl = NIL;
-	const ULONG ulLen = m_pdrgpulNumSelectors->UlLength();
+	const ULONG ulLen = m_pdrgpulNumSelectors->Size();
 	for (ULONG ul = 0; ul < ulLen; ul++)
 	{
 		ULONG *pul = (*m_pdrgpulNumSelectors)[ul];

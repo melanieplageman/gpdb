@@ -96,7 +96,7 @@ struct SOptContext
 
 	// If there is an error print as warning and throw exception to abort
 	// plan generation
-	void HandleError(BOOL *pfUnexpectedFailure);
+	void HandleError(BOOL *had_unexpected_failure);
 
 	// free all members except input and output pointers
 	void Free(EPin epinInput, EPin epinOutput);
@@ -203,7 +203,7 @@ class COptTasks
 
 		// create optimizer configuration object
 		static
-		COptimizerConfig *PoconfCreate(IMemoryPool *pmp, ICostModel *pcm);
+		COptimizerConfig *PoconfCreate(IMemoryPool *memory_pool, ICostModel *pcm);
 
 		// optimize a query to a physical DXL
 		static
@@ -215,19 +215,19 @@ class COptTasks
 
 		// translate a DXL tree into a planned statement
 		static
-		PlannedStmt *Pplstmt(IMemoryPool *pmp, CMDAccessor *pmda, const CDXLNode *pdxln, bool canSetTag);
+		PlannedStmt *Pplstmt(IMemoryPool *memory_pool, CMDAccessor *md_accessor, const CDXLNode *dxlnode, bool canSetTag);
 
 		// load search strategy from given path
 		static
-		DrgPss *PdrgPssLoad(IMemoryPool *pmp, char *szPath);
+		DrgPss *PdrgPssLoad(IMemoryPool *memory_pool, char *szPath);
 
 		// helper for converting wide character string to regular string
 		static
-		CHAR *SzFromWsz(const WCHAR *wsz);
+		CHAR *CreateMultiByteCharStringFromWCString(const WCHAR *wsz);
 
 		// lookup given exception type in the given array
 		static
-		BOOL FExceptionFound(gpos::CException &exc, const ULONG *pulExceptions, ULONG ulSize);
+		BOOL FExceptionFound(gpos::CException &exc, const ULONG *pulExceptions, ULONG size);
 
 		// check if given exception is an unexpected reason for failing to produce a plan
 		static
@@ -243,30 +243,30 @@ class COptTasks
 
 		// generate an instance of optimizer cost model
 		static
-		ICostModel *Pcm(IMemoryPool *pmp, ULONG ulSegments);
+		ICostModel *GetCostModel(IMemoryPool *memory_pool, ULONG ulSegments);
 
 		// print warning messages for columns with missing statistics
 		static
-		void PrintMissingStatsWarning(IMemoryPool *pmp, CMDAccessor *pmda, DrgPmdid *pdrgmdidCol, HSMDId *phsmdidRel);
+		void PrintMissingStatsWarning(IMemoryPool *memory_pool, CMDAccessor *md_accessor, MdidPtrArray *pdrgmdidCol, MdidHashSet *phsmdidRel);
 
 	public:
 
 		// convert Query->DXL->LExpr->Optimize->PExpr->DXL
 		static
-		char *SzOptimize(Query *pquery);
+		char *SzOptimize(Query *query);
 
 		// optimize Query->DXL->LExpr->Optimize->PExpr->DXL->PlannedStmt
 		static
-		PlannedStmt *PplstmtOptimize
+		PlannedStmt *GPOPTOptimizedPlan
 			(
-			Query *pquery,
-			SOptContext* octx,
-			BOOL *pfUnexpectedFailure // output : set to true if optimizer unexpectedly failed to produce plan
+			Query *query,
+			SOptContext* gpopt_context,
+			BOOL *had_unexpected_failure // output : set to true if optimizer unexpectedly failed to produce plan
 			);
 
 		// convert query to DXL to xml string.
 		static
-		char *SzDXL(Query *pquery);
+		char *SzDXL(Query *query);
 
 		// convert xml string to DXL and to PS
 		static
@@ -307,7 +307,7 @@ class COptTasks
 		// loads a minidump from the given file path, executes it and returns
 		// the serialized representation of the result as DXL
 		static
-		char *SzOptimizeMinidumpFromFile(char *szFileName);
+		char *SzOptimizeMinidumpFromFile(char *file_name);
 };
 
 #endif // COptTasks_H

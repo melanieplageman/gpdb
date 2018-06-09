@@ -84,8 +84,8 @@ CConstExprEvaluatorProxy::PdxlnEvaluateExpr
 	}
 
 	Const *pconstResult = (Const *)pexprResult;
-	CDXLDatum *pdxldatum = CTranslatorScalarToDXL::Pdxldatum(m_pmp, m_pmda, pconstResult);
-	CDXLNode *pdxlnResult = GPOS_NEW(m_pmp) CDXLNode(m_pmp, GPOS_NEW(m_pmp) CDXLScalarConstValue(m_pmp, pdxldatum));
+	CDXLDatum *datum_dxl = CTranslatorScalarToDXL::GetDatumVal(m_memory_pool, m_pmda, pconstResult);
+	CDXLNode *pdxlnResult = GPOS_NEW(m_memory_pool) CDXLNode(m_memory_pool, GPOS_NEW(m_memory_pool) CDXLScalarConstValue(m_memory_pool, datum_dxl));
 	gpdb::GPDBFree(pexprResult);
 	gpdb::GPDBFree(pexpr);
 
