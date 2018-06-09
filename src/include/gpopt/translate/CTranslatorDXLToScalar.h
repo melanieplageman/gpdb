@@ -74,7 +74,7 @@ namespace gpdxl
 	class CTranslatorDXLToScalar
 	{
 		// shorthand for functions for translating DXL nodes to GPDB expressions
-		typedef Expr * (CTranslatorDXLToScalar::*PfPexpr)(const CDXLNode *pdxln, CMappingColIdVar *pmapcidvar);
+		typedef Expr * (CTranslatorDXLToScalar::*PfPexpr)(const CDXLNode *dxlnode, CMappingColIdVar *pmapcidvar);
 
 		private:
 
@@ -95,7 +95,7 @@ namespace gpdxl
 				PfPconst pf;
 			};
 
-			IMemoryPool *m_pmp;
+			IMemoryPool *m_memory_pool;
 
 			// meta data accessor
 			CMDAccessor *m_pmda;
@@ -107,7 +107,7 @@ namespace gpdxl
 			BOOL m_fHasSubqueries;
 			
 			// number of segments
-			ULONG m_ulSegments; 
+			ULONG m_num_of_segments; 
 
 			// translate a CDXLScalarArrayComp into a GPDB ScalarArrayOpExpr
 			Expr *PstrarrayopexprFromDXLNodeScArrayComp
@@ -230,7 +230,7 @@ namespace gpdxl
 			// translate subplan test expression
 			Expr *PexprSubplanTestExpr
 				(
-				CDXLNode *pdxlnTestExpr,
+				CDXLNode *dxlnode_test_expr,
 				SubLinkType slink,
 				CMappingColIdVar *pmapcidvar,
 				List **plparamIds
@@ -307,7 +307,7 @@ namespace gpdxl
 			List *PlistTranslateScalarChildren
 				(
 				List *plist,
-				const CDXLNode *pdxln,
+				const CDXLNode *dxlnode,
 				CMappingColIdVar *pmapcidvar
 				);
 
@@ -315,12 +315,12 @@ namespace gpdxl
 			OID OidFunctionReturnType(IMDId *pmdid) const;
 
 			// translate dxldatum to GPDB Const
-			Const *PconstOid(CDXLDatum *pdxldatum);
-			Const *PconstInt2(CDXLDatum *pdxldatum);
-			Const *PconstInt4(CDXLDatum *pdxldatum);
-			Const *PconstInt8(CDXLDatum *pdxldatum);
-			Const *PconstBool(CDXLDatum *pdxldatum);
-			Const *PconstGeneric(CDXLDatum *pdxldatum);
+			Const *PconstOid(CDXLDatum *datum_dxl);
+			Const *PconstInt2(CDXLDatum *datum_dxl);
+			Const *PconstInt4(CDXLDatum *datum_dxl);
+			Const *PconstInt8(CDXLDatum *datum_dxl);
+			Const *PconstBool(CDXLDatum *datum_dxl);
+			Const *PconstGeneric(CDXLDatum *datum_dxl);
 			Expr *PrelabeltypeOrFuncexprFromDXLNodeScalarCast
 				(
 				const CDXLScalarCast *pdxlscalarcast,
@@ -334,11 +334,11 @@ namespace gpdxl
 			struct STypeOidAndTypeModifier
 			{
 				OID OidType;
-				INT ITypeModifier;
+				INT TypeModifier;
 			};
 
 			// ctor
-			CTranslatorDXLToScalar(IMemoryPool *pmp, CMDAccessor *pmda, ULONG ulSegments);
+			CTranslatorDXLToScalar(IMemoryPool *memory_pool, CMDAccessor *md_accessor, ULONG ulSegments);
 
 			// translate DXL scalar operator node into an Expr expression
 			// This function is called during the translation of DXL->Query or DXL->Query
@@ -407,15 +407,15 @@ namespace gpdxl
 
 			// checks if the operator return a boolean result
 			static
-			BOOL FBoolean(CDXLNode *pdxln, CMDAccessor *pmda);
+			BOOL HasBoolResult(CDXLNode *dxlnode, CMDAccessor *md_accessor);
 
 			// check if the operator is a "true" bool constant
 			static
-			BOOL FConstTrue(CDXLNode *pdxln, CMDAccessor *pmda);
+			BOOL FConstTrue(CDXLNode *dxlnode, CMDAccessor *md_accessor);
 
 			// check if the operator is a NULL constant
 			static
-			BOOL FConstNull(CDXLNode *pdxln);
+			BOOL FConstNull(CDXLNode *dxlnode);
 
 			// are there subqueries in the tree
 			BOOL FHasSubqueries() const
@@ -424,7 +424,7 @@ namespace gpdxl
 			}
 			
 			// translate a DXL datum into GPDB const expression
-			Expr *PconstFromDXLDatum(CDXLDatum *pdxldatum);
+			Expr *PconstFromDXLDatum(CDXLDatum *datum_dxl);
 	};
 }
 #endif // !GPDXL_CTranslatorDXLToScalar_H

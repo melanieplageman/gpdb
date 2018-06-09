@@ -748,13 +748,13 @@ gpdb::OidAggIntermediateResultType
 Query *
 gpdb::PqueryFlattenJoinAliasVar
 	(
-	Query *pquery,
-	gpos::ULONG ulQueryLevel
+	Query *query,
+	gpos::ULONG query_level
 	)
 {
 	GP_WRAP_START;
 	{
-		return flatten_join_alias_var_optimizer(pquery, ulQueryLevel);
+		return flatten_join_alias_var_optimizer(query, query_level);
 	}
 	GP_WRAP_END;
 
@@ -1653,7 +1653,7 @@ gpdb::PlcListTail
 }
 
 uint32
-gpdb::UlListLength
+gpdb::ListLength
 	(
 	List *l
 	)

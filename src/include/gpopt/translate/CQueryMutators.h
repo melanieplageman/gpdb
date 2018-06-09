@@ -59,7 +59,7 @@ namespace gpdxl
 		{
 			public:
 				// memory pool
-				IMemoryPool *m_pmp;
+				IMemoryPool *m_memory_pool;
 
 				// MD accessor for function names
 				CMDAccessor *m_pmda;
@@ -84,18 +84,22 @@ namespace gpdxl
 				BOOL m_fFallbackToPlanner;
 
 				// ctor
-				SContextHavingQualMutator(IMemoryPool *pmp,
-										  CMDAccessor *pmda,
-										  ULONG ulTECount,
-										  List *plTENewGroupByQuery)
-					: m_pmp(pmp),
-					  m_pmda(pmda),
-					  m_ulTECount(ulTECount),
-					  m_plTENewGroupByQuery(plTENewGroupByQuery),
-					  m_ulCurrLevelsUp(0),
-					  m_fAggregateArg(false),
-					  m_ulAggregateLevelUp(gpos::ulong_max),
-					  m_fFallbackToPlanner(false)
+				SContextHavingQualMutator
+					(
+					IMemoryPool *memory_pool,
+					CMDAccessor *md_accessor,
+					ULONG ulTECount,
+					List *plTENewGroupByQuery
+					)
+					:
+					m_memory_pool(memory_pool),
+					m_pmda(md_accessor),
+					m_ulTECount(ulTECount),
+					m_plTENewGroupByQuery(plTENewGroupByQuery),
+					m_ulCurrLevelsUp(0),
+					m_fAggregateArg(false),
+					m_ulAggregateLevelUp(gpos::ulong_max),
+					m_fFallbackToPlanner(false)
 				{
 					GPOS_ASSERT(NULL != plTENewGroupByQuery);
 				}
@@ -111,7 +115,7 @@ namespace gpdxl
 			public:
 
 				// memory pool
-				IMemoryPool *m_pmp;
+				IMemoryPool *m_memory_pool;
 
 				// MD accessor to get the function name
 				CMDAccessor *m_pmda;
@@ -134,15 +138,15 @@ namespace gpdxl
 				// ctor
 				SContextGrpbyPlMutator
 					(
-					IMemoryPool *pmp,
-					CMDAccessor *pmda,
-					Query *pquery,
+					IMemoryPool *memory_pool,
+					CMDAccessor *md_accessor,
+					Query *query,
 					List *plTENewGroupByQuery
 					)
 					:
-					m_pmp(pmp),
-					m_pmda(pmda),
-					m_pquery(pquery),
+					m_memory_pool(memory_pool),
+					m_pmda(md_accessor),
+					m_pquery(query),
 					m_plTENewGroupByQuery(plTENewGroupByQuery),
 					m_ulCurrLevelsUp(0),
 					m_ulRessortgroupref(0),
@@ -227,19 +231,19 @@ namespace gpdxl
 
 			// check if the project list contains expressions on aggregates thereby needing normalization
 			static
-			BOOL FNeedsPrLNormalization(const Query *pquery);
+			BOOL FNeedsPrLNormalization(const Query *query);
 
 			// normalize query
 			static
-			Query *PqueryNormalize(IMemoryPool *pmp, CMDAccessor *pmda, const Query *pquery, ULONG ulQueryLevel);
+			Query *PqueryNormalize(IMemoryPool *memory_pool, CMDAccessor *md_accessor, const Query *query, ULONG query_level);
 
 			// check if the project list contains expressions on window operators thereby needing normalization
 			static
-			BOOL FNeedsWindowPrLNormalization(const Query *pquery);
+			BOOL FNeedsWindowPrLNormalization(const Query *query);
 
 			// flatten expressions in window operation project list
 			static
-			Query *PqueryNormalizeWindowPrL(IMemoryPool *pmp, CMDAccessor *pmda, const Query *pquery);
+			Query *PqueryNormalizeWindowPrL(IMemoryPool *memory_pool, CMDAccessor *md_accessor, const Query *query);
 
 			// traverse the project list to extract all window functions in an arbitrarily complex project element
 			static
@@ -247,7 +251,7 @@ namespace gpdxl
 
 			// flatten expressions in project list
 			static
-			Query *PqueryNormalizeGrpByPrL(IMemoryPool *pmp, CMDAccessor *pmda, const Query *pquery);
+			Query *PqueryNormalizeGrpByPrL(IMemoryPool *memory_pool, CMDAccessor *md_accessor, const Query *query);
 
 			// make a copy of the aggref (minus the arguments)
 			static
@@ -263,11 +267,11 @@ namespace gpdxl
 
 			// increment the levels up of outer references
 			static
-			Var *PvarOuterReferenceIncrLevelsUp(Var *pvar);
+			Var *PvarOuterReferenceIncrLevelsUp(Var *var);
 
 			// pull up having clause into a select
 			static
-			Query *PqueryNormalizeHaving(IMemoryPool *pmp, CMDAccessor *pmda, const Query *pquery);
+			Query *PqueryNormalizeHaving(IMemoryPool *memory_pool, CMDAccessor *md_accessor, const Query *query);
 
 			// traverse the expression and fix the levels up of any outer reference
 			static
@@ -292,7 +296,7 @@ namespace gpdxl
 
 			// return a target entry for the aggregate expression
 			static
-			TargetEntry *PteAggregateExpr(IMemoryPool *pmp, CMDAccessor *pmda, Node *pnode, ULONG ulAttno);
+			TargetEntry *PteAggregateExpr(IMemoryPool *memory_pool, CMDAccessor *md_accessor, Node *pnode, ULONG ulAttno);
 
 			// traverse the having qual to extract all aggregate functions,
 			// fix correlated vars and return the modified having qual
@@ -301,19 +305,19 @@ namespace gpdxl
 
 			// for a given an TE in the derived table, create a new TE to be added to the top level query
 			static
-			TargetEntry *Pte(TargetEntry *pte, ULONG ulVarAttno);
+			TargetEntry *Pte(TargetEntry *target_entry, ULONG ulVarAttno);
 
 			// return the column name of the target entry
 			static
-			CHAR* SzTEName(TargetEntry *pte, Query *pquery);
+			CHAR* SzTEName(TargetEntry *target_entry, Query *query);
 
 			// make the input query into a derived table and return a new root query
 			static
-			Query *PqueryConvertToDerivedTable(const Query *pquery, BOOL fFixTargetList, BOOL fFixHavingQual);
+			Query *PqueryConvertToDerivedTable(const Query *query, BOOL fFixTargetList, BOOL fFixHavingQual);
 
 			// eliminate distinct clause
 			static
-			Query *PqueryEliminateDistinctClause(const Query *pquery);
+			Query *PqueryEliminateDistinctClause(const Query *query);
 
 			// reassign the sorting clause from the derived table to the new top-level query
 			static

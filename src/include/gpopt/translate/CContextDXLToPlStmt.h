@@ -42,7 +42,7 @@ namespace gpdxl
 	// fwd decl
 	class CDXLTranslateContext;
 
-	typedef CHashMap<ULONG, CDXLTranslateContext, gpos::UlHash<ULONG>, gpos::FEqual<ULONG>,
+	typedef CHashMap<ULONG, CDXLTranslateContext, gpos::HashValue<ULONG>, gpos::Equals<ULONG>,
 			CleanupDelete<ULONG>, CleanupDelete<CDXLTranslateContext> > HMUlDxltrctx;
 
 	//---------------------------------------------------------------------------
@@ -91,10 +91,10 @@ namespace gpdxl
 			};
 
 			// hash maps mapping ULONG -> SCTEConsumerInfo
-			typedef CHashMap<ULONG, SCTEConsumerInfo, gpos::UlHash<ULONG>, gpos::FEqual<ULONG>,
+			typedef CHashMap<ULONG, SCTEConsumerInfo, gpos::HashValue<ULONG>, gpos::Equals<ULONG>,
 			CleanupDelete<ULONG>, CleanupDelete<SCTEConsumerInfo> > HMUlCTEConsumerInfo;
 
-			IMemoryPool *m_pmp;
+			IMemoryPool *m_memory_pool;
 
 			// counter for generating plan ids
 			CIdGenerator *m_pidgtorPlan;
@@ -112,7 +112,7 @@ namespace gpdxl
 			List *m_plPartitionTables;
 
 			// number of partition selectors for each dynamic scan
-			DrgPul *m_pdrgpulNumSelectors;
+			ULongPtrArray *m_pdrgpulNumSelectors;
 
 			// list of all subplan entries
 			List **m_pplSubPlan;
@@ -133,7 +133,7 @@ namespace gpdxl
 			// ctor/dtor
 			CContextDXLToPlStmt
 						(
-						IMemoryPool *pmp,
+						IMemoryPool *memory_pool,
 						CIdGenerator *pidgtorPlan,
 						CIdGenerator *pidgtorMotion,
 						CIdGenerator *pidgtorParam,
@@ -193,7 +193,7 @@ namespace gpdxl
 			void AddPartitionedTable(OID oid);
 
 			// increment the number of partition selectors for the given scan id
-			void IncrementPartitionSelectors(ULONG ulScanId);
+			void IncrementPartitionSelectors(ULONG scan_id);
 
 			void AddSubplan(Plan * );
 				

@@ -57,10 +57,10 @@ namespace gpdxl
 					explicit
 					CEmptyMappingColIdVar
 						(
-						IMemoryPool *pmp
+						IMemoryPool *memory_pool
 						)
 						:
-						CMappingColIdVar(pmp)
+						CMappingColIdVar(memory_pool)
 					{
 					}
 
@@ -75,7 +75,7 @@ namespace gpdxl
 			};
 
 			// memory pool, not owned
-			IMemoryPool *m_pmp;
+			IMemoryPool *m_memory_pool;
 
 			// empty mapping needed for the translator
 			CEmptyMappingColIdVar m_emptymapcidvar;
@@ -90,14 +90,14 @@ namespace gpdxl
 			// ctor
 			CConstExprEvaluatorProxy
 				(
-				IMemoryPool *pmp,
-				CMDAccessor *pmda
+				IMemoryPool *memory_pool,
+				CMDAccessor *md_accessor
 				)
 				:
-				m_pmp(pmp),
-				m_emptymapcidvar(m_pmp),
-				m_pmda(pmda),
-				m_trdxl2scalar(m_pmp, m_pmda, 0)
+				m_memory_pool(memory_pool),
+				m_emptymapcidvar(m_memory_pool),
+				m_pmda(md_accessor),
+				m_trdxl2scalar(m_memory_pool, m_pmda, 0)
 			{
 			}
 

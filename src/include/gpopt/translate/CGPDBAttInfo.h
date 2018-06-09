@@ -51,8 +51,8 @@ namespace gpdxl
 
 		public:
 			// ctor
-			CGPDBAttInfo(ULONG ulQueryLevel, ULONG ulVarNo, INT iAttNo)
-				: m_ulQueryLevel(ulQueryLevel), m_ulVarNo(ulVarNo), m_iAttNo(iAttNo)
+			CGPDBAttInfo(ULONG query_level, ULONG var_no, INT attrnum)
+				: m_ulQueryLevel(query_level), m_ulVarNo(var_no), m_iAttNo(attrnum)
 			{}
 
 			// d'tor
@@ -60,7 +60,7 @@ namespace gpdxl
 			~CGPDBAttInfo() {}
 
 			// accessor
-			ULONG UlQueryLevel() const
+			ULONG QueryLevel() const
 			{
 				return m_ulQueryLevel;
 			}
@@ -78,7 +78,7 @@ namespace gpdxl
 			}
 
 			// equality check
-			BOOL FEquals(const CGPDBAttInfo& gpdbattinfo) const
+			BOOL Equals(const CGPDBAttInfo& gpdbattinfo) const
 			{
 				return m_ulQueryLevel == gpdbattinfo.m_ulQueryLevel
 						&& m_ulVarNo == gpdbattinfo.m_ulVarNo
@@ -86,23 +86,23 @@ namespace gpdxl
 			}
 
 			// hash value
-			ULONG UlHash() const
+			ULONG HashValue() const
 			{
-				return gpos::UlCombineHashes(
-						gpos::UlHash(&m_ulQueryLevel),
-						gpos::UlCombineHashes(gpos::UlHash(&m_ulVarNo),
-								gpos::UlHash(&m_iAttNo)));
+				return gpos::CombineHashes(
+						gpos::HashValue(&m_ulQueryLevel),
+						gpos::CombineHashes(gpos::HashValue(&m_ulVarNo),
+								gpos::HashValue(&m_iAttNo)));
 			}
 	};
 
 	// hash function
 	inline ULONG UlHashGPDBAttInfo
 		(
-		const CGPDBAttInfo *pgpdbattinfo
+		const CGPDBAttInfo *gpdb_att_info
 		)
 	{
-		GPOS_ASSERT(NULL != pgpdbattinfo);
-		return pgpdbattinfo->UlHash();
+		GPOS_ASSERT(NULL != gpdb_att_info);
+		return gpdb_att_info->HashValue();
 	}
 
 	// equality function
@@ -113,7 +113,7 @@ namespace gpdxl
 		)
 	{
 		GPOS_ASSERT(NULL != pgpdbattinfoA && NULL != pgpdbattinfoB);
-		return pgpdbattinfoA->FEquals(*pgpdbattinfoB);
+		return pgpdbattinfoA->Equals(*pgpdbattinfoB);
 	}
 
 }

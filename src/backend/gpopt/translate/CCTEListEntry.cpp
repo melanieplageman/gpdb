@@ -33,26 +33,26 @@ using namespace gpdxl;
 //---------------------------------------------------------------------------
 CCTEListEntry::CCTEListEntry
 	(
-	IMemoryPool *pmp,
-	ULONG ulQueryLevel,
+	IMemoryPool *memory_pool,
+	ULONG query_level,
 	CommonTableExpr *pcte,
 	CDXLNode *pdxlnCTEProducer
 	)
 	:
-	m_ulQueryLevel(ulQueryLevel),
+	m_ulQueryLevel(query_level),
 	m_phmszcteinfo(NULL)
 {
 	GPOS_ASSERT(NULL != pcte && NULL != pdxlnCTEProducer);
 	
-	m_phmszcteinfo = GPOS_NEW(pmp) HMSzCTEInfo(pmp);
+	m_phmszcteinfo = GPOS_NEW(memory_pool) HMSzCTEInfo(memory_pool);
 	Query *pqueryCTE = (Query*) pcte->ctequery;
 		
 #ifdef GPOS_DEBUG
-		BOOL fResult =
+		BOOL result =
 #endif
-	m_phmszcteinfo->FInsert(pcte->ctename, GPOS_NEW(pmp) SCTEProducerInfo(pdxlnCTEProducer, pqueryCTE->targetList));
+	m_phmszcteinfo->Insert(pcte->ctename, GPOS_NEW(memory_pool) SCTEProducerInfo(pdxlnCTEProducer, pqueryCTE->targetList));
 		
-	GPOS_ASSERT(fResult);
+	GPOS_ASSERT(result);
 }
 
 //---------------------------------------------------------------------------
@@ -65,20 +65,20 @@ CCTEListEntry::CCTEListEntry
 //---------------------------------------------------------------------------
 CCTEListEntry::CCTEListEntry
 	(
-	IMemoryPool *pmp,
-	ULONG ulQueryLevel,
+	IMemoryPool *memory_pool,
+	ULONG query_level,
 	List *plCTE, 
-	DrgPdxln *pdrgpdxln
+	DXLNodeArray *pdrgpdxln
 	)
 	:
-	m_ulQueryLevel(ulQueryLevel),
+	m_ulQueryLevel(query_level),
 	m_phmszcteinfo(NULL)
 {
 	GPOS_ASSERT(NULL != pdrgpdxln);
-	GPOS_ASSERT(pdrgpdxln->UlLength() == gpdb::UlListLength(plCTE));
+	GPOS_ASSERT(pdrgpdxln->Size() == gpdb::ListLength(plCTE));
 	
-	m_phmszcteinfo = GPOS_NEW(pmp) HMSzCTEInfo(pmp);
-	const ULONG ulCTEs = pdrgpdxln->UlLength();
+	m_phmszcteinfo = GPOS_NEW(memory_pool) HMSzCTEInfo(memory_pool);
+	const ULONG ulCTEs = pdrgpdxln->Size();
 	
 	for (ULONG ul = 0; ul < ulCTEs; ul++)
 	{
@@ -88,12 +88,12 @@ CCTEListEntry::CCTEListEntry
 		Query *pqueryCTE = (Query*) pcte->ctequery;
 		
 #ifdef GPOS_DEBUG
-		BOOL fResult =
+		BOOL result =
 #endif
-		m_phmszcteinfo->FInsert(pcte->ctename, GPOS_NEW(pmp) SCTEProducerInfo(pdxlnCTEProducer, pqueryCTE->targetList));
+		m_phmszcteinfo->Insert(pcte->ctename, GPOS_NEW(memory_pool) SCTEProducerInfo(pdxlnCTEProducer, pqueryCTE->targetList));
 		
-		GPOS_ASSERT(fResult);
-		GPOS_ASSERT(NULL != m_phmszcteinfo->PtLookup(pcte->ctename));
+		GPOS_ASSERT(result);
+		GPOS_ASSERT(NULL != m_phmszcteinfo->Find(pcte->ctename));
 	}
 }
 
@@ -112,7 +112,7 @@ CCTEListEntry::PdxlnCTEProducer
 	)
 	const
 {
-	SCTEProducerInfo *pcteinfo = m_phmszcteinfo->PtLookup(szCTE);
+	SCTEProducerInfo *pcteinfo = m_phmszcteinfo->Find(szCTE);
 	if (NULL == pcteinfo)
 	{
 		return NULL; 
@@ -136,7 +136,7 @@ CCTEListEntry::PlCTEProducerTL
 	)
 	const
 {
-	SCTEProducerInfo *pcteinfo = m_phmszcteinfo->PtLookup(szCTE);
+	SCTEProducerInfo *pcteinfo = m_phmszcteinfo->Find(szCTE);
 	if (NULL == pcteinfo)
 	{
 		return NULL; 
@@ -156,20 +156,20 @@ CCTEListEntry::PlCTEProducerTL
 void
 CCTEListEntry::AddCTEProducer
 	(
-	IMemoryPool *pmp,
+	IMemoryPool *memory_pool,
 	CommonTableExpr *pcte,
 	const CDXLNode *pdxlnCTEProducer
 	)
 {
-	GPOS_ASSERT(NULL == m_phmszcteinfo->PtLookup(pcte->ctename) && "CTE entry already exists");
+	GPOS_ASSERT(NULL == m_phmszcteinfo->Find(pcte->ctename) && "CTE entry already exists");
 	Query *pqueryCTE = (Query*) pcte->ctequery;
 	
 #ifdef GPOS_DEBUG
-	BOOL fResult =
+	BOOL result =
 #endif
-	m_phmszcteinfo->FInsert(pcte->ctename, GPOS_NEW(pmp) SCTEProducerInfo(pdxlnCTEProducer, pqueryCTE->targetList));
+	m_phmszcteinfo->Insert(pcte->ctename, GPOS_NEW(memory_pool) SCTEProducerInfo(pdxlnCTEProducer, pqueryCTE->targetList));
 	
-	GPOS_ASSERT(fResult);
+	GPOS_ASSERT(result);
 }
 
 // EOF

@@ -60,15 +60,15 @@ using namespace gpopt;
 //---------------------------------------------------------------------------
 CTranslatorDXLToScalar::CTranslatorDXLToScalar
 	(
-	IMemoryPool *pmp,
-	CMDAccessor *pmda,
+	IMemoryPool *memory_pool,
+	CMDAccessor *md_accessor,
 	ULONG ulSegments
 	)
 	:
-	m_pmp(pmp),
-	m_pmda(pmda),
+	m_memory_pool(memory_pool),
+	m_pmda(md_accessor),
 	m_fHasSubqueries(false),
-	m_ulSegments(ulSegments)
+	m_num_of_segments(ulSegments)
 {
 }
 
@@ -82,7 +82,7 @@ CTranslatorDXLToScalar::CTranslatorDXLToScalar
 Expr *
 CTranslatorDXLToScalar::PexprFromDXLNodeScalar
 	(
-	const CDXLNode *pdxln,
+	const CDXLNode *dxlnode,
 	CMappingColIdVar *pmapcidvar
 	)
 {
@@ -124,8 +124,8 @@ CTranslatorDXLToScalar::PexprFromDXLNodeScalar
 
 	const ULONG ulTranslators = GPOS_ARRAY_SIZE(rgTranslators);
 
-	GPOS_ASSERT(NULL != pdxln);
-	Edxlopid eopid = pdxln->Pdxlop()->Edxlop();
+	GPOS_ASSERT(NULL != dxlnode);
+	Edxlopid eopid = dxlnode->GetOperator()->GetDXLOperator();
 
 	// find translator for the node type
 	PfPexpr pf = NULL;
@@ -141,10 +141,10 @@ CTranslatorDXLToScalar::PexprFromDXLNodeScalar
 
 	if (NULL == pf)
 	{
-		GPOS_RAISE(gpdxl::ExmaDXL, gpdxl::ExmiDXL2PlStmtConversion, pdxln->Pdxlop()->PstrOpName()->Wsz());
+		GPOS_RAISE(gpdxl::ExmaDXL, gpdxl::ExmiDXL2PlStmtConversion, dxlnode->GetOperator()->GetOpNameStr()->GetBuffer());
 	}
 
-	return (this->*pf)(pdxln, pmapcidvar);
+	return (this->*pf)(dxlnode, pmapcidvar);
 }
 
 //---------------------------------------------------------------------------
@@ -162,10 +162,10 @@ CTranslatorDXLToScalar::PcaseexprFromDXLNodeScIfStmt
 	)
 {
 	GPOS_ASSERT(NULL != pdxlnIfStmt);
-	CDXLScalarIfStmt *pdxlopIfStmt = CDXLScalarIfStmt::PdxlopConvert(pdxlnIfStmt->Pdxlop());
+	CDXLScalarIfStmt *pdxlopIfStmt = CDXLScalarIfStmt::Cast(pdxlnIfStmt->GetOperator());
 
 	CaseExpr *pcaseexpr = MakeNode(CaseExpr);
-	pcaseexpr->casetype = CMDIdGPDB::PmdidConvert(pdxlopIfStmt->PmdidResultType())->OidObjectId();
+	pcaseexpr->casetype = CMDIdGPDB::CastMdid(pdxlopIfStmt->GetResultTypeMdId())->OidObjectId();
 	// GDPB_91_MERGE_FIXME: collation
 	pcaseexpr->casecollid = gpdb::OidTypeCollation(pcaseexpr->casetype);
 
@@ -179,7 +179,7 @@ CTranslatorDXLToScalar::PcaseexprFromDXLNodeScIfStmt
 	while (!fLeafElseStatement)
 	{
 
-		if (3 != pdxlnCurr->UlArity())
+		if (3 != pdxlnCurr->Arity())
 		{
 			GPOS_RAISE
 				(
@@ -197,7 +197,7 @@ CTranslatorDXLToScalar::PcaseexprFromDXLNodeScIfStmt
 		pwhen->result = pexprThen;
 		pcaseexpr->args = gpdb::PlAppendElement(pcaseexpr->args,pwhen);
 
-		if (EdxlopScalarIfStmt == (*pdxlnCurr)[2]->Pdxlop()->Edxlop())
+		if (EdxlopScalarIfStmt == (*pdxlnCurr)[2]->GetOperator()->GetDXLOperator())
 		{
 			pdxlnCurr = (*pdxlnCurr)[2];
 		}
@@ -228,10 +228,10 @@ CTranslatorDXLToScalar::PcaseexprFromDXLNodeScSwitch
 	)
 {
 	GPOS_ASSERT(NULL != pdxlnSwitch);
-	CDXLScalarSwitch *pdxlop = CDXLScalarSwitch::PdxlopConvert(pdxlnSwitch->Pdxlop());
+	CDXLScalarSwitch *pdxlop = CDXLScalarSwitch::Cast(pdxlnSwitch->GetOperator());
 
 	CaseExpr *pcaseexpr = MakeNode(CaseExpr);
-	pcaseexpr->casetype = CMDIdGPDB::PmdidConvert(pdxlop->PmdidType())->OidObjectId();
+	pcaseexpr->casetype = CMDIdGPDB::CastMdid(pdxlop->MDIdType())->OidObjectId();
 	// GDPB_91_MERGE_FIXME: collation
 	pcaseexpr->casecollid = gpdb::OidTypeCollation(pcaseexpr->casetype);
 
@@ -239,13 +239,13 @@ CTranslatorDXLToScalar::PcaseexprFromDXLNodeScSwitch
 	pcaseexpr->arg = PexprFromDXLNodeScalar((*pdxlnSwitch)[0], pmapcidvar);
 	GPOS_ASSERT(NULL != pcaseexpr->arg);
 
-	const ULONG ulArity = pdxlnSwitch->UlArity();
-	GPOS_ASSERT(1 < ulArity);
-	for (ULONG ul = 1; ul < ulArity; ul++)
+	const ULONG arity = pdxlnSwitch->Arity();
+	GPOS_ASSERT(1 < arity);
+	for (ULONG ul = 1; ul < arity; ul++)
 	{
 		const CDXLNode *pdxlnChild = (*pdxlnSwitch)[ul];
 
-		if (EdxlopScalarSwitchCase == pdxlnChild->Pdxlop()->Edxlop())
+		if (EdxlopScalarSwitchCase == pdxlnChild->GetOperator()->GetDXLOperator())
 		{
 			CaseWhen *pwhen = MakeNode(CaseWhen);
 			pwhen->expr = PexprFromDXLNodeScalar((*pdxlnChild)[0], pmapcidvar);
@@ -255,7 +255,7 @@ CTranslatorDXLToScalar::PcaseexprFromDXLNodeScSwitch
 		else
 		{
 			// default return value
-			GPOS_ASSERT(ul == ulArity - 1);
+			GPOS_ASSERT(ul == arity - 1);
 			pcaseexpr->defresult = PexprFromDXLNodeScalar((*pdxlnSwitch)[ul], pmapcidvar);
 		}
 	}
@@ -278,10 +278,10 @@ CTranslatorDXLToScalar::PcasetestexprFromDXLNodeScCaseTest
 	)
 {
 	GPOS_ASSERT(NULL != pdxlnCaseTest);
-	CDXLScalarCaseTest *pdxlop = CDXLScalarCaseTest::PdxlopConvert(pdxlnCaseTest->Pdxlop());
+	CDXLScalarCaseTest *pdxlop = CDXLScalarCaseTest::Cast(pdxlnCaseTest->GetOperator());
 
 	CaseTestExpr *pcasetestexpr = MakeNode(CaseTestExpr);
-	pcasetestexpr->typeId = CMDIdGPDB::PmdidConvert(pdxlop->PmdidType())->OidObjectId();
+	pcasetestexpr->typeId = CMDIdGPDB::CastMdid(pdxlop->MDIdType())->OidObjectId();
 	pcasetestexpr->typeMod = -1;
 	// GDPB_91_MERGE_FIXME: collation
 	pcasetestexpr->collation = gpdb::OidTypeCollation(pcasetestexpr->typeId);
@@ -304,28 +304,28 @@ CTranslatorDXLToScalar::PopexprFromDXLNodeScOpExpr
 	)
 {
 	GPOS_ASSERT(NULL != pdxlnOpExpr);
-	CDXLScalarOpExpr *pdxlopOpExpr = CDXLScalarOpExpr::PdxlopConvert(pdxlnOpExpr->Pdxlop());
+	CDXLScalarOpExpr *pdxlopOpExpr = CDXLScalarOpExpr::Cast(pdxlnOpExpr->GetOperator());
 
 	OpExpr *popexpr = MakeNode(OpExpr);
-	popexpr->opno = CMDIdGPDB::PmdidConvert(pdxlopOpExpr->Pmdid())->OidObjectId();
+	popexpr->opno = CMDIdGPDB::CastMdid(pdxlopOpExpr->MDId())->OidObjectId();
 
-	const IMDScalarOp *pmdscop = m_pmda->Pmdscop(pdxlopOpExpr->Pmdid());
-	popexpr->opfuncid = CMDIdGPDB::PmdidConvert(pmdscop->PmdidFunc())->OidObjectId();
+	const IMDScalarOp *md_scalar_op = m_pmda->Pmdscop(pdxlopOpExpr->MDId());
+	popexpr->opfuncid = CMDIdGPDB::CastMdid(md_scalar_op->FuncMdId())->OidObjectId();
 
-	IMDId *pmdidReturnType = pdxlopOpExpr->PmdidReturnType();
-	if (NULL != pmdidReturnType)
+	IMDId *return_type_mdid = pdxlopOpExpr->GetReturnTypeMdId();
+	if (NULL != return_type_mdid)
 	{
-		popexpr->opresulttype = CMDIdGPDB::PmdidConvert(pmdidReturnType)->OidObjectId();
+		popexpr->opresulttype = CMDIdGPDB::CastMdid(return_type_mdid)->OidObjectId();
 	}
 	else 
 	{
-		popexpr->opresulttype = OidFunctionReturnType(pmdscop->PmdidFunc());
+		popexpr->opresulttype = OidFunctionReturnType(md_scalar_op->FuncMdId());
 	}
 
-	const IMDFunction *pmdfunc = m_pmda->Pmdfunc(pmdscop->PmdidFunc());
-	popexpr->opretset = pmdfunc->FReturnsSet();
+	const IMDFunction *pmdfunc = m_pmda->Pmdfunc(md_scalar_op->FuncMdId());
+	popexpr->opretset = pmdfunc->ReturnsSet();
 
-	GPOS_ASSERT(1 == pdxlnOpExpr->UlArity() || 2 == pdxlnOpExpr->UlArity());
+	GPOS_ASSERT(1 == pdxlnOpExpr->Arity() || 2 == pdxlnOpExpr->Arity());
 
 	// translate children
 	popexpr->args = PlistTranslateScalarChildren(popexpr->args, pdxlnOpExpr, pmapcidvar);
@@ -353,14 +353,14 @@ CTranslatorDXLToScalar::PstrarrayopexprFromDXLNodeScArrayComp
 	)
 {
 	GPOS_ASSERT(NULL != pdxlnArrayComp);
-	CDXLScalarArrayComp *pdxlopArrayComp = CDXLScalarArrayComp::PdxlopConvert(pdxlnArrayComp->Pdxlop());
+	CDXLScalarArrayComp *pdxlopArrayComp = CDXLScalarArrayComp::Cast(pdxlnArrayComp->GetOperator());
 
 	ScalarArrayOpExpr *parrayopexpr = MakeNode(ScalarArrayOpExpr);
-	parrayopexpr->opno = CMDIdGPDB::PmdidConvert(pdxlopArrayComp->Pmdid())->OidObjectId();
-	const IMDScalarOp *pmdscop = m_pmda->Pmdscop(pdxlopArrayComp->Pmdid());
-	parrayopexpr->opfuncid = CMDIdGPDB::PmdidConvert(pmdscop->PmdidFunc())->OidObjectId();
+	parrayopexpr->opno = CMDIdGPDB::CastMdid(pdxlopArrayComp->MDId())->OidObjectId();
+	const IMDScalarOp *md_scalar_op = m_pmda->Pmdscop(pdxlopArrayComp->MDId());
+	parrayopexpr->opfuncid = CMDIdGPDB::CastMdid(md_scalar_op->FuncMdId())->OidObjectId();
 
-	switch(pdxlopArrayComp->Edxlarraycomptype())
+	switch(pdxlopArrayComp->GetDXLArrayCmpType())
 	{
 		case Edxlarraycomptypeany:
 				parrayopexpr->useOr = true;
@@ -381,7 +381,7 @@ CTranslatorDXLToScalar::PstrarrayopexprFromDXLNodeScArrayComp
 
 	// translate left and right child
 
-	GPOS_ASSERT(2 == pdxlnArrayComp->UlArity());
+	GPOS_ASSERT(2 == pdxlnArrayComp->Arity());
 
 	CDXLNode *pdxlnLeft = (*pdxlnArrayComp)[EdxlsccmpIndexLeft];
 	CDXLNode *pdxlnRight = (*pdxlnArrayComp)[EdxlsccmpIndexRight];
@@ -412,20 +412,20 @@ CTranslatorDXLToScalar::PdistexprFromDXLNodeScDistinctComp
 	)
 {
 	GPOS_ASSERT(NULL != pdxlnDistComp);
-	CDXLScalarDistinctComp *pdxlop = CDXLScalarDistinctComp::PdxlopConvert(pdxlnDistComp->Pdxlop());
+	CDXLScalarDistinctComp *pdxlop = CDXLScalarDistinctComp::Cast(pdxlnDistComp->GetOperator());
 
 	DistinctExpr *pdistexpr = MakeNode(DistinctExpr);
-	pdistexpr->opno = CMDIdGPDB::PmdidConvert(pdxlop->Pmdid())->OidObjectId();
+	pdistexpr->opno = CMDIdGPDB::CastMdid(pdxlop->MDId())->OidObjectId();
 
-	const IMDScalarOp *pmdscop = m_pmda->Pmdscop(pdxlop->Pmdid());
+	const IMDScalarOp *md_scalar_op = m_pmda->Pmdscop(pdxlop->MDId());
 
-	pdistexpr->opfuncid = CMDIdGPDB::PmdidConvert(pmdscop->PmdidFunc())->OidObjectId();
-	pdistexpr->opresulttype = OidFunctionReturnType(pmdscop->PmdidFunc());
+	pdistexpr->opfuncid = CMDIdGPDB::CastMdid(md_scalar_op->FuncMdId())->OidObjectId();
+	pdistexpr->opresulttype = OidFunctionReturnType(md_scalar_op->FuncMdId());
 	// GDPB_91_MERGE_FIXME: collation
 	pdistexpr->opcollid = gpdb::OidTypeCollation(pdistexpr->opresulttype);
 
 	// translate left and right child
-	GPOS_ASSERT(2 == pdxlnDistComp->UlArity());
+	GPOS_ASSERT(2 == pdxlnDistComp->Arity());
 	CDXLNode *pdxlnLeft = (*pdxlnDistComp)[EdxlscdistcmpIndexLeft];
 	CDXLNode *pdxlnRight = (*pdxlnDistComp)[EdxlscdistcmpIndexRight];
 
@@ -453,35 +453,35 @@ CTranslatorDXLToScalar::PaggrefFromDXLNodeScAggref
 	)
 {
 	GPOS_ASSERT(NULL != pdxlnAggref);
-	CDXLScalarAggref *pdxlop = CDXLScalarAggref::PdxlopConvert(pdxlnAggref->Pdxlop());
+	CDXLScalarAggref *pdxlop = CDXLScalarAggref::Cast(pdxlnAggref->GetOperator());
 
 	Aggref *paggref = MakeNode(Aggref);
-	paggref->aggfnoid = CMDIdGPDB::PmdidConvert(pdxlop->PmdidAgg())->OidObjectId();
+	paggref->aggfnoid = CMDIdGPDB::CastMdid(pdxlop->GetDXLAggFuncMDid())->OidObjectId();
 	paggref->aggdistinct = NIL;
 	paggref->agglevelsup = 0;
 	paggref->aggkind = 'n';
 	paggref->location = -1;
 
-	CMDIdGPDB *pmdidAgg = GPOS_NEW(m_pmp) CMDIdGPDB(paggref->aggfnoid);
+	CMDIdGPDB *pmdidAgg = GPOS_NEW(m_memory_pool) CMDIdGPDB(paggref->aggfnoid);
 	const IMDAggregate *pmdagg = m_pmda->Pmdagg(pmdidAgg);
 	pmdidAgg->Release();
 
-	EdxlAggrefStage edxlaggstage = pdxlop->Edxlaggstage();
-	if (NULL != pdxlop->PmdidResolvedRetType())
+	EdxlAggrefStage edxlaggstage = pdxlop->GetDXLAggStage();
+	if (NULL != pdxlop->GetDXLResolvedRetTypeMDid())
 	{
 		// use resolved type
-		paggref->aggtype = CMDIdGPDB::PmdidConvert(pdxlop->PmdidResolvedRetType())->OidObjectId();
+		paggref->aggtype = CMDIdGPDB::CastMdid(pdxlop->GetDXLResolvedRetTypeMDid())->OidObjectId();
 	}
 	else if (EdxlaggstageIntermediate == edxlaggstage || EdxlaggstagePartial == edxlaggstage)
 	{
-		paggref->aggtype = CMDIdGPDB::PmdidConvert(pmdagg->PmdidTypeIntermediate())->OidObjectId();
+		paggref->aggtype = CMDIdGPDB::CastMdid(pmdagg->GetIntermediateResultTypeMdid())->OidObjectId();
 	}
 	else
 	{
-		paggref->aggtype = CMDIdGPDB::PmdidConvert(pmdagg->PmdidTypeResult())->OidObjectId();
+		paggref->aggtype = CMDIdGPDB::CastMdid(pmdagg->GetResultTypeMdid())->OidObjectId();
 	}
 
-	switch(pdxlop->Edxlaggstage())
+	switch(pdxlop->GetDXLAggStage())
 	{
 		case EdxlaggstageNormal:
 					paggref->aggstage = AGGSTAGE_NORMAL;
@@ -509,16 +509,16 @@ CTranslatorDXLToScalar::PaggrefFromDXLNodeScAggref
 
 	int attno;
 	paggref->args = NIL;
-	ListCell *plc;
+	ListCell *lc;
 	int sortgrpindex = 1;
-	ForEachWithCount (plc, argExprs, attno)
+	ForEachWithCount (lc, argExprs, attno)
 	{
-		TargetEntry *pteNew = gpdb::PteMakeTargetEntry((Expr *) lfirst(plc), attno + 1, NULL, false);
+		TargetEntry *pteNew = gpdb::PteMakeTargetEntry((Expr *) lfirst(lc), attno + 1, NULL, false);
 		/*
 		 * Translate the aggdistinct bool set to true (in ORCA),
 		 * to a List of SortGroupClause in the PLNSTMT
 		 */
-		if(pdxlop->FDistinct())
+		if(pdxlop->IsDistinct())
 		{
 			pteNew->ressortgroupref = sortgrpindex;
 			SortGroupClause *gc = makeNode(SortGroupClause);
@@ -561,20 +561,20 @@ CTranslatorDXLToScalar::PwindowrefFromDXLNodeScWindowRef
 	)
 {
 	GPOS_ASSERT(NULL != pdxlnWinref);
-	CDXLScalarWindowRef *pdxlop = CDXLScalarWindowRef::PdxlopConvert(pdxlnWinref->Pdxlop());
+	CDXLScalarWindowRef *pdxlop = CDXLScalarWindowRef::Cast(pdxlnWinref->GetOperator());
 
 	WindowFunc *pwindowfunc = MakeNode(WindowFunc);
-	pwindowfunc->winfnoid = CMDIdGPDB::PmdidConvert(pdxlop->PmdidFunc())->OidObjectId();
+	pwindowfunc->winfnoid = CMDIdGPDB::CastMdid(pdxlop->FuncMdId())->OidObjectId();
 
-	pwindowfunc->windistinct = pdxlop->FDistinct();
+	pwindowfunc->windistinct = pdxlop->IsDistinct();
 	pwindowfunc->location = -1;
-	pwindowfunc->winref = pdxlop->UlWinSpecPos() + 1;
-	pwindowfunc->wintype = CMDIdGPDB::PmdidConvert(pdxlop->PmdidRetType())->OidObjectId();
-	pwindowfunc->winstar = pdxlop->FStarArg();
-	pwindowfunc->winagg = pdxlop->FSimpleAgg();
+	pwindowfunc->winref = pdxlop->GetWindSpecPos() + 1;
+	pwindowfunc->wintype = CMDIdGPDB::CastMdid(pdxlop->ReturnTypeMdId())->OidObjectId();
+	pwindowfunc->winstar = pdxlop->IsStarArg();
+	pwindowfunc->winagg = pdxlop->IsSimpleAgg();
 
-	EdxlWinStage edxlwinstage = pdxlop->Edxlwinstage();
-	GPOS_ASSERT(edxlwinstage != EdxlwinstageSentinel);
+	EdxlWinStage dxl_win_stage = pdxlop->GetDxlWinStage();
+	GPOS_ASSERT(dxl_win_stage != EdxlwinstageSentinel);
 
 	ULONG rgrgulMapping[][2] =
 			{
@@ -583,11 +583,11 @@ CTranslatorDXLToScalar::PwindowrefFromDXLNodeScWindowRef
 			{WINSTAGE_ROWKEY, EdxlwinstageRowKey},
 			};
 
-	const ULONG ulArity = GPOS_ARRAY_SIZE(rgrgulMapping);
-	for (ULONG ul = 0; ul < ulArity; ul++)
+	const ULONG arity = GPOS_ARRAY_SIZE(rgrgulMapping);
+	for (ULONG ul = 0; ul < arity; ul++)
 	{
 		ULONG *pulElem = rgrgulMapping[ul];
-		if ((ULONG) edxlwinstage == pulElem[1])
+		if ((ULONG) dxl_win_stage == pulElem[1])
 		{
 			pwindowfunc->winstage = (WinStage) pulElem[0];
 			break;
@@ -619,13 +619,13 @@ CTranslatorDXLToScalar::PfuncexprFromDXLNodeScFuncExpr
 	)
 {
 	GPOS_ASSERT(NULL != pdxlnFuncExpr);
-	CDXLScalarFuncExpr *pdxlop = CDXLScalarFuncExpr::PdxlopConvert(pdxlnFuncExpr->Pdxlop());
+	CDXLScalarFuncExpr *pdxlop = CDXLScalarFuncExpr::Cast(pdxlnFuncExpr->GetOperator());
 
 	FuncExpr *pfuncexpr = MakeNode(FuncExpr);
-	pfuncexpr->funcid = CMDIdGPDB::PmdidConvert(pdxlop->PmdidFunc())->OidObjectId();
-	pfuncexpr->funcretset = pdxlop->FReturnSet();
+	pfuncexpr->funcid = CMDIdGPDB::CastMdid(pdxlop->FuncMdId())->OidObjectId();
+	pfuncexpr->funcretset = pdxlop->ReturnsSet();
 	pfuncexpr->funcformat = COERCE_DONTCARE;
-	pfuncexpr->funcresulttype = CMDIdGPDB::PmdidConvert(pdxlop->PmdidRetType())->OidObjectId();
+	pfuncexpr->funcresulttype = CMDIdGPDB::CastMdid(pdxlop->ReturnTypeMdId())->OidObjectId();
 	pfuncexpr->args = PlistTranslateScalarChildren(pfuncexpr->args, pdxlnFuncExpr, pmapcidvar);
 
 	// GDPB_91_MERGE_FIXME: collation
@@ -654,33 +654,33 @@ CTranslatorDXLToScalar::PsubplanFromDXLNodeScSubPlan
 
 	CContextDXLToPlStmt *pctxdxltoplstmt = (dynamic_cast<CMappingColIdVarPlStmt*>(pmapcidvar))->Pctxdxltoplstmt();
 
-	CDXLScalarSubPlan *pdxlop = CDXLScalarSubPlan::PdxlopConvert(pdxlnSubPlan->Pdxlop());
+	CDXLScalarSubPlan *pdxlop = CDXLScalarSubPlan::Cast(pdxlnSubPlan->GetOperator());
 
 	// translate subplan test expression
 	List *plparamIds = NIL;
 
-	SubLinkType slink = CTranslatorUtils::Slink(pdxlop->Edxlsptype());
-	Expr *pexprTestExpr = PexprSubplanTestExpr(pdxlop->PdxlnTestExpr(), slink, pmapcidvar, &plparamIds);
+	SubLinkType slink = CTranslatorUtils::Slink(pdxlop->GetDxlSubplanType());
+	Expr *pexprTestExpr = PexprSubplanTestExpr(pdxlop->GetDxlTestExpr(), slink, pmapcidvar, &plparamIds);
 
-	const DrgPdxlcr *pdrgdxlcrOuterRefs = pdxlop->DrgdxlcrOuterRefs();
+	const DrgPdxlcr *pdrgdxlcrOuterRefs = pdxlop->GetDxlOuterColRefsArray();
 
-	const ULONG ulLen = pdrgdxlcrOuterRefs->UlLength();
+	const ULONG ulLen = pdrgdxlcrOuterRefs->Size();
 
 	// create a copy of the translate context: the param mappings from the outer scope get copied in the constructor
-	CDXLTranslateContext dxltrctxSubplan(m_pmp, pdxltrctxOut->FParentAggNode(), pdxltrctxOut->PhmColParam());
+	CDXLTranslateContext dxltrctxSubplan(m_memory_pool, pdxltrctxOut->FParentAggNode(), pdxltrctxOut->PhmColParam());
 
 	// insert new outer ref mappings in the subplan translate context
 	for (ULONG ul = 0; ul < ulLen; ul++)
 	{
-		CDXLColRef *pdxlcr = (*pdrgdxlcrOuterRefs)[ul];
-		IMDId *pmdid = pdxlcr->PmdidType();
-		ULONG ulColid = pdxlcr->UlID();
-		INT iTypeModifier = pdxlcr->ITypeModifier();
+		CDXLColRef *dxl_colref = (*pdrgdxlcrOuterRefs)[ul];
+		IMDId *pmdid = dxl_colref->MDIdType();
+		ULONG ulColid = dxl_colref->Id();
+		INT type_modifier = dxl_colref->TypeModifier();
 
 		if (NULL == dxltrctxSubplan.Pmecolidparamid(ulColid))
 		{
 			// keep outer reference mapping to the original column for subsequent subplans
-			CMappingElementColIdParamId *pmecolidparamid = GPOS_NEW(m_pmp) CMappingElementColIdParamId(ulColid, pctxdxltoplstmt->UlNextParamId(), pmdid, iTypeModifier);
+			CMappingElementColIdParamId *pmecolidparamid = GPOS_NEW(m_memory_pool) CMappingElementColIdParamId(ulColid, pctxdxltoplstmt->UlNextParamId(), pmdid, type_modifier);
 
 #ifdef GPOS_DEBUG
 			BOOL fInserted =
@@ -691,26 +691,26 @@ CTranslatorDXLToScalar::PsubplanFromDXLNodeScSubPlan
 	}
 
 	CDXLNode *pdxlnChild = (*pdxlnSubPlan)[0];
-        GPOS_ASSERT(EdxloptypePhysical == pdxlnChild->Pdxlop()->Edxloperatortype());
+        GPOS_ASSERT(EdxloptypePhysical == pdxlnChild->GetOperator()->GetDXLOperatorType());
 
 	GPOS_ASSERT(NULL != pdxlnSubPlan);
-	GPOS_ASSERT(EdxlopScalarSubPlan == pdxlnSubPlan->Pdxlop()->Edxlop());
-	GPOS_ASSERT(1 == pdxlnSubPlan->UlArity());
+	GPOS_ASSERT(EdxlopScalarSubPlan == pdxlnSubPlan->GetOperator()->GetDXLOperator());
+	GPOS_ASSERT(1 == pdxlnSubPlan->Arity());
 
 	// generate the child plan,
 	// create DXL->PlStmt translator to handle subplan's relational children
 	CTranslatorDXLToPlStmt trdxltoplstmt
 							(
-							m_pmp,
+							m_memory_pool,
 							m_pmda,
 							(dynamic_cast<CMappingColIdVarPlStmt*>(pmapcidvar))->Pctxdxltoplstmt(),
-							m_ulSegments
+							m_num_of_segments
 							);
-	DrgPdxltrctx *pdrgpdxltrctxPrevSiblings = GPOS_NEW(m_pmp) DrgPdxltrctx(m_pmp);
+	DrgPdxltrctx *pdrgpdxltrctxPrevSiblings = GPOS_NEW(m_memory_pool) DrgPdxltrctx(m_memory_pool);
 	Plan *pplanChild = trdxltoplstmt.PplFromDXL(pdxlnChild, &dxltrctxSubplan, pdrgpdxltrctxPrevSiblings);
 	pdrgpdxltrctxPrevSiblings->Release();
 
-	GPOS_ASSERT(NULL != pplanChild->targetlist && 1 <= gpdb::UlListLength(pplanChild->targetlist));
+	GPOS_ASSERT(NULL != pplanChild->targetlist && 1 <= gpdb::ListLength(pplanChild->targetlist));
 
 	// translate subplan and set test expression
 	SubPlan *psubplan = PsubplanFromChildPlan(pplanChild, slink, pctxdxltoplstmt);
@@ -723,28 +723,28 @@ CTranslatorDXLToScalar::PsubplanFromDXLNodeScSubPlan
 	return (Expr *)psubplan;
 }
 
-inline BOOL FDXLCastedId(CDXLNode *pdxln)
+inline BOOL FDXLCastedId(CDXLNode *dxlnode)
 {
-	return EdxlopScalarCast == pdxln->Pdxlop()->Edxlop() &&
-		   pdxln->UlArity() > 0 && EdxlopScalarIdent == (*pdxln)[0]->Pdxlop()->Edxlop();
+	return EdxlopScalarCast == dxlnode->GetOperator()->GetDXLOperator() &&
+		   dxlnode->Arity() > 0 && EdxlopScalarIdent == (*dxlnode)[0]->GetOperator()->GetDXLOperator();
 }
 
 inline CTranslatorDXLToScalar::STypeOidAndTypeModifier OidParamOidFromDXLIdentOrDXLCastIdent(CDXLNode *pdxlnIdentOrCastIdent)
 {
-	GPOS_ASSERT(EdxlopScalarIdent == pdxlnIdentOrCastIdent->Pdxlop()->Edxlop() || FDXLCastedId(pdxlnIdentOrCastIdent));
+	GPOS_ASSERT(EdxlopScalarIdent == pdxlnIdentOrCastIdent->GetOperator()->GetDXLOperator() || FDXLCastedId(pdxlnIdentOrCastIdent));
 
 	CDXLScalarIdent *pdxlopInnerIdent;
-	if (EdxlopScalarIdent == pdxlnIdentOrCastIdent->Pdxlop()->Edxlop())
+	if (EdxlopScalarIdent == pdxlnIdentOrCastIdent->GetOperator()->GetDXLOperator())
 	{
-		pdxlopInnerIdent = CDXLScalarIdent::PdxlopConvert(pdxlnIdentOrCastIdent->Pdxlop());
+		pdxlopInnerIdent = CDXLScalarIdent::Cast(pdxlnIdentOrCastIdent->GetOperator());
 	}
 	else
 	{
-		pdxlopInnerIdent = CDXLScalarIdent::PdxlopConvert((*pdxlnIdentOrCastIdent)[0]->Pdxlop());
+		pdxlopInnerIdent = CDXLScalarIdent::Cast((*pdxlnIdentOrCastIdent)[0]->GetOperator());
 	}
-	Oid oidInnerType = CMDIdGPDB::PmdidConvert(pdxlopInnerIdent->PmdidType())->OidObjectId();
-	INT iTypeModifier = pdxlopInnerIdent->ITypeModifier();
-	return {oidInnerType, iTypeModifier};
+	Oid oidInnerType = CMDIdGPDB::CastMdid(pdxlopInnerIdent->MDIdType())->OidObjectId();
+	INT type_modifier = pdxlopInnerIdent->TypeModifier();
+	return {oidInnerType, type_modifier};
 }
 
 //---------------------------------------------------------------------------
@@ -758,7 +758,7 @@ inline CTranslatorDXLToScalar::STypeOidAndTypeModifier OidParamOidFromDXLIdentOr
 Expr *
 CTranslatorDXLToScalar::PexprSubplanTestExpr
 	(
-	CDXLNode *pdxlnTestExpr,
+	CDXLNode *dxlnode_test_expr,
 	SubLinkType slink,
 	CMappingColIdVar *pmapcidvar,
 	List **plparamIds
@@ -769,27 +769,27 @@ CTranslatorDXLToScalar::PexprSubplanTestExpr
 		// expr/exists/not-exists sublinks have no test expression
 		return NULL;
 	}
-	GPOS_ASSERT(NULL != pdxlnTestExpr);
+	GPOS_ASSERT(NULL != dxlnode_test_expr);
 
-	if (FConstTrue(pdxlnTestExpr, m_pmda))
+	if (FConstTrue(dxlnode_test_expr, m_pmda))
 	{
 		// dummy test expression
-		return (Expr *) PconstFromDXLNodeScConst(pdxlnTestExpr, NULL);
+		return (Expr *) PconstFromDXLNodeScConst(dxlnode_test_expr, NULL);
 	}
 
-	if (EdxlopScalarCmp != pdxlnTestExpr->Pdxlop()->Edxlop())
+	if (EdxlopScalarCmp != dxlnode_test_expr->GetOperator()->GetDXLOperator())
 	{
 		// test expression is expected to be a comparison
 		GPOS_RAISE(gpdxl::ExmaDXL, gpdxl::ExmiDXL2PlStmtConversion,  GPOS_WSZ_LIT("Unexpected subplan test expression"));
 	}
 
-	GPOS_ASSERT(2 == pdxlnTestExpr->UlArity());
+	GPOS_ASSERT(2 == dxlnode_test_expr->Arity());
 	GPOS_ASSERT(ANY_SUBLINK == slink || ALL_SUBLINK == slink);
 
-	CDXLNode *pdxlnOuterChild = (*pdxlnTestExpr)[0];
-	CDXLNode *pdxlnInnerChild = (*pdxlnTestExpr)[1];
+	CDXLNode *pdxlnOuterChild = (*dxlnode_test_expr)[0];
+	CDXLNode *pdxlnInnerChild = (*dxlnode_test_expr)[1];
 
-	if (EdxlopScalarIdent != pdxlnInnerChild->Pdxlop()->Edxlop() && !FDXLCastedId(pdxlnInnerChild))
+	if (EdxlopScalarIdent != pdxlnInnerChild->GetOperator()->GetDXLOperator() && !FDXLCastedId(pdxlnInnerChild))
 	{
 		// test expression is expected to be a comparison between an outer expression 
 		// and a scalar identifier from subplan child
@@ -797,14 +797,14 @@ CTranslatorDXLToScalar::PexprSubplanTestExpr
 	}
 
 	// extract type of inner column
-        CDXLScalarComp *pdxlopCmp = CDXLScalarComp::PdxlopConvert(pdxlnTestExpr->Pdxlop());
+        CDXLScalarComp *pdxlopCmp = CDXLScalarComp::Cast(dxlnode_test_expr->GetOperator());
 
 		// create an OpExpr for subplan test expression
         OpExpr *popexpr = MakeNode(OpExpr);
-        popexpr->opno = CMDIdGPDB::PmdidConvert(pdxlopCmp->Pmdid())->OidObjectId();
-        const IMDScalarOp *pmdscop = m_pmda->Pmdscop(pdxlopCmp->Pmdid());
-        popexpr->opfuncid = CMDIdGPDB::PmdidConvert(pmdscop->PmdidFunc())->OidObjectId();
-        popexpr->opresulttype = CMDIdGPDB::PmdidConvert(m_pmda->PtMDType<IMDTypeBool>()->Pmdid())->OidObjectId();
+        popexpr->opno = CMDIdGPDB::CastMdid(pdxlopCmp->MDId())->OidObjectId();
+        const IMDScalarOp *md_scalar_op = m_pmda->Pmdscop(pdxlopCmp->MDId());
+        popexpr->opfuncid = CMDIdGPDB::CastMdid(md_scalar_op->FuncMdId())->OidObjectId();
+        popexpr->opresulttype = CMDIdGPDB::CastMdid(m_pmda->PtMDType<IMDTypeBool>()->MDId())->OidObjectId();
         popexpr->opretset = false;
 
         // translate outer expression (can be a deep scalar tree)
@@ -821,7 +821,7 @@ CTranslatorDXLToScalar::PexprSubplanTestExpr
 	pparam->paramid = pctxdxltoplstmt->UlNextParamId();
 	CTranslatorDXLToScalar::STypeOidAndTypeModifier oidAndTypeModifier = OidParamOidFromDXLIdentOrDXLCastIdent(pdxlnInnerChild);
 	pparam->paramtype = oidAndTypeModifier.OidType;
-	pparam->paramtypmod = oidAndTypeModifier.ITypeModifier;
+	pparam->paramtypmod = oidAndTypeModifier.TypeModifier;
 
 	// test expression is used for non-scalar subplan,
 	// second arg of test expression must be an EXEC param referring to subplan output,
@@ -829,13 +829,13 @@ CTranslatorDXLToScalar::PexprSubplanTestExpr
 
 	*plparamIds = gpdb::PlAppendInt(*plparamIds, pparam->paramid);
 
-	if (EdxlopScalarIdent == pdxlnInnerChild->Pdxlop()->Edxlop())
+	if (EdxlopScalarIdent == pdxlnInnerChild->GetOperator()->GetDXLOperator())
 	{
 		plistArgs = gpdb::PlAppendElement(plistArgs, pparam);
 	}
 	else // we have a cast
 	{
-		CDXLScalarCast *pdxlScalaCast = CDXLScalarCast::PdxlopConvert(pdxlnInnerChild->Pdxlop());
+		CDXLScalarCast *pdxlScalaCast = CDXLScalarCast::Cast(pdxlnInnerChild->GetOperator());
 		Expr *pexprCastParam = PrelabeltypeOrFuncexprFromDXLNodeScalarCast(pdxlScalaCast, (Expr *) pparam);
 		plistArgs = gpdb::PlAppendElement(plistArgs, pexprCastParam);
 	}
@@ -868,20 +868,20 @@ CTranslatorDXLToScalar::TranslateSubplanParams
 	GPOS_ASSERT(NULL != pmapcidvar);
 
 	// Create the PARAM and ARG nodes
-	const ULONG ulSize = pdrgdxlcrOuterRefs->UlLength();
-	for (ULONG ul = 0; ul < ulSize; ul++)
+	const ULONG size = pdrgdxlcrOuterRefs->Size();
+	for (ULONG ul = 0; ul < size; ul++)
 	{
-		CDXLColRef *pdxlcr = (*pdrgdxlcrOuterRefs)[ul];
-		pdxlcr->AddRef();
-		const CMappingElementColIdParamId *pmecolidparamid = pdxltrctx->Pmecolidparamid(pdxlcr->UlID());
+		CDXLColRef *dxl_colref = (*pdrgdxlcrOuterRefs)[ul];
+		dxl_colref->AddRef();
+		const CMappingElementColIdParamId *pmecolidparamid = pdxltrctx->Pmecolidparamid(dxl_colref->Id());
 
 		// TODO: eliminate pparam, it's not *really* used, and it's (short-term) leaked
 		Param *pparam = PparamFromMapping(pmecolidparamid);
 		psubplan->parParam = gpdb::PlAppendInt(psubplan->parParam, pparam->paramid);
 
-		GPOS_ASSERT(pmecolidparamid->PmdidType()->FEquals(pdxlcr->PmdidType()));
+		GPOS_ASSERT(pmecolidparamid->MDIdType()->Equals(dxl_colref->MDIdType()));
 
-		CDXLScalarIdent *pdxlopIdent = GPOS_NEW(m_pmp) CDXLScalarIdent(m_pmp, pdxlcr);
+		CDXLScalarIdent *pdxlopIdent = GPOS_NEW(m_memory_pool) CDXLScalarIdent(m_memory_pool, dxl_colref);
 		Expr *parg = (Expr *) pmapcidvar->PvarFromDXLNodeScId(pdxlopIdent);
 
 		// not found in mapping, it must be an external parameter
@@ -916,7 +916,7 @@ CTranslatorDXLToScalar::PsubplanFromChildPlan
 	pctxdxltoplstmt->AddSubplan(pplan);
 
 	SubPlan *psubplan = MakeNode(SubPlan);
-	psubplan->plan_id = gpdb::UlListLength(pctxdxltoplstmt->PlPplanSubplan());
+	psubplan->plan_id = gpdb::ListLength(pctxdxltoplstmt->PlPplanSubplan());
 	psubplan->plan_name = SzSubplanAlias(psubplan->plan_id);
 	psubplan->is_initplan = false;
 	psubplan->firstColType = gpdb::OidExprType( (Node*) ((TargetEntry*) gpdb::PvListNth(pplan->targetlist, 0))->expr);
@@ -944,15 +944,15 @@ CTranslatorDXLToScalar::SzSubplanAlias
 	ULONG ulPlanId
 	)
 {
-	CWStringDynamic *pstr = GPOS_NEW(m_pmp) CWStringDynamic(m_pmp);
-	pstr->AppendFormat(GPOS_WSZ_LIT("SubPlan %d"), ulPlanId);
-	const WCHAR *wsz = pstr->Wsz();
+	CWStringDynamic *str = GPOS_NEW(m_memory_pool) CWStringDynamic(m_memory_pool);
+	str->AppendFormat(GPOS_WSZ_LIT("SubPlan %d"), ulPlanId);
+	const WCHAR *wsz = str->GetBuffer();
 
 	ULONG ulMaxLength = (GPOS_WSZ_LENGTH(wsz) + 1) * GPOS_SIZEOF(WCHAR);
 	CHAR *sz = (CHAR *) gpdb::GPDBAlloc(ulMaxLength);
-	gpos::clib::LWcsToMbs(sz, const_cast<WCHAR *>(wsz), ulMaxLength);
+	gpos::clib::Wcstombs(sz, const_cast<WCHAR *>(wsz), ulMaxLength);
 	sz[ulMaxLength - 1] = '\0';
-	GPOS_DELETE(pstr);
+	GPOS_DELETE(str);
 
 	return sz;
 }
@@ -974,8 +974,8 @@ CTranslatorDXLToScalar::PparamFromMapping
 	Param *pparam = MakeNode(Param);
 	pparam->paramid = pmecolidparamid->UlParamId();
 	pparam->paramkind = PARAM_EXEC;
-	pparam->paramtype = CMDIdGPDB::PmdidConvert(pmecolidparamid->PmdidType())->OidObjectId();
-	pparam->paramtypmod = pmecolidparamid->ITypeModifier();
+	pparam->paramtype = CMDIdGPDB::CastMdid(pmecolidparamid->MDIdType())->OidObjectId();
+	pparam->paramtypmod = pmecolidparamid->TypeModifier();
 	// GDPB_91_MERGE_FIXME: collation
 	pparam->paramcollid = gpdb::OidTypeCollation(pparam->paramtype);
 
@@ -999,27 +999,27 @@ CTranslatorDXLToScalar::PboolexprFromDXLNodeScBoolExpr
 	)
 {
 	GPOS_ASSERT(NULL != pdxlnBoolExpr);
-	CDXLScalarBoolExpr *pdxlop = CDXLScalarBoolExpr::PdxlopConvert(pdxlnBoolExpr->Pdxlop());
+	CDXLScalarBoolExpr *pdxlop = CDXLScalarBoolExpr::Cast(pdxlnBoolExpr->GetOperator());
 	BoolExpr *pboolexpr = MakeNode(BoolExpr);
 
-	GPOS_ASSERT(1 <= pdxlnBoolExpr->UlArity());
-	switch (pdxlop->EdxlBoolType())
+	GPOS_ASSERT(1 <= pdxlnBoolExpr->Arity());
+	switch (pdxlop->GetDxlBoolTypeStr())
 	{
 		case Edxlnot:
 		{
-			GPOS_ASSERT(1 == pdxlnBoolExpr->UlArity());
+			GPOS_ASSERT(1 == pdxlnBoolExpr->Arity());
 			pboolexpr->boolop = NOT_EXPR;
 			break;
 		}
 		case Edxland:
 		{
-			GPOS_ASSERT(2 <= pdxlnBoolExpr->UlArity());
+			GPOS_ASSERT(2 <= pdxlnBoolExpr->Arity());
 			pboolexpr->boolop = AND_EXPR;
 			break;
 		}
 		case Edxlor:
 		{
-			GPOS_ASSERT(2 <= pdxlnBoolExpr->UlArity());
+			GPOS_ASSERT(2 <= pdxlnBoolExpr->Arity());
 			pboolexpr->boolop = OR_EXPR;
 			break;
 		}
@@ -1052,10 +1052,10 @@ CTranslatorDXLToScalar::PbooleantestFromDXLNodeScBooleanTest
 	)
 {
 	GPOS_ASSERT(NULL != pdxlnBooleanTest);
-	CDXLScalarBooleanTest *pdxlop = CDXLScalarBooleanTest::PdxlopConvert(pdxlnBooleanTest->Pdxlop());
+	CDXLScalarBooleanTest *pdxlop = CDXLScalarBooleanTest::Cast(pdxlnBooleanTest->GetOperator());
 	BooleanTest *pbooleantest = MakeNode(BooleanTest);
 
-	switch (pdxlop->EdxlBoolType())
+	switch (pdxlop->GetDxlBoolTypeStr())
 	{
 		case EdxlbooleantestIsTrue:
 				pbooleantest->booltesttype = IS_TRUE;
@@ -1082,10 +1082,10 @@ CTranslatorDXLToScalar::PbooleantestFromDXLNodeScBooleanTest
 				}
 	}
 
-	GPOS_ASSERT(1 == pdxlnBooleanTest->UlArity());
-	CDXLNode *pdxlnArg = (*pdxlnBooleanTest)[0];
+	GPOS_ASSERT(1 == pdxlnBooleanTest->Arity());
+	CDXLNode *dxlnode_arg = (*pdxlnBooleanTest)[0];
 
-	Expr *pexprArg = PexprFromDXLNodeScalar(pdxlnArg, pmapcidvar);
+	Expr *pexprArg = PexprFromDXLNodeScalar(dxlnode_arg, pmapcidvar);
 	pbooleantest->arg = pexprArg;
 
 	return (Expr *)pbooleantest;
@@ -1107,14 +1107,14 @@ CTranslatorDXLToScalar::PnulltestFromDXLNodeScNullTest
 	)
 {
 	GPOS_ASSERT(NULL != pdxlnNullTest);
-	CDXLScalarNullTest *pdxlop = CDXLScalarNullTest::PdxlopConvert(pdxlnNullTest->Pdxlop());
+	CDXLScalarNullTest *pdxlop = CDXLScalarNullTest::Cast(pdxlnNullTest->GetOperator());
 	NullTest *pnulltest = MakeNode(NullTest);
 
-	GPOS_ASSERT(1 == pdxlnNullTest->UlArity());
+	GPOS_ASSERT(1 == pdxlnNullTest->Arity());
 	CDXLNode *pdxlnChild = (*pdxlnNullTest)[0];
 	Expr *pexprChild = PexprFromDXLNodeScalar(pdxlnChild, pmapcidvar);
 
-	if (pdxlop->FIsNullTest())
+	if (pdxlop->IsNullTest())
 	{
 		pnulltest->nulltesttype = IS_NULL;
 	}
@@ -1143,19 +1143,19 @@ CTranslatorDXLToScalar::PnullifFromDXLNodeScNullIf
 	)
 {
 	GPOS_ASSERT(NULL != pdxlnNullIf);
-	CDXLScalarNullIf *pdxlop = CDXLScalarNullIf::PdxlopConvert(pdxlnNullIf->Pdxlop());
+	CDXLScalarNullIf *pdxlop = CDXLScalarNullIf::Cast(pdxlnNullIf->GetOperator());
 
 	NullIfExpr *pnullifexpr = MakeNode(NullIfExpr);
-	pnullifexpr->opno = CMDIdGPDB::PmdidConvert(pdxlop->PmdidOp())->OidObjectId();
+	pnullifexpr->opno = CMDIdGPDB::CastMdid(pdxlop->MdIdOp())->OidObjectId();
 
-	const IMDScalarOp *pmdscop = m_pmda->Pmdscop(pdxlop->PmdidOp());
+	const IMDScalarOp *md_scalar_op = m_pmda->Pmdscop(pdxlop->MdIdOp());
 
-	pnullifexpr->opfuncid = CMDIdGPDB::PmdidConvert(pmdscop->PmdidFunc())->OidObjectId();
-	pnullifexpr->opresulttype = CMDIdGPDB::PmdidConvert(pdxlop->PmdidType())->OidObjectId();
+	pnullifexpr->opfuncid = CMDIdGPDB::CastMdid(md_scalar_op->FuncMdId())->OidObjectId();
+	pnullifexpr->opresulttype = CMDIdGPDB::CastMdid(pdxlop->MDIdType())->OidObjectId();
 	pnullifexpr->opretset = false;
 
 	// translate children
-	GPOS_ASSERT(2 == pdxlnNullIf->UlArity());
+	GPOS_ASSERT(2 == pdxlnNullIf->Arity());
 	pnullifexpr->args = PlistTranslateScalarChildren(pnullifexpr->args, pdxlnNullIf, pmapcidvar);
 	// GDPB_91_MERGE_FIXME: collation
 	pnullifexpr->opcollid = gpdb::OidTypeCollation(pnullifexpr->opresulttype);
@@ -1167,16 +1167,16 @@ CTranslatorDXLToScalar::PnullifFromDXLNodeScNullIf
 Expr *
 CTranslatorDXLToScalar::PrelabeltypeOrFuncexprFromDXLNodeScalarCast(const CDXLScalarCast *pdxlscalarcast, Expr *pexprChild)
 {
-	if (IMDId::FValid(pdxlscalarcast->PmdidFunc()))
+	if (IMDId::IsValid(pdxlscalarcast->FuncMdId()))
 	{
 		FuncExpr *pfuncexpr = MakeNode(FuncExpr);
-		pfuncexpr->funcid = CMDIdGPDB::PmdidConvert(pdxlscalarcast->PmdidFunc())->OidObjectId();
+		pfuncexpr->funcid = CMDIdGPDB::CastMdid(pdxlscalarcast->FuncMdId())->OidObjectId();
 
-		const IMDFunction *pmdfunc = m_pmda->Pmdfunc(pdxlscalarcast->PmdidFunc());
-		pfuncexpr->funcretset = pmdfunc->FReturnsSet();;
+		const IMDFunction *pmdfunc = m_pmda->Pmdfunc(pdxlscalarcast->FuncMdId());
+		pfuncexpr->funcretset = pmdfunc->ReturnsSet();;
 
 		pfuncexpr->funcformat = COERCE_IMPLICIT_CAST;
-		pfuncexpr->funcresulttype = CMDIdGPDB::PmdidConvert(pdxlscalarcast->PmdidType())->OidObjectId();
+		pfuncexpr->funcresulttype = CMDIdGPDB::CastMdid(pdxlscalarcast->MDIdType())->OidObjectId();
 
 		pfuncexpr->args = NIL;
 		pfuncexpr->args = gpdb::PlAppendElement(pfuncexpr->args, pexprChild);
@@ -1190,7 +1190,7 @@ CTranslatorDXLToScalar::PrelabeltypeOrFuncexprFromDXLNodeScalarCast(const CDXLSc
 
 	RelabelType *prelabeltype = MakeNode(RelabelType);
 
-	prelabeltype->resulttype = CMDIdGPDB::PmdidConvert(pdxlscalarcast->PmdidType())->OidObjectId();
+	prelabeltype->resulttype = CMDIdGPDB::CastMdid(pdxlscalarcast->MDIdType())->OidObjectId();
 	prelabeltype->arg = pexprChild;
 	prelabeltype->resulttypmod = -1;
 	prelabeltype->location = -1;
@@ -1210,9 +1210,9 @@ CTranslatorDXLToScalar::PrelabeltypeFromDXLNodeScCast
 	)
 {
 	GPOS_ASSERT(NULL != pdxlnCast);
-	const CDXLScalarCast *pdxlop = CDXLScalarCast::PdxlopConvert(pdxlnCast->Pdxlop());
+	const CDXLScalarCast *pdxlop = CDXLScalarCast::Cast(pdxlnCast->GetOperator());
 
-	GPOS_ASSERT(1 == pdxlnCast->UlArity());
+	GPOS_ASSERT(1 == pdxlnCast->Arity());
 	CDXLNode *pdxlnChild = (*pdxlnCast)[0];
 
 	Expr *pexprChild = PexprFromDXLNodeScalar(pdxlnChild, pmapcidvar);
@@ -1237,19 +1237,19 @@ CTranslatorDXLToScalar::PcoerceFromDXLNodeScCoerceToDomain
 	)
 {
 	GPOS_ASSERT(NULL != pdxlnCoerce);
-	CDXLScalarCoerceToDomain *pdxlop = CDXLScalarCoerceToDomain::PdxlopConvert(pdxlnCoerce->Pdxlop());
+	CDXLScalarCoerceToDomain *pdxlop = CDXLScalarCoerceToDomain::Cast(pdxlnCoerce->GetOperator());
 
-	GPOS_ASSERT(1 == pdxlnCoerce->UlArity());
+	GPOS_ASSERT(1 == pdxlnCoerce->Arity());
 	CDXLNode *pdxlnChild = (*pdxlnCoerce)[0];
 	Expr *pexprChild = PexprFromDXLNodeScalar(pdxlnChild, pmapcidvar);
 
 	CoerceToDomain *pcoerce = MakeNode(CoerceToDomain);
 
-	pcoerce->resulttype = CMDIdGPDB::PmdidConvert(pdxlop->PmdidResultType())->OidObjectId();
+	pcoerce->resulttype = CMDIdGPDB::CastMdid(pdxlop->GetResultTypeMdId())->OidObjectId();
 	pcoerce->arg = pexprChild;
-	pcoerce->resulttypmod = pdxlop->ITypeModifier();
-	pcoerce->location = pdxlop->ILoc();
-	pcoerce->coercionformat = (CoercionForm)  pdxlop->Edxlcf();
+	pcoerce->resulttypmod = pdxlop->TypeModifier();
+	pcoerce->location = pdxlop->GetLocation();
+	pcoerce->coercionformat = (CoercionForm)  pdxlop->GetDXLCoercionForm();
 	// GDPB_91_MERGE_FIXME: collation
 	pcoerce->resultcollid = gpdb::OidTypeCollation(pcoerce->resulttype);
 
@@ -1272,18 +1272,18 @@ CTranslatorDXLToScalar::PcoerceFromDXLNodeScCoerceViaIO
 	)
 {
 	GPOS_ASSERT(NULL != pdxlnCoerce);
-	CDXLScalarCoerceViaIO *pdxlop = CDXLScalarCoerceViaIO::PdxlopConvert(pdxlnCoerce->Pdxlop());
+	CDXLScalarCoerceViaIO *pdxlop = CDXLScalarCoerceViaIO::Cast(pdxlnCoerce->GetOperator());
 
-	GPOS_ASSERT(1 == pdxlnCoerce->UlArity());
+	GPOS_ASSERT(1 == pdxlnCoerce->Arity());
 	CDXLNode *pdxlnChild = (*pdxlnCoerce)[0];
 	Expr *pexprChild = PexprFromDXLNodeScalar(pdxlnChild, pmapcidvar);
 
 	CoerceViaIO *pcoerce = MakeNode(CoerceViaIO);
 
-	pcoerce->resulttype = CMDIdGPDB::PmdidConvert(pdxlop->PmdidResultType())->OidObjectId();
+	pcoerce->resulttype = CMDIdGPDB::CastMdid(pdxlop->GetResultTypeMdId())->OidObjectId();
 	pcoerce->arg = pexprChild;
-	pcoerce->location = pdxlop->ILoc();
-	pcoerce->coerceformat = (CoercionForm)  pdxlop->Edxlcf();
+	pcoerce->location = pdxlop->GetLocation();
+	pcoerce->coerceformat = (CoercionForm)  pdxlop->GetDXLCoercionForm();
 	// GDPB_91_MERGE_FIXME: collation
 	pcoerce->resultcollid = gpdb::OidTypeCollation(pcoerce->resulttype);
 
@@ -1306,9 +1306,9 @@ CTranslatorDXLToScalar::PcoerceFromDXLNodeScArrayCoerceExpr
 	)
 {
 	GPOS_ASSERT(NULL != pdxlnCoerce);
-	CDXLScalarArrayCoerceExpr *pdxlop = CDXLScalarArrayCoerceExpr::PdxlopConvert(pdxlnCoerce->Pdxlop());
+	CDXLScalarArrayCoerceExpr *pdxlop = CDXLScalarArrayCoerceExpr::Cast(pdxlnCoerce->GetOperator());
 
-	GPOS_ASSERT(1 == pdxlnCoerce->UlArity());
+	GPOS_ASSERT(1 == pdxlnCoerce->Arity());
 	CDXLNode *pdxlnChild = (*pdxlnCoerce)[0];
 
 	Expr *pexprChild = PexprFromDXLNodeScalar(pdxlnChild, pmapcidvar);
@@ -1316,14 +1316,14 @@ CTranslatorDXLToScalar::PcoerceFromDXLNodeScArrayCoerceExpr
 	ArrayCoerceExpr *pcoerce = MakeNode(ArrayCoerceExpr);
 
 	pcoerce->arg = pexprChild;
-	pcoerce->elemfuncid = CMDIdGPDB::PmdidConvert(pdxlop->PmdidElementFunc())->OidObjectId();
-	pcoerce->resulttype = CMDIdGPDB::PmdidConvert(pdxlop->PmdidResultType())->OidObjectId();
-	pcoerce->resulttypmod = pdxlop->ITypeModifier();
+	pcoerce->elemfuncid = CMDIdGPDB::CastMdid(pdxlop->GetCoerceFuncMDid())->OidObjectId();
+	pcoerce->resulttype = CMDIdGPDB::CastMdid(pdxlop->GetResultTypeMdId())->OidObjectId();
+	pcoerce->resulttypmod = pdxlop->TypeModifier();
 	// GDPB_91_MERGE_FIXME: collation
 	pcoerce->resultcollid = gpdb::OidTypeCollation(pcoerce->resulttype);
-	pcoerce->isExplicit = pdxlop->FIsExplicit();
-	pcoerce->coerceformat = (CoercionForm)  pdxlop->Edxlcf();
-	pcoerce->location = pdxlop->ILoc();
+	pcoerce->isExplicit = pdxlop->IsExplicit();
+	pcoerce->coerceformat = (CoercionForm)  pdxlop->GetDXLCoercionForm();
+	pcoerce->location = pdxlop->GetLocation();
 
 	return (Expr *) pcoerce;
 }
@@ -1344,10 +1344,10 @@ CTranslatorDXLToScalar::PcoalesceFromDXLNodeScCoalesce
 	)
 {
 	GPOS_ASSERT(NULL != pdxlnCoalesce);
-	CDXLScalarCoalesce *pdxlop = CDXLScalarCoalesce::PdxlopConvert(pdxlnCoalesce->Pdxlop());
+	CDXLScalarCoalesce *pdxlop = CDXLScalarCoalesce::Cast(pdxlnCoalesce->GetOperator());
 	CoalesceExpr *pcoalesce = MakeNode(CoalesceExpr);
 
-	pcoalesce->coalescetype = CMDIdGPDB::PmdidConvert(pdxlop->PmdidType())->OidObjectId();
+	pcoalesce->coalescetype = CMDIdGPDB::CastMdid(pdxlop->MDIdType())->OidObjectId();
 	// GDPB_91_MERGE_FIXME: collation
 	pcoalesce->coalescecollid = gpdb::OidTypeCollation(pcoalesce->coalescetype);
 	pcoalesce->args = PlistTranslateScalarChildren(pcoalesce->args, pdxlnCoalesce, pmapcidvar);
@@ -1372,24 +1372,24 @@ CTranslatorDXLToScalar::PminmaxFromDXLNodeScMinMax
 	)
 {
 	GPOS_ASSERT(NULL != pdxlnMinMax);
-	CDXLScalarMinMax *pdxlop = CDXLScalarMinMax::PdxlopConvert(pdxlnMinMax->Pdxlop());
+	CDXLScalarMinMax *pdxlop = CDXLScalarMinMax::Cast(pdxlnMinMax->GetOperator());
 	MinMaxExpr *pminmax = MakeNode(MinMaxExpr);
 
-	pminmax->minmaxtype = CMDIdGPDB::PmdidConvert(pdxlop->PmdidType())->OidObjectId();
+	pminmax->minmaxtype = CMDIdGPDB::CastMdid(pdxlop->MDIdType())->OidObjectId();
 	pminmax->minmaxcollid = gpdb::OidTypeCollation(pminmax->minmaxtype);
 	pminmax->args = PlistTranslateScalarChildren(pminmax->args, pdxlnMinMax, pmapcidvar);
 	// GDPB_91_MERGE_FIXME: collation
 	pminmax->inputcollid = gpdb::OidExprCollation((Node *) pminmax->args);
 	pminmax->location = -1;
 
-	CDXLScalarMinMax::EdxlMinMaxType emmt = pdxlop->Emmt();
-	if (CDXLScalarMinMax::EmmtMax == emmt)
+	CDXLScalarMinMax::EdxlMinMaxType min_max_type = pdxlop->GetMinMaxType();
+	if (CDXLScalarMinMax::EmmtMax == min_max_type)
 	{
 		pminmax->op = IS_GREATEST;
 	}
 	else
 	{
-		GPOS_ASSERT(CDXLScalarMinMax::EmmtMin == emmt);
+		GPOS_ASSERT(CDXLScalarMinMax::EmmtMin == min_max_type);
 		pminmax->op = IS_LEAST;
 	}
 
@@ -1408,16 +1408,16 @@ List *
 CTranslatorDXLToScalar::PlistTranslateScalarChildren
 	(
 	List *plist,
-	const CDXLNode *pdxln,
+	const CDXLNode *dxlnode,
 	CMappingColIdVar *pmapcidvar
 	)
 {
 	List *plistNew = plist;
 
-	const ULONG ulArity = pdxln->UlArity();
-	for (ULONG ul = 0; ul < ulArity; ul++)
+	const ULONG arity = dxlnode->Arity();
+	for (ULONG ul = 0; ul < arity; ul++)
 	{
-		CDXLNode *pdxlnChild = (*pdxln)[ul];
+		CDXLNode *pdxlnChild = (*dxlnode)[ul];
 		Expr *pexprChild = PexprFromDXLNodeScalar(pdxlnChild, pmapcidvar);
 		plistNew = gpdb::PlAppendElement(plistNew, pexprChild);
 	}
@@ -1441,10 +1441,10 @@ CTranslatorDXLToScalar::PconstFromDXLNodeScConst
 	)
 {
 	GPOS_ASSERT(NULL != pdxlnConst);
-	CDXLScalarConstValue *pdxlop = CDXLScalarConstValue::PdxlopConvert(pdxlnConst->Pdxlop());
-	CDXLDatum *pdxldatum = const_cast<CDXLDatum*>(pdxlop->Pdxldatum());
+	CDXLScalarConstValue *pdxlop = CDXLScalarConstValue::Cast(pdxlnConst->GetOperator());
+	CDXLDatum *datum_dxl = const_cast<CDXLDatum*>(pdxlop->GetDatumVal());
 
-	return PconstFromDXLDatum(pdxldatum);
+	return PconstFromDXLDatum(datum_dxl);
 }
 
 //---------------------------------------------------------------------------
@@ -1458,11 +1458,10 @@ CTranslatorDXLToScalar::PconstFromDXLNodeScConst
 Expr *
 CTranslatorDXLToScalar::PconstFromDXLDatum
 	(
-	CDXLDatum *pdxldatum
+	CDXLDatum *datum_dxl
 	)
 {
-	GPOS_ASSERT(NULL != pdxldatum);
-
+	GPOS_ASSERT(NULL != datum_dxl);
 	static const SDatumTranslatorElem rgTranslators[] =
 		{
 			{CDXLDatum::EdxldatumInt2 , &CTranslatorDXLToScalar::PconstInt2},
@@ -1476,7 +1475,7 @@ CTranslatorDXLToScalar::PconstFromDXLDatum
 		};
 
 	const ULONG ulTranslators = GPOS_ARRAY_SIZE(rgTranslators);
-	CDXLDatum::EdxldatumType edxldatumtype = pdxldatum->Edxldt();
+	CDXLDatum::EdxldatumType edxldatumtype = datum_dxl->GetDatumType();
 
 	// find translator for the node type
 	PfPconst pf = NULL;
@@ -1492,10 +1491,10 @@ CTranslatorDXLToScalar::PconstFromDXLDatum
 
 	if (NULL == pf)
 	{
-		GPOS_RAISE(gpdxl::ExmaDXL, gpdxl::ExmiDXL2PlStmtConversion, CDXLTokens::PstrToken(EdxltokenScalarConstValue)->Wsz());
+		GPOS_RAISE(gpdxl::ExmaDXL, gpdxl::ExmiDXL2PlStmtConversion, CDXLTokens::GetDXLTokenStr(EdxltokenScalarConstValue)->GetBuffer());
 	}
 
-	return (Expr*) (this->*pf)(pdxldatum);
+	return (Expr*) (this->*pf)(datum_dxl);
 }
 
 //---------------------------------------------------------------------------
@@ -1509,18 +1508,18 @@ CTranslatorDXLToScalar::PconstFromDXLDatum
 Const *
 CTranslatorDXLToScalar::PconstOid
 	(
-	CDXLDatum *pdxldatum
+	CDXLDatum *datum_dxl
 	)
 {
-	CDXLDatumOid *pdxldatumOid = CDXLDatumOid::PdxldatumConvert(pdxldatum);
+	CDXLDatumOid *pdxldatumOid = CDXLDatumOid::Cast(datum_dxl);
 
 	Const *pconst = MakeNode(Const);
-	pconst->consttype = CMDIdGPDB::PmdidConvert(pdxldatumOid->Pmdid())->OidObjectId();
+	pconst->consttype = CMDIdGPDB::CastMdid(pdxldatumOid->MDId())->OidObjectId();
 	pconst->consttypmod = -1;
 	pconst->constcollid = InvalidOid;
-	pconst->constbyval = pdxldatumOid->FByValue();
-	pconst->constisnull = pdxldatumOid->FNull();
-	pconst->constlen = pdxldatumOid->UlLength();
+	pconst->constbyval = pdxldatumOid->IsPassedByValue();
+	pconst->constisnull = pdxldatumOid->IsNull();
+	pconst->constlen = pdxldatumOid->Length();
 
 	if (pconst->constisnull)
 	{
@@ -1546,18 +1545,18 @@ CTranslatorDXLToScalar::PconstOid
 Const *
 CTranslatorDXLToScalar::PconstInt2
 	(
-	CDXLDatum *pdxldatum
+	CDXLDatum *datum_dxl
 	)
 {
-	CDXLDatumInt2 *pdxldatumint2 = CDXLDatumInt2::PdxldatumConvert(pdxldatum);
+	CDXLDatumInt2 *pdxldatumint2 = CDXLDatumInt2::Cast(datum_dxl);
 
 	Const *pconst = MakeNode(Const);
-	pconst->consttype = CMDIdGPDB::PmdidConvert(pdxldatumint2->Pmdid())->OidObjectId();
+	pconst->consttype = CMDIdGPDB::CastMdid(pdxldatumint2->MDId())->OidObjectId();
 	pconst->consttypmod = -1;
 	pconst->constcollid = InvalidOid;
-	pconst->constbyval = pdxldatumint2->FByValue();
-	pconst->constisnull = pdxldatumint2->FNull();
-	pconst->constlen = pdxldatumint2->UlLength();
+	pconst->constbyval = pdxldatumint2->IsPassedByValue();
+	pconst->constisnull = pdxldatumint2->IsNull();
+	pconst->constlen = pdxldatumint2->Length();
 
 	if (pconst->constisnull)
 	{
@@ -1565,7 +1564,7 @@ CTranslatorDXLToScalar::PconstInt2
 	}
 	else
 	{
-		pconst->constvalue = gpdb::DDatumFromInt16(pdxldatumint2->SValue());
+		pconst->constvalue = gpdb::DDatumFromInt16(pdxldatumint2->Value());
 	}
 
 	return pconst;
@@ -1583,18 +1582,18 @@ CTranslatorDXLToScalar::PconstInt2
 Const *
 CTranslatorDXLToScalar::PconstInt4
 	(
-	CDXLDatum *pdxldatum
+	CDXLDatum *datum_dxl
 	)
 {
-	CDXLDatumInt4 *pdxldatumint4 = CDXLDatumInt4::PdxldatumConvert(pdxldatum);
+	CDXLDatumInt4 *pdxldatumint4 = CDXLDatumInt4::Cast(datum_dxl);
 
 	Const *pconst = MakeNode(Const);
-	pconst->consttype = CMDIdGPDB::PmdidConvert(pdxldatumint4->Pmdid())->OidObjectId();
+	pconst->consttype = CMDIdGPDB::CastMdid(pdxldatumint4->MDId())->OidObjectId();
 	pconst->consttypmod = -1;
 	pconst->constcollid = InvalidOid;
-	pconst->constbyval = pdxldatumint4->FByValue();
-	pconst->constisnull = pdxldatumint4->FNull();
-	pconst->constlen = pdxldatumint4->UlLength();
+	pconst->constbyval = pdxldatumint4->IsPassedByValue();
+	pconst->constisnull = pdxldatumint4->IsNull();
+	pconst->constlen = pdxldatumint4->Length();
 
 	if (pconst->constisnull)
 	{
@@ -1602,7 +1601,7 @@ CTranslatorDXLToScalar::PconstInt4
 	}
 	else
 	{
-		pconst->constvalue = gpdb::DDatumFromInt32(pdxldatumint4->IValue());
+		pconst->constvalue = gpdb::DDatumFromInt32(pdxldatumint4->Value());
 	}
 
 	return pconst;
@@ -1619,18 +1618,18 @@ CTranslatorDXLToScalar::PconstInt4
 Const *
 CTranslatorDXLToScalar::PconstInt8
 	(
-	CDXLDatum *pdxldatum
+	CDXLDatum *datum_dxl
 	)
 {
-	CDXLDatumInt8 *pdxldatumint8 = CDXLDatumInt8::PdxldatumConvert(pdxldatum);
+	CDXLDatumInt8 *pdxldatumint8 = CDXLDatumInt8::Cast(datum_dxl);
 
 	Const *pconst = MakeNode(Const);
-	pconst->consttype = CMDIdGPDB::PmdidConvert(pdxldatumint8->Pmdid())->OidObjectId();
+	pconst->consttype = CMDIdGPDB::CastMdid(pdxldatumint8->MDId())->OidObjectId();
 	pconst->consttypmod = -1;
 	pconst->constcollid = InvalidOid;
-	pconst->constbyval = pdxldatumint8->FByValue();
-	pconst->constisnull = pdxldatumint8->FNull();
-	pconst->constlen = pdxldatumint8->UlLength();
+	pconst->constbyval = pdxldatumint8->IsPassedByValue();
+	pconst->constisnull = pdxldatumint8->IsNull();
+	pconst->constlen = pdxldatumint8->Length();
 
 	if (pconst->constisnull)
 	{
@@ -1638,7 +1637,7 @@ CTranslatorDXLToScalar::PconstInt8
 	}
 	else
 	{
-		pconst->constvalue = gpdb::DDatumFromInt64(pdxldatumint8->LValue());
+		pconst->constvalue = gpdb::DDatumFromInt64(pdxldatumint8->Value());
 	}
 
 	return pconst;
@@ -1655,18 +1654,18 @@ CTranslatorDXLToScalar::PconstInt8
 Const *
 CTranslatorDXLToScalar::PconstBool
 	(
-	CDXLDatum *pdxldatum
+	CDXLDatum *datum_dxl
 	)
 {
-	CDXLDatumBool *pdxldatumbool = CDXLDatumBool::PdxldatumConvert(pdxldatum);
+	CDXLDatumBool *pdxldatumbool = CDXLDatumBool::Cast(datum_dxl);
 
 	Const *pconst = MakeNode(Const);
-	pconst->consttype = CMDIdGPDB::PmdidConvert(pdxldatumbool->Pmdid())->OidObjectId();
+	pconst->consttype = CMDIdGPDB::CastMdid(pdxldatumbool->MDId())->OidObjectId();
 	pconst->consttypmod = -1;
 	pconst->constcollid = InvalidOid;
-	pconst->constbyval = pdxldatumbool->FByValue();
-	pconst->constisnull = pdxldatumbool->FNull();
-	pconst->constlen = pdxldatumbool->UlLength();
+	pconst->constbyval = pdxldatumbool->IsPassedByValue();
+	pconst->constisnull = pdxldatumbool->IsNull();
+	pconst->constlen = pdxldatumbool->Length();
 
 	if (pconst->constisnull)
 	{
@@ -1674,7 +1673,7 @@ CTranslatorDXLToScalar::PconstBool
 	}
 	else
 	{
-		pconst->constvalue = gpdb::DDatumFromBool(pdxldatumbool->FValue());
+		pconst->constvalue = gpdb::DDatumFromBool(pdxldatumbool->GetValue());
 	}
 
 
@@ -1692,19 +1691,19 @@ CTranslatorDXLToScalar::PconstBool
 Const *
 CTranslatorDXLToScalar::PconstGeneric
 	(
-	CDXLDatum *pdxldatum
+	CDXLDatum *datum_dxl
 	)
 {
-	CDXLDatumGeneric *pdxldatumgeneric = CDXLDatumGeneric::PdxldatumConvert(pdxldatum);
+	CDXLDatumGeneric *pdxldatumgeneric = CDXLDatumGeneric::Cast(datum_dxl);
 
 	Const *pconst = MakeNode(Const);
-	pconst->consttype = CMDIdGPDB::PmdidConvert(pdxldatumgeneric->Pmdid())->OidObjectId();
-	pconst->consttypmod = pdxldatumgeneric->ITypeModifier();
+	pconst->consttype = CMDIdGPDB::CastMdid(pdxldatumgeneric->MDId())->OidObjectId();
+	pconst->consttypmod = pdxldatumgeneric->TypeModifier();
 	// GDPB_91_MERGE_FIXME: collation
 	pconst->constcollid = gpdb::OidTypeCollation(pconst->consttype);
-	pconst->constbyval = pdxldatumgeneric->FByValue();
-	pconst->constisnull = pdxldatumgeneric->FNull();
-	pconst->constlen = pdxldatumgeneric->UlLength();
+	pconst->constbyval = pdxldatumgeneric->IsPassedByValue();
+	pconst->constisnull = pdxldatumgeneric->IsNull();
+	pconst->constlen = pdxldatumgeneric->Length();
 
 	if (pconst->constisnull)
 	{
@@ -1715,16 +1714,16 @@ CTranslatorDXLToScalar::PconstGeneric
 		// if it is a by-value constant, the value is stored in the datum.
 		GPOS_ASSERT(pconst->constlen >= 0);
 		GPOS_ASSERT((ULONG) pconst->constlen <= sizeof(Datum));
-		memcpy(&pconst->constvalue, pdxldatumgeneric->Pba(), sizeof(Datum));
+		memcpy(&pconst->constvalue, pdxldatumgeneric->GetByteArray(), sizeof(Datum));
 	}
 	else
 	{
-		Datum dVal = gpdb::DDatumFromPointer(pdxldatumgeneric->Pba());
-		ULONG ulLength = (ULONG) gpdb::SDatumSize(dVal, false, pconst->constlen);
+		Datum dVal = gpdb::DDatumFromPointer(pdxldatumgeneric->GetByteArray());
+		ULONG length = (ULONG) gpdb::SDatumSize(dVal, false, pconst->constlen);
 
-		CHAR *pcsz = (CHAR *) gpdb::GPDBAlloc(ulLength + 1);
-		memcpy(pcsz, pdxldatumgeneric->Pba(), ulLength);
-		pcsz[ulLength] = '\0';
+		CHAR *pcsz = (CHAR *) gpdb::GPDBAlloc(length + 1);
+		memcpy(pcsz, pdxldatumgeneric->GetByteArray(), length);
+		pcsz[length] = '\0';
 		pconst->constvalue = gpdb::DDatumFromPointer(pcsz);
 	}
 
@@ -1746,10 +1745,10 @@ CTranslatorDXLToScalar::PexprPartDefault
 	CMappingColIdVar * //pmapcidvar
 	)
 {
-	CDXLScalarPartDefault *pdxlop = CDXLScalarPartDefault::PdxlopConvert(pdxlnPartDefault->Pdxlop());
+	CDXLScalarPartDefault *pdxlop = CDXLScalarPartDefault::Cast(pdxlnPartDefault->GetOperator());
 
 	PartDefaultExpr *pexpr = MakeNode(PartDefaultExpr);
-	pexpr->level = pdxlop->UlLevel();
+	pexpr->level = pdxlop->GetPartitioningLevel();
 
 	return (Expr *) pexpr;
 }
@@ -1769,12 +1768,12 @@ CTranslatorDXLToScalar::PexprPartBound
 	CMappingColIdVar * //pmapcidvar
 	)
 {
-	CDXLScalarPartBound *pdxlop = CDXLScalarPartBound::PdxlopConvert(pdxlnPartBound->Pdxlop());
+	CDXLScalarPartBound *pdxlop = CDXLScalarPartBound::Cast(pdxlnPartBound->GetOperator());
 
 	PartBoundExpr *pexpr = MakeNode(PartBoundExpr);
-	pexpr->level = pdxlop->UlLevel();
-	pexpr->boundType = CMDIdGPDB::PmdidConvert(pdxlop->PmdidType())->OidObjectId();
-	pexpr->isLowerBound = pdxlop->FLower();
+	pexpr->level = pdxlop->GetPartitioningLevel();
+	pexpr->boundType = CMDIdGPDB::CastMdid(pdxlop->MDIdType())->OidObjectId();
+	pexpr->isLowerBound = pdxlop->IsLowerBound();
 
 	return (Expr *) pexpr;
 }
@@ -1794,11 +1793,11 @@ CTranslatorDXLToScalar::PexprPartBoundInclusion
 	CMappingColIdVar * //pmapcidvar
 	)
 {
-	CDXLScalarPartBoundInclusion *pdxlop = CDXLScalarPartBoundInclusion::PdxlopConvert(pdxlnPartBoundIncl->Pdxlop());
+	CDXLScalarPartBoundInclusion *pdxlop = CDXLScalarPartBoundInclusion::Cast(pdxlnPartBoundIncl->GetOperator());
 
 	PartBoundInclusionExpr *pexpr = MakeNode(PartBoundInclusionExpr);
-	pexpr->level = pdxlop->UlLevel();
-	pexpr->isLowerBound = pdxlop->FLower();
+	pexpr->level = pdxlop->GetPartitioningLevel();
+	pexpr->isLowerBound = pdxlop->IsLowerBound();
 
 	return (Expr *) pexpr;
 }
@@ -1818,11 +1817,11 @@ CTranslatorDXLToScalar::PexprPartBoundOpen
 	CMappingColIdVar * //pmapcidvar
 	)
 {
-	CDXLScalarPartBoundOpen *pdxlop = CDXLScalarPartBoundOpen::PdxlopConvert(pdxlnPartBoundOpen->Pdxlop());
+	CDXLScalarPartBoundOpen *pdxlop = CDXLScalarPartBoundOpen::Cast(pdxlnPartBoundOpen->GetOperator());
 
 	PartBoundOpenExpr *pexpr = MakeNode(PartBoundOpenExpr);
-	pexpr->level = pdxlop->UlLevel();
-	pexpr->isLowerBound = pdxlop->FLower();
+	pexpr->level = pdxlop->GetPartitioningLevel();
+	pexpr->isLowerBound = pdxlop->IsLowerBound();
 
 	return (Expr *) pexpr;
 }
@@ -1842,12 +1841,12 @@ CTranslatorDXLToScalar::PexprPartListValues
 	CMappingColIdVar * //pmapcidvar
 	)
 {
-	CDXLScalarPartListValues *pdxlop = CDXLScalarPartListValues::PdxlopConvert(pdxlnPartListValues->Pdxlop());
+	CDXLScalarPartListValues *pdxlop = CDXLScalarPartListValues::Cast(pdxlnPartListValues->GetOperator());
 
 	PartListRuleExpr *pexpr = MakeNode(PartListRuleExpr);
-	pexpr->level = pdxlop->UlLevel();
-	pexpr->resulttype = CMDIdGPDB::PmdidConvert(pdxlop->PmdidResult())->OidObjectId();
-	pexpr->elementtype = CMDIdGPDB::PmdidConvert(pdxlop->PmdidElement())->OidObjectId();
+	pexpr->level = pdxlop->GetPartitioningLevel();
+	pexpr->resulttype = CMDIdGPDB::CastMdid(pdxlop->GetResultTypeMdId())->OidObjectId();
+	pexpr->elementtype = CMDIdGPDB::CastMdid(pdxlop->GetElemTypeMdId())->OidObjectId();
 
 	return (Expr *) pexpr;
 }
@@ -1867,11 +1866,11 @@ CTranslatorDXLToScalar::PexprPartListNullTest
 	CMappingColIdVar * //pmapcidvar
 	)
 {
-	CDXLScalarPartListNullTest *pdxlop = CDXLScalarPartListNullTest::PdxlopConvert(pdxlnPartListNullTest->Pdxlop());
+	CDXLScalarPartListNullTest *pdxlop = CDXLScalarPartListNullTest::Cast(pdxlnPartListNullTest->GetOperator());
 
 	PartListNullTestExpr *pexpr = MakeNode(PartListNullTestExpr);
-	pexpr->level = pdxlop->UlLevel();
-	pexpr->nulltesttype = pdxlop->FIsNull() ? IS_NULL : IS_NOT_NULL;
+	pexpr->level = pdxlop->GetPartitioningLevel();
+	pexpr->nulltesttype = pdxlop->IsNull() ? IS_NULL : IS_NOT_NULL;
 
 	return (Expr *) pexpr;
 }
@@ -1887,16 +1886,16 @@ CTranslatorDXLToScalar::PexprPartListNullTest
 Expr *
 CTranslatorDXLToScalar::PexprFromDXLNodeScId
 	(
-	const CDXLNode *pdxlnIdent,
+	const CDXLNode *dxl_sc_ident,
 	CMappingColIdVar *pmapcidvar
 	)
 {
 	CMappingColIdVarPlStmt *pmapcidvarplstmt = dynamic_cast<CMappingColIdVarPlStmt*>(pmapcidvar);
 
 	// scalar identifier
-	CDXLScalarIdent *pdxlop = CDXLScalarIdent::PdxlopConvert(pdxlnIdent->Pdxlop());
+	CDXLScalarIdent *pdxlop = CDXLScalarIdent::Cast(dxl_sc_ident->GetOperator());
 	Expr *pexprResult = NULL;
-	if (NULL == pmapcidvarplstmt || NULL == pmapcidvarplstmt->PpdxltrctxOut()->Pmecolidparamid(pdxlop->Pdxlcr()->UlID()))
+	if (NULL == pmapcidvarplstmt || NULL == pmapcidvarplstmt->PpdxltrctxOut()->Pmecolidparamid(pdxlop->MakeDXLColRef()->Id()))
 	{
 		// not an outer ref -> create var node
 		pexprResult = (Expr *) pmapcidvar->PvarFromDXLNodeScId(pdxlop);
@@ -1909,7 +1908,7 @@ CTranslatorDXLToScalar::PexprFromDXLNodeScId
 
 	if (NULL  == pexprResult)
 	{
-		GPOS_RAISE(gpdxl::ExmaDXL, gpdxl::ExmiDXL2PlStmtAttributeNotFound, pdxlop->Pdxlcr()->UlID());
+		GPOS_RAISE(gpdxl::ExmaDXL, gpdxl::ExmiDXL2PlStmtAttributeNotFound, pdxlop->MakeDXLColRef()->Id());
 	}
 	return pexprResult;
 }
@@ -1930,19 +1929,19 @@ CTranslatorDXLToScalar::PopexprFromDXLNodeScCmp
 	)
 {
 	GPOS_ASSERT(NULL != pdxlnCmp);
-	CDXLScalarComp *pdxlop = CDXLScalarComp::PdxlopConvert(pdxlnCmp->Pdxlop());
+	CDXLScalarComp *pdxlop = CDXLScalarComp::Cast(pdxlnCmp->GetOperator());
 
 	OpExpr *popexpr = MakeNode(OpExpr);
-	popexpr->opno = CMDIdGPDB::PmdidConvert(pdxlop->Pmdid())->OidObjectId();
+	popexpr->opno = CMDIdGPDB::CastMdid(pdxlop->MDId())->OidObjectId();
 
-	const IMDScalarOp *pmdscop = m_pmda->Pmdscop(pdxlop->Pmdid());
+	const IMDScalarOp *md_scalar_op = m_pmda->Pmdscop(pdxlop->MDId());
 
-	popexpr->opfuncid = CMDIdGPDB::PmdidConvert(pmdscop->PmdidFunc())->OidObjectId();
-	popexpr->opresulttype = CMDIdGPDB::PmdidConvert(m_pmda->PtMDType<IMDTypeBool>()->Pmdid())->OidObjectId();
+	popexpr->opfuncid = CMDIdGPDB::CastMdid(md_scalar_op->FuncMdId())->OidObjectId();
+	popexpr->opresulttype = CMDIdGPDB::CastMdid(m_pmda->PtMDType<IMDTypeBool>()->MDId())->OidObjectId();
 	popexpr->opretset = false;
 
 	// translate left and right child
-	GPOS_ASSERT(2 == pdxlnCmp->UlArity());
+	GPOS_ASSERT(2 == pdxlnCmp->Arity());
 
 	CDXLNode *pdxlnLeft = (*pdxlnCmp)[EdxlsccmpIndexLeft];
 	CDXLNode *pdxlnRight = (*pdxlnCmp)[EdxlsccmpIndexRight];
@@ -1975,14 +1974,14 @@ CTranslatorDXLToScalar::PexprArray
 	)
 {
 	GPOS_ASSERT(NULL != pdxlnArray);
-	CDXLScalarArray *pdxlop = CDXLScalarArray::PdxlopConvert(pdxlnArray->Pdxlop());
+	CDXLScalarArray *pdxlop = CDXLScalarArray::Cast(pdxlnArray->GetOperator());
 
 	ArrayExpr *pexpr = MakeNode(ArrayExpr);
-	pexpr->element_typeid = CMDIdGPDB::PmdidConvert(pdxlop->PmdidElem())->OidObjectId();
-	pexpr->array_typeid = CMDIdGPDB::PmdidConvert(pdxlop->PmdidArray())->OidObjectId();
+	pexpr->element_typeid = CMDIdGPDB::CastMdid(pdxlop->ElementTypeMDid())->OidObjectId();
+	pexpr->array_typeid = CMDIdGPDB::CastMdid(pdxlop->ArrayTypeMDid())->OidObjectId();
 	// GDPB_91_MERGE_FIXME: collation
 	pexpr->array_collid = gpdb::OidTypeCollation(pexpr->array_typeid);
-	pexpr->multidims = pdxlop->FMultiDimensional();
+	pexpr->multidims = pdxlop->IsMultiDimensional();
 	pexpr->elements = PlistTranslateScalarChildren(pexpr->elements, pdxlnArray, pmapcidvar);
 
 	/*
@@ -2012,24 +2011,24 @@ CTranslatorDXLToScalar::PexprArrayRef
 	)
 {
 	GPOS_ASSERT(NULL != pdxlnArrayref);
-	CDXLScalarArrayRef *pdxlop = CDXLScalarArrayRef::PdxlopConvert(pdxlnArrayref->Pdxlop());
+	CDXLScalarArrayRef *pdxlop = CDXLScalarArrayRef::Cast(pdxlnArrayref->GetOperator());
 
 	ArrayRef *parrayref = MakeNode(ArrayRef);
-	parrayref->refarraytype = CMDIdGPDB::PmdidConvert(pdxlop->PmdidArray())->OidObjectId();
-	parrayref->refelemtype = CMDIdGPDB::PmdidConvert(pdxlop->PmdidElem())->OidObjectId();
+	parrayref->refarraytype = CMDIdGPDB::CastMdid(pdxlop->ArrayTypeMDid())->OidObjectId();
+	parrayref->refelemtype = CMDIdGPDB::CastMdid(pdxlop->ElementTypeMDid())->OidObjectId();
 	// GDPB_91_MERGE_FIXME: collation
 	parrayref->refcollid = gpdb::OidTypeCollation(parrayref->refelemtype);
-	parrayref->reftypmod = pdxlop->ITypeModifier();
+	parrayref->reftypmod = pdxlop->TypeModifier();
 
-	const ULONG ulArity = pdxlnArrayref->UlArity();
-	GPOS_ASSERT(3 == ulArity || 4 == ulArity);
+	const ULONG arity = pdxlnArrayref->Arity();
+	GPOS_ASSERT(3 == arity || 4 == arity);
 
 	parrayref->reflowerindexpr = PlTranslateArrayRefIndexList((*pdxlnArrayref)[0], CDXLScalarArrayRefIndexList::EilbLower, pmapcidvar);
 	parrayref->refupperindexpr = PlTranslateArrayRefIndexList((*pdxlnArrayref)[1], CDXLScalarArrayRefIndexList::EilbUpper, pmapcidvar);
 
 	parrayref->refexpr = PexprFromDXLNodeScalar((*pdxlnArrayref)[2], pmapcidvar);
 	parrayref->refassgnexpr = NULL;
-	if (4 == ulArity)
+	if (4 == arity)
 	{
 		parrayref->refassgnexpr = PexprFromDXLNodeScalar((*pdxlnArrayref)[3], pmapcidvar);
 	}
@@ -2058,7 +2057,7 @@ CTranslatorDXLToScalar::PlTranslateArrayRefIndexList
 	)
 {
 	GPOS_ASSERT(NULL != pdxlnIndexlist);
-	GPOS_ASSERT(eilb == CDXLScalarArrayRefIndexList::PdxlopConvert(pdxlnIndexlist->Pdxlop())->Eilb());
+	GPOS_ASSERT(eilb == CDXLScalarArrayRefIndexList::Cast(pdxlnIndexlist->GetOperator())->GetDXLIndexListBound());
 
 	List *plChildren = NIL;
 	plChildren = PlistTranslateScalarChildren(plChildren, pdxlnIndexlist, pmapcidvar);
@@ -2086,7 +2085,7 @@ CTranslatorDXLToScalar::PexprDMLAction
 	)
 {
 	GPOS_ASSERT(NULL != pdxlnDMLAction);
-	GPOS_ASSERT(EdxlopScalarDMLAction == pdxlnDMLAction->Pdxlop()->Edxlop());
+	GPOS_ASSERT(EdxlopScalarDMLAction == pdxlnDMLAction->GetOperator()->GetDXLOperator());
 
 	DMLActionExpr *pexpr = MakeNode(DMLActionExpr);
 
@@ -2110,34 +2109,34 @@ CTranslatorDXLToScalar::OidFunctionReturnType
 	)
 	const
 {
-	return CMDIdGPDB::PmdidConvert(m_pmda->Pmdfunc(pmdid)->PmdidTypeResult())->OidObjectId();
+	return CMDIdGPDB::CastMdid(m_pmda->Pmdfunc(pmdid)->GetResultTypeMdid())->OidObjectId();
 }
 
 //---------------------------------------------------------------------------
 //	@function:
-//		CTranslatorDXLToScalar::FBoolean
+//		CTranslatorDXLToScalar::HasBoolResult
 //
 //	@doc:
 //		Check to see if the operator returns a boolean result
 //
 //---------------------------------------------------------------------------
 BOOL
-CTranslatorDXLToScalar::FBoolean
+CTranslatorDXLToScalar::HasBoolResult
 	(
-	CDXLNode *pdxln,
-	CMDAccessor *pmda
+	CDXLNode *dxlnode,
+	CMDAccessor *md_accessor
 	)
 {
-	GPOS_ASSERT(NULL != pdxln);
+	GPOS_ASSERT(NULL != dxlnode);
 
-	if(EdxloptypeScalar != pdxln->Pdxlop()->Edxloperatortype())
+	if(EdxloptypeScalar != dxlnode->GetOperator()->GetDXLOperatorType())
 	{
 		return false;
 	}
 
-	CDXLScalar *pdxlop = dynamic_cast<CDXLScalar*>(pdxln->Pdxlop());
+	CDXLScalar *pdxlop = dynamic_cast<CDXLScalar*>(dxlnode->GetOperator());
 
-	return pdxlop->FBoolean(pmda);
+	return pdxlop->HasBoolResult(md_accessor);
 }
 
 //---------------------------------------------------------------------------
@@ -2151,20 +2150,20 @@ CTranslatorDXLToScalar::FBoolean
 BOOL
 CTranslatorDXLToScalar::FConstTrue
 	(
-	CDXLNode *pdxln,
-	CMDAccessor *pmda
+	CDXLNode *dxlnode,
+	CMDAccessor *md_accessor
 	)
 {
-	GPOS_ASSERT(NULL != pdxln);
-	if (!FBoolean(pdxln, pmda) || EdxlopScalarConstValue != pdxln->Pdxlop()->Edxlop())
+	GPOS_ASSERT(NULL != dxlnode);
+	if (!HasBoolResult(dxlnode, md_accessor) || EdxlopScalarConstValue != dxlnode->GetOperator()->GetDXLOperator())
 	{
 		return false;
 	}
 
-	CDXLScalarConstValue *pdxlop = CDXLScalarConstValue::PdxlopConvert(pdxln->Pdxlop());
-	CDXLDatumBool *pdxldatumbool = CDXLDatumBool::PdxldatumConvert(const_cast<CDXLDatum *>(pdxlop->Pdxldatum()));
+	CDXLScalarConstValue *pdxlop = CDXLScalarConstValue::Cast(dxlnode->GetOperator());
+	CDXLDatumBool *pdxldatumbool = CDXLDatumBool::Cast(const_cast<CDXLDatum *>(pdxlop->GetDatumVal()));
 
-	return pdxldatumbool->FValue();
+	return pdxldatumbool->GetValue();
 }
 
 //---------------------------------------------------------------------------
@@ -2178,18 +2177,18 @@ CTranslatorDXLToScalar::FConstTrue
 BOOL
 CTranslatorDXLToScalar::FConstNull
 	(
-	CDXLNode *pdxln
+	CDXLNode *dxlnode
 	)
 {
-	GPOS_ASSERT(NULL != pdxln);
-	if (EdxlopScalarConstValue != pdxln->Pdxlop()->Edxlop())
+	GPOS_ASSERT(NULL != dxlnode);
+	if (EdxlopScalarConstValue != dxlnode->GetOperator()->GetDXLOperator())
 	{
 		return false;
 	}
 
-	CDXLScalarConstValue *pdxlop = CDXLScalarConstValue::PdxlopConvert(pdxln->Pdxlop());
+	CDXLScalarConstValue *pdxlop = CDXLScalarConstValue::Cast(dxlnode->GetOperator());
 
-	return pdxlop->Pdxldatum()->FNull();
+	return pdxlop->GetDatumVal()->IsNull();
 }
 
 // EOF

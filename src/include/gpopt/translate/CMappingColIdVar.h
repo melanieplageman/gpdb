@@ -47,7 +47,7 @@ namespace gpdxl
 	{
 		protected:
 			// memory pool
-			IMemoryPool *m_pmp;
+			IMemoryPool *m_memory_pool;
 
 		public:
 

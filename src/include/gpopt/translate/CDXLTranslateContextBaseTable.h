@@ -44,12 +44,12 @@ namespace gpdxl
 	class CDXLTranslateContextBaseTable
 	{
 		// hash maps mapping ULONG -> INT
-		typedef CHashMap<ULONG, INT, gpos::UlHash<ULONG>, gpos::FEqual<ULONG>,
+		typedef CHashMap<ULONG, INT, gpos::HashValue<ULONG>, gpos::Equals<ULONG>,
 			CleanupDelete<ULONG>, CleanupDelete<INT> > HMUlI;
 
 
 		private:
-			IMemoryPool *m_pmp;
+			IMemoryPool *m_memory_pool;
 
 			// oid of the base table
 			OID m_oid;
@@ -65,7 +65,7 @@ namespace gpdxl
 
 		public:
 			// ctor/dtor
-			explicit CDXLTranslateContextBaseTable(IMemoryPool *pmp);
+			explicit CDXLTranslateContextBaseTable(IMemoryPool *memory_pool);
 
 
 			~CDXLTranslateContextBaseTable();

@@ -34,7 +34,7 @@
 #include "utils/lsyscache.h"
 
 /* GPORCA entry point */
-extern PlannedStmt * PplstmtOptimize(Query *parse, bool *pfUnexpectedFailure);
+extern PlannedStmt * GPOPTOptimizedPlan(Query *parse, bool *had_unexpected_failure);
 
 /*
  * Logging of optimization outcome
@@ -133,7 +133,7 @@ optimize_query(Query *parse, ParamListInfo boundParams)
 	pqueryCopy = preprocess_query_optimizer(glob, pqueryCopy, boundParams);
 
 	/* Ok, invoke ORCA. */
-	result = PplstmtOptimize(pqueryCopy, &fUnexpectedFailure);
+	result = GPOPTOptimizedPlan(pqueryCopy, &fUnexpectedFailure);
 
 	log_optimizer(result, fUnexpectedFailure);
 

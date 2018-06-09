@@ -27,10 +27,10 @@ using namespace gpdxl;
 //---------------------------------------------------------------------------
 CMappingColIdVar::CMappingColIdVar
 	(
-	IMemoryPool *pmp
+	IMemoryPool *memory_pool
 	)
 	:
-	m_pmp(pmp)
+	m_memory_pool(memory_pool)
 {
 }
 

@@ -76,7 +76,7 @@ namespace gpoptudfs
 			const char *m_szPath;
 
 			// memory pool
-			IMemoryPool *m_pmp;
+			IMemoryPool *m_memory_pool;
 
 			// communicator
 			CCommunicator *m_pcomm;
@@ -99,7 +99,7 @@ namespace gpoptudfs
 				:
 				m_pquery(pop->m_pquery),
 				m_szPath(pop->m_szPath),
-				m_pmp(NULL),
+				m_memory_pool(NULL),
 				m_pcomm(NULL)
 			{
 				GPOS_ASSERT(NULL != m_pquery);
@@ -111,13 +111,13 @@ namespace gpoptudfs
 			{}
 
 			// request optimization from server
-			PlannedStmt *PplstmtOptimize();
+			PlannedStmt *GPOPTOptimizedPlan();
 
 			// set traceflags
 			void SetTraceflags();
 
 			// send query optimization request to server
-			void SendRequest(CMDAccessor *pmda);
+			void SendRequest(CMDAccessor *md_accessor);
 
 			// retrieve DXL plan
 			const CHAR *SzPlanDXL(IMDProvider *pmdp);
@@ -126,7 +126,7 @@ namespace gpoptudfs
 			void SendMDResponse(CMDProviderCommProxy *pmdpcp, const WCHAR *wszReq);
 
 			// build planned statement from serialized plan
-			PlannedStmt *PplstmtConstruct(CMDAccessor *pmda, const CHAR *szPlan);
+			PlannedStmt *PplstmtConstruct(CMDAccessor *md_accessor, const CHAR *szPlan);
 
 			// elog wrapper
 			void Elog(ULONG ulSev, const WCHAR *wszMsg);
