@@ -1120,12 +1120,19 @@ CTranslatorRelcacheToDXL::Pmdindex
 	
 		emdindt = IMDIndex::EmdindBtree;
 		IMDRelation::Erelstoragetype erelstorage = pmdrel->Erelstorage();
-		if (GIST_AM_OID == relIndex->rd_rel->relam || BITMAP_AM_OID == relIndex->rd_rel->relam || IMDRelation::ErelstorageAppendOnlyRows == erelstorage || IMDRelation::ErelstorageAppendOnlyCols == erelstorage)
+		if (BITMAP_AM_OID == relIndex->rd_rel->relam || IMDRelation::ErelstorageAppendOnlyRows == erelstorage || IMDRelation::ErelstorageAppendOnlyCols == erelstorage)
 		{
 			emdindt = IMDIndex::EmdindBitmap;
 			pmdidItemType = GPOS_NEW(pmp) CMDIdGPDB(GPDB_ANY);
 		}
-		
+
+		if (GIST_AM_OID == relIndex->rd_rel->relam)
+		{
+			emdindt = IMDIndex::EmdindAny;
+			pmdidItemType = GPOS_NEW(pmp) CMDIdGPDB(GPDB_ANY);
+
+		}
+
 		// get the index name
 		CHAR *szIndexName = NameStr(relIndex->rd_rel->relname);
 		CWStringDynamic *pstrName = CDXLUtils::PstrFromSz(pmp, szIndexName);
