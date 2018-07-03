@@ -911,8 +911,8 @@ CTranslatorDXLToPlStmt::TranslateDXLAssertConstraints
 	const ULONG arity = assert_contraint_list_dxlnode->Arity();
 	for (ULONG ul = 0; ul < arity; ul++)
 	{
-		CDXLNode *pdxlnpdxlnAssertConstraint = (*assert_contraint_list_dxlnode)[ul];
-		Expr *assert_contraint_expr = m_translator_dxl_to_scalar->CreateScalarExprFromDXL((*pdxlnpdxlnAssertConstraint)[0], &colid_var_mapping);
+		CDXLNode *assert_contraint_dxlnode = (*assert_contraint_list_dxlnode)[ul];
+		Expr *assert_contraint_expr = m_translator_dxl_to_scalar->CreateScalarExprFromDXL((*assert_contraint_dxlnode)[0], &colid_var_mapping);
 		quals_list = gpdb::LAppend(quals_list, assert_contraint_expr);
 	}
 
@@ -957,12 +957,12 @@ CTranslatorDXLToPlStmt::TranslateDXLLimit
 
 	// translate proj list
 	CDXLNode *project_list_dxlnode = (*limit_dxlnode)[EdxllimitIndexProjList];
-	CDXLNode *pdxlnChildPlan = (*limit_dxlnode)[EdxllimitIndexChildPlan];
+	CDXLNode *child_plan_dxlnode = (*limit_dxlnode)[EdxllimitIndexChildPlan];
 	CDXLNode *limit_count_dxlnode = (*limit_dxlnode)[EdxllimitIndexLimitCount];
 	CDXLNode *limit_offset_dxlnode = (*limit_dxlnode)[EdxllimitIndexLimitOffset];
 
 	// NOTE: Limit node has only the left plan while the right plan is left empty
-	Plan *left_plan = TranslateDXLOperatorToPlan(pdxlnChildPlan, &left_dxl_translate_ctxt, ctxt_translation_prev_siblings);
+	Plan *left_plan = TranslateDXLOperatorToPlan(child_plan_dxlnode, &left_dxl_translate_ctxt, ctxt_translation_prev_siblings);
 
 	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
 	child_contexts->Append(&left_dxl_translate_ctxt);
@@ -1408,12 +1408,12 @@ CTranslatorDXLToPlStmt::TranslateDXLValueScanToRangeTblEntry
 
 	for (ULONG ulValue = EdxlValIndexConstStart; ulValue < num_of_child; ulValue++)
 	{
-		CDXLNode *pdxlnValueList = (*value_scan_dxlnode)[ulValue];
-		const ULONG num_of_cols = pdxlnValueList->Arity();
+		CDXLNode *value_list_dxlnode = (*value_scan_dxlnode)[ulValue];
+		const ULONG num_of_cols = value_list_dxlnode->Arity();
 		List *value = NIL;
 		for (ULONG ulCol = 0; ulCol < num_of_cols ; ulCol++)
 		{
-			Expr *const_expr = m_translator_dxl_to_scalar->CreateScalarExprFromDXL((*pdxlnValueList)[ulCol], &colid_var_mapping);
+			Expr *const_expr = m_translator_dxl_to_scalar->CreateScalarExprFromDXL((*value_list_dxlnode)[ulCol], &colid_var_mapping);
 			value = gpdb::LAppend(value, const_expr);
 
 		}
@@ -2617,7 +2617,7 @@ CTranslatorDXLToPlStmt::TranslateDXLSubQueryScan
 
 	ListCell *lc_tgtentry = NULL;
 
-	CDXLNode *pdxlnChildProjList = (*dxl_node_child)[0];
+	CDXLNode *child_proj_list_dxlnode = (*dxl_node_child)[0];
 
 	ULONG ul = 0;
 
@@ -2631,7 +2631,7 @@ CTranslatorDXLToPlStmt::TranslateDXLSubQueryScan
 		alias->colnames = gpdb::LAppend(alias->colnames, val_colname);
 
 		// get corresponding child project element
-		CDXLScalarProjElem *sc_proj_elem_dxlop = CDXLScalarProjElem::Cast((*pdxlnChildProjList)[ul]->GetOperator());
+		CDXLScalarProjElem *sc_proj_elem_dxlop = CDXLScalarProjElem::Cast((*child_proj_list_dxlnode)[ul]->GetOperator());
 
 		// save mapping col id -> index in translate context
 		(void) base_table_context.InsertMapping(sc_proj_elem_dxlop->Id(), target_entry->resno);
