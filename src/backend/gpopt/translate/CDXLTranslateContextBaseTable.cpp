@@ -131,11 +131,11 @@ CDXLTranslateContextBaseTable::GetRelIndex() const
 INT
 CDXLTranslateContextBaseTable::GetAttnoForColId
 	(
-	ULONG col_id
+	ULONG colid
 	)
 	const
 {
-	const INT *pi = m_colid_to_attno_map->Find(&col_id);
+	const INT *pi = m_colid_to_attno_map->Find(&colid);
 	if (NULL != pi)
 	{
 		return *pi;
@@ -157,12 +157,12 @@ CDXLTranslateContextBaseTable::GetAttnoForColId
 BOOL
 CDXLTranslateContextBaseTable::InsertMapping
 	(
-	ULONG dxl_col_id,
+	ULONG dxl_colid,
 	INT att_no
 	)
 {
 	// copy key and value
-	ULONG *key = GPOS_NEW(m_mp) ULONG(dxl_col_id);
+	ULONG *key = GPOS_NEW(m_mp) ULONG(dxl_colid);
 	INT *value = GPOS_NEW(m_mp) INT(att_no);
 
 	// insert colid-idx mapping in the hash map

@@ -1093,10 +1093,10 @@ CTranslatorUtils::GetGroupingColidArray
 	(
 	IMemoryPool *mp,
 	CBitSet *group_by_cols,
-	IntUlongHashMap *sort_group_cols_to_col_id_map
+	IntUlongHashMap *sort_group_cols_to_colid_map
 	)
 {
-	ULongPtrArray *col_ids = GPOS_NEW(mp) ULongPtrArray(mp);
+	ULongPtrArray *colids = GPOS_NEW(mp) ULongPtrArray(mp);
 
 	if (NULL != group_by_cols)
 	{
@@ -1104,12 +1104,12 @@ CTranslatorUtils::GetGroupingColidArray
 
 		while (bsi.Advance())
 		{
-			const ULONG col_id = GetColId(bsi.Bit(), sort_group_cols_to_col_id_map);
-			col_ids->Append(GPOS_NEW(mp) ULONG(col_id));
+			const ULONG colid = GetColId(bsi.Bit(), sort_group_cols_to_colid_map);
+			colids->Append(GPOS_NEW(mp) ULONG(colid));
 		}
 	}
 
-	return col_ids;
+	return colids;
 }
 
 //---------------------------------------------------------------------------
@@ -1351,22 +1351,22 @@ CTranslatorUtils::GenerateColIds
 	IMemoryPool *mp,
 	List *target_list,
 	MdidPtrArray *input_mdid_arr,
-	ULongPtrArray *input_col_ids,
+	ULongPtrArray *input_colids,
 	BOOL *is_outer_ref,  // array of flags indicating if input columns are outer references
-	CIdGenerator *col_id_generator
+	CIdGenerator *colid_generator
 	)
 {
 	GPOS_ASSERT(NULL != target_list);
 	GPOS_ASSERT(NULL != input_mdid_arr);
-	GPOS_ASSERT(NULL != input_col_ids);
+	GPOS_ASSERT(NULL != input_colids);
 	GPOS_ASSERT(NULL != is_outer_ref);
-	GPOS_ASSERT(NULL != col_id_generator);
+	GPOS_ASSERT(NULL != colid_generator);
 
-	GPOS_ASSERT(input_mdid_arr->Size() == input_col_ids->Size());
+	GPOS_ASSERT(input_mdid_arr->Size() == input_colids->Size());
 
 	ULONG col_pos = 0;
 	ListCell *target_entry_cell = NULL;
-	ULongPtrArray *col_id_array = GPOS_NEW(mp) ULongPtrArray(mp);
+	ULongPtrArray *colid_array = GPOS_NEW(mp) ULongPtrArray(mp);
 
 	ForEach (target_entry_cell, target_list)
 	{
@@ -1376,7 +1376,7 @@ CTranslatorUtils::GenerateColIds
 		OID expr_type_oid = gpdb::ExprType((Node*) target_entry->expr);
 		if (!target_entry->resjunk)
 		{
-			ULONG col_id = gpos::ulong_max;
+			ULONG colid = gpos::ulong_max;
 			IMDId *mdid = (*input_mdid_arr)[col_pos];
 			if (CMDIdGPDB::CastMdid(mdid)->OidObjectId() != expr_type_oid || 
 				is_outer_ref[col_pos])
@@ -1384,22 +1384,22 @@ CTranslatorUtils::GenerateColIds
 				// generate a new column when:
 				//  (1) the type of input column does not match that of the output column, or
 				//  (2) input column is an outer reference 
-				col_id = col_id_generator->next_id();
+				colid = colid_generator->next_id();
 			}
 			else
 			{
 				// use the column identifier of the input
-				col_id = *(*input_col_ids)[col_pos];
+				colid = *(*input_colids)[col_pos];
 			}
-			GPOS_ASSERT(gpos::ulong_max != col_id);
+			GPOS_ASSERT(gpos::ulong_max != colid);
 			
-			col_id_array->Append(GPOS_NEW(mp) ULONG(col_id));
+			colid_array->Append(GPOS_NEW(mp) ULONG(colid));
 
 			col_pos++;
 		}
 	}
 
-	return col_id_array;
+	return colid_array;
 }
 
 //---------------------------------------------------------------------------
@@ -1523,12 +1523,12 @@ CTranslatorUtils::GetDXLColumnDescrArray
 	(
 	IMemoryPool *mp,
 	List *target_list,
-	ULongPtrArray *col_ids,
+	ULongPtrArray *colids,
 	BOOL keep_res_junked
 	)
 {
 	GPOS_ASSERT(NULL != target_list);
-	GPOS_ASSERT(NULL != col_ids);
+	GPOS_ASSERT(NULL != colids);
 
 	ListCell *target_entry_cell = NULL;
 	DXLColumnDescrArray *dxl_col_descrs = GPOS_NEW(mp) DXLColumnDescrArray(mp);
@@ -1542,13 +1542,13 @@ CTranslatorUtils::GetDXLColumnDescrArray
 			continue;
 		}
 
-		ULONG col_id = *(*col_ids)[ul];
-		CDXLColDescr *dxl_col_descr = GetColumnDescrAt(mp, target_entry, col_id, ul+1 /*pos*/);
+		ULONG colid = *(*colids)[ul];
+		CDXLColDescr *dxl_col_descr = GetColumnDescrAt(mp, target_entry, colid, ul+1 /*pos*/);
 		dxl_col_descrs->Append(dxl_col_descr);
 		ul++;
 	}
 
-	GPOS_ASSERT(dxl_col_descrs->Size() == col_ids->Size());
+	GPOS_ASSERT(dxl_col_descrs->Size() == colids->Size());
 
 	return dxl_col_descrs;
 }
@@ -1603,12 +1603,12 @@ CTranslatorUtils::GetColumnDescrAt
 	(
 	IMemoryPool *mp,
 	TargetEntry *target_entry,
-	ULONG col_id,
+	ULONG colid,
 	ULONG pos
 	)
 {
 	GPOS_ASSERT(NULL != target_entry);
-	GPOS_ASSERT(gpos::ulong_max != col_id);
+	GPOS_ASSERT(gpos::ulong_max != colid);
 
 	CMDName *mdname = NULL;
 	if (NULL == target_entry->resname)
@@ -1632,7 +1632,7 @@ CTranslatorUtils::GetColumnDescrAt
 									(
 									mp,
 									mdname,
-									col_id,
+									colid,
 									pos, /* attno */
 									col_type,
 									type_modifier, /* type_modifier */
@@ -1653,8 +1653,8 @@ CDXLNode *
 CTranslatorUtils::CreateDummyProjectElem
 	(
 	IMemoryPool *mp,
-	ULONG col_id_input,
-	ULONG col_id_output,
+	ULONG colid_input,
+	ULONG colid_output,
 	CDXLColDescr *dxl_col_descr
 	)
 {
@@ -1663,7 +1663,7 @@ CTranslatorUtils::CreateDummyProjectElem
 
 	// create a column reference for the scalar identifier to be casted
 	CMDName *mdname = GPOS_NEW(mp) CMDName(mp, dxl_col_descr->MdName()->GetMDName());
-	CDXLColRef *dxl_colref = GPOS_NEW(mp) CDXLColRef(mp, mdname, col_id_input, copy_mdid, dxl_col_descr->TypeModifier());
+	CDXLColRef *dxl_colref = GPOS_NEW(mp) CDXLColRef(mp, mdname, colid_input, copy_mdid, dxl_col_descr->TypeModifier());
 	CDXLScalarIdent *dxl_scalar_ident = GPOS_NEW(mp) CDXLScalarIdent(mp, dxl_colref);
 
 	CDXLNode *dxl_project_element = GPOS_NEW(mp) CDXLNode
@@ -1672,7 +1672,7 @@ CTranslatorUtils::CreateDummyProjectElem
 										GPOS_NEW(mp) CDXLScalarProjElem
 													(
 													mp,
-													col_id_output,
+													colid_output,
 													GPOS_NEW(mp) CMDName(mp, dxl_col_descr->MdName()->GetMDName())
 													),
 										GPOS_NEW(mp) CDXLNode(mp, dxl_scalar_ident)
@@ -1694,13 +1694,13 @@ CTranslatorUtils::GetOutputColIdsArray
 	(
 	IMemoryPool *mp,
 	List *target_list,
-	IntUlongHashMap *attno_to_col_id_map
+	IntUlongHashMap *attno_to_colid_map
 	)
 {
 	GPOS_ASSERT(NULL != target_list);
-	GPOS_ASSERT(NULL != attno_to_col_id_map);
+	GPOS_ASSERT(NULL != attno_to_colid_map);
 
-	ULongPtrArray *col_ids = GPOS_NEW(mp) ULongPtrArray(mp);
+	ULongPtrArray *colids = GPOS_NEW(mp) ULongPtrArray(mp);
 
 	ListCell *target_entry_cell = NULL;
 	ForEach (target_entry_cell, target_list)
@@ -1708,17 +1708,17 @@ CTranslatorUtils::GetOutputColIdsArray
 		TargetEntry *target_entry = (TargetEntry *) lfirst(target_entry_cell);
 		ULONG resno = (ULONG) target_entry->resno;
 		INT attno = (INT) target_entry->resno;
-		const ULONG *ul = attno_to_col_id_map->Find(&attno);
+		const ULONG *ul = attno_to_colid_map->Find(&attno);
 
 		if (NULL == ul)
 		{
 			GPOS_RAISE(gpdxl::ExmaDXL, gpdxl::ExmiQuery2DXLAttributeNotFound, resno);
 		}
 
-		col_ids->Append(GPOS_NEW(mp) ULONG(*ul));
+		colids->Append(GPOS_NEW(mp) ULONG(*ul));
 	}
 
-	return col_ids;
+	return colids;
 }
 
 //---------------------------------------------------------------------------
@@ -1733,12 +1733,12 @@ ULONG
 CTranslatorUtils::GetColId
 	(
 	INT index,
-	IntUlongHashMap *col_id_map
+	IntUlongHashMap *colid_map
 	)
 {
 	GPOS_ASSERT(0 < index);
 
-	const ULONG *ul = col_id_map->Find(&index);
+	const ULONG *ul = colid_map->Find(&index);
 
 	if (NULL == ul)
 	{
@@ -1763,15 +1763,15 @@ CTranslatorUtils::GetColId
 	INT varno,
 	INT var_attno,
 	IMDId *mdid,
-	CMappingVarColId *var_col_id_mapping
+	CMappingVarColId *var_colid_mapping
 	)
 {
 	OID oid = CMDIdGPDB::CastMdid(mdid)->OidObjectId();
 	Var *var = gpdb::MakeVar(varno, var_attno, oid, -1, 0);
-	ULONG col_id = var_col_id_mapping->GetColId(query_level, var, EpspotNone);
+	ULONG colid = var_colid_mapping->GetColId(query_level, var, EpspotNone);
 	gpdb::GPDBFree(var);
 
-	return col_id;
+	return colid;
 }
 
 
@@ -2096,20 +2096,20 @@ CTranslatorUtils::IsGroupingColumn
 List *
 CTranslatorUtils::ConvertColidToAttnos
 	(
-	ULongPtrArray *col_ids,
+	ULongPtrArray *colids,
 	CDXLTranslateContext *translate_ctxt
 	)
 {
-	GPOS_ASSERT(NULL != col_ids);
+	GPOS_ASSERT(NULL != colids);
 	GPOS_ASSERT(NULL != translate_ctxt);
 	
 	List *result = NIL;
 	
-	const ULONG length = col_ids->Size();
+	const ULONG length = colids->Size();
 	for (ULONG ul = 0; ul < length; ul++)
 	{
-		ULONG col_id = *((*col_ids)[ul]);
-		const TargetEntry *target_entry = translate_ctxt->GetTargetEntry(col_id);
+		ULONG colid = *((*colids)[ul]);
+		const TargetEntry *target_entry = translate_ctxt->GetTargetEntry(colid);
 		GPOS_ASSERT(NULL != target_entry);
 		result = gpdb::LAppendInt(result, target_entry->resno);
 	}
@@ -2194,24 +2194,24 @@ UlongUlongHashMap *
 CTranslatorUtils::MakeNewToOldColMapping
 	(
 	IMemoryPool *mp,
-	ULongPtrArray *old_col_ids,
-	ULongPtrArray *new_col_ids
+	ULongPtrArray *old_colids,
+	ULongPtrArray *new_colids
 	)
 {
-	GPOS_ASSERT(NULL != old_col_ids);
-	GPOS_ASSERT(NULL != new_col_ids);
-	GPOS_ASSERT(new_col_ids->Size() == old_col_ids->Size());
+	GPOS_ASSERT(NULL != old_colids);
+	GPOS_ASSERT(NULL != new_colids);
+	GPOS_ASSERT(new_colids->Size() == old_colids->Size());
 	
 	UlongUlongHashMap *old_new_col_mapping = GPOS_NEW(mp) UlongUlongHashMap(mp);
-	const ULONG num_cols = old_col_ids->Size();
+	const ULONG num_cols = old_colids->Size();
 	for (ULONG ul = 0; ul < num_cols; ul++)
 	{
-		ULONG old_col_id = *((*old_col_ids)[ul]);
-		ULONG new_col_id = *((*new_col_ids)[ul]);
+		ULONG old_colid = *((*old_colids)[ul]);
+		ULONG new_colid = *((*new_colids)[ul]);
 #ifdef GPOS_DEBUG
 		BOOL result = 
 #endif // GPOS_DEBUG
-		old_new_col_mapping->Insert(GPOS_NEW(mp) ULONG(old_col_id), GPOS_NEW(mp) ULONG(new_col_id));
+		old_new_col_mapping->Insert(GPOS_NEW(mp) ULONG(old_colid), GPOS_NEW(mp) ULONG(new_colid));
 		GPOS_ASSERT(result);
 	}
 	
@@ -2312,8 +2312,8 @@ CTranslatorUtils::CreateDXLProjElemConstNULL
 		GPOS_RAISE(gpdxl::ExmaDXL, gpdxl::ExmiQuery2DXLNotNullViolation, col_name);
 	}
 
-	ULONG col_id = pidgtorCol->next_id();
-	CDXLNode *dxl_project_element = CreateDXLProjElemConstNULL(mp, md_accessor, md_col->MDIdType(), col_id, col_name);
+	ULONG colid = pidgtorCol->next_id();
+	CDXLNode *dxl_project_element = CreateDXLProjElemConstNULL(mp, md_accessor, md_col->MDIdType(), colid, col_name);
 
 	return dxl_project_element;
 }
@@ -2331,12 +2331,12 @@ CTranslatorUtils::CreateDXLProjElemConstNULL
 	IMemoryPool *mp,
 	CMDAccessor *md_accessor,
 	IMDId *mdid,
-	ULONG col_id,
+	ULONG colid,
 	const WCHAR *col_name
 	)
 {
 	CHAR *column_name = CDXLUtils::CreateMultiByteCharStringFromWCString(mp, col_name);
-	CDXLNode *dxl_project_element = CreateDXLProjElemConstNULL(mp, md_accessor, mdid, col_id, column_name);
+	CDXLNode *dxl_project_element = CreateDXLProjElemConstNULL(mp, md_accessor, mdid, colid, column_name);
 
 	GPOS_DELETE_ARRAY(column_name);
 
@@ -2356,7 +2356,7 @@ CTranslatorUtils::CreateDXLProjElemConstNULL
 	IMemoryPool *mp,
 	CMDAccessor *md_accessor,
 	IMDId *mdid,
-	ULONG col_id,
+	ULONG colid,
 	CHAR *alias_name
 	)
 {
@@ -2417,7 +2417,7 @@ CTranslatorUtils::CreateDXLProjElemConstNULL
 
 	CDXLNode *dxl_const_node = GPOS_NEW(mp) CDXLNode(mp, GPOS_NEW(mp) CDXLScalarConstValue(mp, datum_dxl));
 
-	return GPOS_NEW(mp) CDXLNode(mp, GPOS_NEW(mp) CDXLScalarProjElem(mp, col_id, alias_mdname), dxl_const_node);
+	return GPOS_NEW(mp) CDXLNode(mp, GPOS_NEW(mp) CDXLScalarProjElem(mp, colid, alias_mdname), dxl_const_node);
 }
 
 
@@ -2506,21 +2506,21 @@ CTranslatorUtils::UpdateGrpColMapping
 void
 CTranslatorUtils::MarkOuterRefs
 	(
-	ULONG *col_ids,  // array of column ids to be checked
+	ULONG *colids,  // array of column ids to be checked
 	BOOL *is_outer_ref,  // array of outer ref indicators, initially all set to true by caller 
 	ULONG num_columns,  // number of columns
 	CDXLNode *dxl_node
 	)
 {
-	GPOS_ASSERT(NULL != col_ids);
+	GPOS_ASSERT(NULL != colids);
 	GPOS_ASSERT(NULL != is_outer_ref);
 	GPOS_ASSERT(NULL != dxl_node);
 	
 	const CDXLOperator *dxl_op = dxl_node->GetOperator();
 	for (ULONG ulCol = 0; ulCol < num_columns; ulCol++)
 	{
-		ULONG col_id = col_ids[ulCol];
-		if (is_outer_ref[ulCol] && dxl_op->IsColDefined(col_id))
+		ULONG colid = colids[ulCol];
+		if (is_outer_ref[ulCol] && dxl_op->IsColDefined(colid))
 		{
 			// column is defined by operator, reset outer reference flag
 			is_outer_ref[ulCol] = false;
@@ -2531,7 +2531,7 @@ CTranslatorUtils::MarkOuterRefs
 	const ULONG arity = dxl_node->Arity();
 	for (ULONG ul = 0; ul < arity; ul++)
 	{
-		MarkOuterRefs(col_ids, is_outer_ref, num_columns, (*dxl_node)[ul]);
+		MarkOuterRefs(colids, is_outer_ref, num_columns, (*dxl_node)[ul]);
 	}
 }
 

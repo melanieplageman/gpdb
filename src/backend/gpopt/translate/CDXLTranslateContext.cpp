@@ -111,8 +111,8 @@ CDXLTranslateContext::CopyParamHashmap
 	{
 		CMappingElementColIdParamId *colidparamid = const_cast<CMappingElementColIdParamId *>(hashmapiter.Value());
 
-		const ULONG col_id = colidparamid->GetColId();
-		ULONG *key = GPOS_NEW(m_mp) ULONG(col_id);
+		const ULONG colid = colidparamid->GetColId();
+		ULONG *key = GPOS_NEW(m_mp) ULONG(colid);
 		colidparamid->AddRef();
 		m_colid_to_paramid_map->Insert(key, colidparamid);
 	}
@@ -129,11 +129,11 @@ CDXLTranslateContext::CopyParamHashmap
 const TargetEntry *
 CDXLTranslateContext::GetTargetEntry
 	(
-	ULONG col_id
+	ULONG colid
 	)
 	const
 {
-	return m_colid_to_target_entry_map->Find(&col_id);
+	return m_colid_to_target_entry_map->Find(&colid);
 }
 
 //---------------------------------------------------------------------------
@@ -147,11 +147,11 @@ CDXLTranslateContext::GetTargetEntry
 const CMappingElementColIdParamId *
 CDXLTranslateContext::GetParamIdMappingElement
 	(
-	ULONG col_id
+	ULONG colid
 	)
 	const
 {
-	return m_colid_to_paramid_map->Find(&col_id);
+	return m_colid_to_paramid_map->Find(&colid);
 }
 
 //---------------------------------------------------------------------------
@@ -165,12 +165,12 @@ CDXLTranslateContext::GetParamIdMappingElement
 void
 CDXLTranslateContext::InsertMapping
 	(
-	ULONG col_id,
+	ULONG colid,
 	TargetEntry *target_entry
 	)
 {
 	// copy key
-	ULONG *key = GPOS_NEW(m_mp) ULONG(col_id);
+	ULONG *key = GPOS_NEW(m_mp) ULONG(colid);
 
 	// insert colid->target entry mapping in the hash map
 	BOOL result = m_colid_to_target_entry_map->Insert(key, target_entry);
@@ -192,12 +192,12 @@ CDXLTranslateContext::InsertMapping
 BOOL
 CDXLTranslateContext::FInsertParamMapping
 	(
-	ULONG col_id,
+	ULONG colid,
 	CMappingElementColIdParamId *colidparamid
 	)
 {
 	// copy key
-	ULONG *key = GPOS_NEW(m_mp) ULONG(col_id);
+	ULONG *key = GPOS_NEW(m_mp) ULONG(colid);
 
 	// insert colid->target entry mapping in the hash map
 	return m_colid_to_paramid_map->Insert(key, colidparamid);
