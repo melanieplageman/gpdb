@@ -162,7 +162,7 @@ CTranslatorRelcacheToDXL::RetrieveObjectGPDB
 {
 	GPOS_ASSERT(mdid->MdidType() == CMDIdGPDB::EmdidGPDB);
 
-	OID oid = CMDIdGPDB::CastMdid(mdid)->OidObjectId();
+	OID oid = CMDIdGPDB::CastMdid(mdid)->Oid();
 
 	GPOS_ASSERT(0 != oid);
 
@@ -547,7 +547,7 @@ CTranslatorRelcacheToDXL::RetrieveRel
 	IMDId *mdid
 	)
 {
-	OID oid = CMDIdGPDB::CastMdid(mdid)->OidObjectId();
+	OID oid = CMDIdGPDB::CastMdid(mdid)->Oid();
 	GPOS_ASSERT(InvalidOid != oid);
 
 	CheckUnsupportedRelation(oid);
@@ -1063,7 +1063,7 @@ CTranslatorRelcacheToDXL::RetrieveIndex
 	IMDId *mdid_index
 	)
 {
-	OID index_oid = CMDIdGPDB::CastMdid(mdid_index)->OidObjectId();
+	OID index_oid = CMDIdGPDB::CastMdid(mdid_index)->Oid();
 	GPOS_ASSERT(0 != index_oid);
 	Relation index_rel = gpdb::GetRelation(index_oid);
 
@@ -1140,7 +1140,7 @@ CTranslatorRelcacheToDXL::RetrieveIndex
 	}
 	GPOS_CATCH_END;
 	
-	Relation table = gpdb::GetRelation(CMDIdGPDB::CastMdid(md_rel->MDId())->OidObjectId());
+	Relation table = gpdb::GetRelation(CMDIdGPDB::CastMdid(md_rel->MDId())->Oid());
 	ULONG size = GPDXL_SYSTEM_COLUMNS + (ULONG) table->rd_att->natts + 1;
 	gpdb::CloseRelation(table); // close relation as early as possible
 
@@ -1203,7 +1203,7 @@ CTranslatorRelcacheToDXL::RetrievePartTableIndex
 	GPOS_ASSERT(NULL != logical_indexes);
 	GPOS_ASSERT(0 < logical_indexes->numLogicalIndexes);
 	
-	OID oid = CMDIdGPDB::CastMdid(mdid_index)->OidObjectId();
+	OID oid = CMDIdGPDB::CastMdid(mdid_index)->Oid();
 	
 	LogicalIndexInfo *index_info = LookupLogicalIndexById(logical_indexes, oid);
 	if (NULL == index_info)
@@ -1287,7 +1287,7 @@ CTranslatorRelcacheToDXL::RetrievePartTableIndex
 	CMDName *mdname = CDXLUtils::CreateMDNameFromCharArray(mp, index_name);
 	gpdb::CloseRelation(index_rel);
 
-	OID rel_oid = CMDIdGPDB::CastMdid(md_rel->MDId())->OidObjectId();
+	OID rel_oid = CMDIdGPDB::CastMdid(md_rel->MDId())->Oid();
 	Relation table = gpdb::GetRelation(rel_oid);
 	ULONG size = GPDXL_SYSTEM_COLUMNS + (ULONG) table->rd_att->natts + 1;
 	gpdb::CloseRelation(table);
@@ -1556,7 +1556,7 @@ CTranslatorRelcacheToDXL::RetrieveType
 	IMDId *mdid
 	)
 {
-	OID oid_type = CMDIdGPDB::CastMdid(mdid)->OidObjectId();
+	OID oid_type = CMDIdGPDB::CastMdid(mdid)->Oid();
 	GPOS_ASSERT(InvalidOid != oid_type);
 	
 	// check for supported base types
@@ -1677,7 +1677,7 @@ CTranslatorRelcacheToDXL::RetrieveScOp
 	IMDId *mdid
 	)
 {
-	OID op_oid = CMDIdGPDB::CastMdid(mdid)->OidObjectId();
+	OID op_oid = CMDIdGPDB::CastMdid(mdid)->Oid();
 
 	GPOS_ASSERT(InvalidOid != op_oid);
 
@@ -1817,7 +1817,7 @@ CTranslatorRelcacheToDXL::RetrieveFunc
 	IMDId *mdid
 	)
 {
-	OID func_oid = CMDIdGPDB::CastMdid(mdid)->OidObjectId();
+	OID func_oid = CMDIdGPDB::CastMdid(mdid)->Oid();
 
 	GPOS_ASSERT(InvalidOid != func_oid);
 
@@ -1901,7 +1901,7 @@ CTranslatorRelcacheToDXL::RetrieveAgg
 	IMDId *mdid
 	)
 {
-	OID agg_oid = CMDIdGPDB::CastMdid(mdid)->OidObjectId();
+	OID agg_oid = CMDIdGPDB::CastMdid(mdid)->Oid();
 
 	GPOS_ASSERT(InvalidOid != agg_oid);
 
@@ -1969,7 +1969,7 @@ CTranslatorRelcacheToDXL::RetrieveTrigger
 	IMDId *mdid
 	)
 {
-	OID trigger_oid = CMDIdGPDB::CastMdid(mdid)->OidObjectId();
+	OID trigger_oid = CMDIdGPDB::CastMdid(mdid)->Oid();
 
 	GPOS_ASSERT(InvalidOid != trigger_oid);
 
@@ -2031,7 +2031,7 @@ CTranslatorRelcacheToDXL::RetrieveCheckConstraints
 	IMDId *mdid
 	)
 {
-	OID check_constraint_oid = CMDIdGPDB::CastMdid(mdid)->OidObjectId();
+	OID check_constraint_oid = CMDIdGPDB::CastMdid(mdid)->Oid();
 	GPOS_ASSERT(InvalidOid != check_constraint_oid);
 
 	// get name of the check constraint
@@ -2126,7 +2126,7 @@ CTranslatorRelcacheToDXL::GetTypeName
 	IMDId *mdid
 	)
 {
-	OID oid_type = CMDIdGPDB::CastMdid(mdid)->OidObjectId();
+	OID oid_type = CMDIdGPDB::CastMdid(mdid)->Oid();
 
 	GPOS_ASSERT(InvalidOid != oid_type);
 
@@ -2229,7 +2229,7 @@ CTranslatorRelcacheToDXL::RetrieveAggIntermediateResultType
 	IMDId *mdid
 	)
 {
-	OID agg_oid = CMDIdGPDB::CastMdid(mdid)->OidObjectId();
+	OID agg_oid = CMDIdGPDB::CastMdid(mdid)->Oid();
 
 	GPOS_ASSERT(InvalidOid != agg_oid);
 	return GPOS_NEW(mp) CMDIdGPDB(gpdb::GetAggIntermediateResultType(agg_oid));
@@ -2252,7 +2252,7 @@ CTranslatorRelcacheToDXL::RetrieveRelStats
 {
 	CMDIdRelStats *m_rel_stats_mdid = CMDIdRelStats::CastMdid(mdid);
 	IMDId *mdid_rel = m_rel_stats_mdid->GetRelMdId();
-	OID rel_oid = CMDIdGPDB::CastMdid(mdid_rel)->OidObjectId();
+	OID rel_oid = CMDIdGPDB::CastMdid(mdid_rel)->Oid();
 
 	Relation rel = gpdb::GetRelation(rel_oid);
 	if (NULL == rel)
@@ -2328,7 +2328,7 @@ CTranslatorRelcacheToDXL::RetrieveColStats
 	CMDIdColStats *mdid_col_stats = CMDIdColStats::CastMdid(mdid);
 	IMDId *mdid_rel = mdid_col_stats->GetRelMdId();
 	ULONG pos = mdid_col_stats->Position();
-	OID rel_oid = CMDIdGPDB::CastMdid(mdid_rel)->OidObjectId();
+	OID rel_oid = CMDIdGPDB::CastMdid(mdid_rel)->Oid();
 
 	Relation rel = gpdb::GetRelation(rel_oid);
 	if (NULL == rel)
@@ -2345,7 +2345,7 @@ CTranslatorRelcacheToDXL::RetrieveColStats
 
 	// extract column name and type
 	CMDName *md_colname = GPOS_NEW(mp) CMDName(mp, md_col->Mdname().GetMDName());
-	OID att_type = CMDIdGPDB::CastMdid(md_col->MDIdType())->OidObjectId();
+	OID att_type = CMDIdGPDB::CastMdid(md_col->MDIdType())->Oid();
 	gpdb::CloseRelation(rel);
 
 	DXLBucketPtrArray *dxl_stats_bucket_array = GPOS_NEW(mp) DXLBucketPtrArray(mp);
@@ -2732,8 +2732,8 @@ CTranslatorRelcacheToDXL::RetrieveCast
 	IMDId *mdid_dest = mdid_cast->MdidDest();
 	IMDCast::EmdCoercepathType coercePathType;
 
-	OID src_oid = CMDIdGPDB::CastMdid(mdid_src)->OidObjectId();
-	OID dest_oid = CMDIdGPDB::CastMdid(mdid_dest)->OidObjectId();
+	OID src_oid = CMDIdGPDB::CastMdid(mdid_src)->Oid();
+	OID dest_oid = CMDIdGPDB::CastMdid(mdid_dest)->Oid();
 	CoercionPathType	pathtype;
 
 	OID cast_fn_oid = 0;
@@ -2807,8 +2807,8 @@ CTranslatorRelcacheToDXL::RetrieveScCmp
 	
 	IMDType::ECmpType cmp_type = mdid_scalar_cmp->ParseCmpType();
 
-	OID left_oid = CMDIdGPDB::CastMdid(mdid_left)->OidObjectId();
-	OID right_oid = CMDIdGPDB::CastMdid(mdid_right)->OidObjectId();
+	OID left_oid = CMDIdGPDB::CastMdid(mdid_left)->Oid();
+	OID right_oid = CMDIdGPDB::CastMdid(mdid_right)->Oid();
 	CmpType cmpt = (CmpType) GetComparisonType(cmp_type);
 	
 	OID scalar_cmp_oid = gpdb::GetComparisonOperator(left_oid, right_oid, cmpt);
@@ -3686,7 +3686,7 @@ CTranslatorRelcacheToDXL::RetrieveIndexOpFamilies
 	IMDId *mdid_index
 	)
 {
-	List *op_families = gpdb::GetIndexOpFamilies(CMDIdGPDB::CastMdid(mdid_index)->OidObjectId());
+	List *op_families = gpdb::GetIndexOpFamilies(CMDIdGPDB::CastMdid(mdid_index)->Oid());
 	MdidPtrArray *input_col_mdids = GPOS_NEW(mp) MdidPtrArray(mp);
 	
 	ListCell *lc = NULL;
@@ -3715,7 +3715,7 @@ CTranslatorRelcacheToDXL::RetrieveScOpOpFamilies
 	IMDId *mdid_scalar_op
 	)
 {
-	List *op_families = gpdb::GetOpFamiliesForScOp(CMDIdGPDB::CastMdid(mdid_scalar_op)->OidObjectId());
+	List *op_families = gpdb::GetOpFamiliesForScOp(CMDIdGPDB::CastMdid(mdid_scalar_op)->Oid());
 	MdidPtrArray *input_col_mdids = GPOS_NEW(mp) MdidPtrArray(mp);
 	
 	ListCell *lc = NULL;

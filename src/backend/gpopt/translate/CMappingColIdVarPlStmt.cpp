@@ -112,7 +112,7 @@ CMappingColIdVarPlStmt::ParamFromDXLNodeScId
 		param = MakeNode(Param);
 		param->paramkind = PARAM_EXEC;
 		param->paramid = elem->ParamId();
-		param->paramtype = CMDIdGPDB::CastMdid(elem->MDIdType())->OidObjectId();
+		param->paramtype = CMDIdGPDB::CastMdid(elem->MDIdType())->Oid();
 		param->paramtypmod = elem->TypeModifier();
 	}
 
@@ -229,7 +229,7 @@ CMappingColIdVarPlStmt::VarFromDXLNodeScId
 						(
 						varno,
 						attno,
-						CMDIdGPDB::CastMdid(dxlop->MDIdType())->OidObjectId(),
+						CMDIdGPDB::CastMdid(dxlop->MDIdType())->Oid(),
 						dxlop->TypeModifier(),
 						0	// varlevelsup
 						);
