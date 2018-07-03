@@ -290,7 +290,7 @@ CTranslatorUtils::ConvertToCDXLLogicalTVF
 
 	MdidPtrArray *out_arg_types = func->OutputArgTypesMdidArray();
 
-	ColumnDescrDXLArray *column_descrs = NULL;
+	DXLColumnDescrArray *column_descrs = NULL;
 
 	if (NULL != rte->funccoltypes)
 	{
@@ -447,7 +447,7 @@ CTranslatorUtils::ContainsPolymorphicTypes
 //		Get column descriptors from a record type
 //
 //---------------------------------------------------------------------------
-ColumnDescrDXLArray *
+DXLColumnDescrArray *
 CTranslatorUtils::GetColumnDescriptorsFromRecord
 	(
 	IMemoryPool *memory_pool,
@@ -462,7 +462,7 @@ CTranslatorUtils::GetColumnDescriptorsFromRecord
 	ListCell *col_type_modifier = NULL;
 
 	ULONG ul = 0;
-	ColumnDescrDXLArray *column_descrs = GPOS_NEW(memory_pool) ColumnDescrDXLArray(memory_pool);
+	DXLColumnDescrArray *column_descrs = GPOS_NEW(memory_pool) DXLColumnDescrArray(memory_pool);
 
 	ForThree (col_name, col_names,
 			col_type, col_types,
@@ -504,7 +504,7 @@ CTranslatorUtils::GetColumnDescriptorsFromRecord
 //		Get column descriptors from a record type
 //
 //---------------------------------------------------------------------------
-ColumnDescrDXLArray *
+DXLColumnDescrArray *
 CTranslatorUtils::GetColumnDescriptorsFromRecord
 	(
 	IMemoryPool *memory_pool,
@@ -517,7 +517,7 @@ CTranslatorUtils::GetColumnDescriptorsFromRecord
 	ListCell *col_name = NULL;
 
 	ULONG ul = 0;
-	ColumnDescrDXLArray *column_descrs = GPOS_NEW(memory_pool) ColumnDescrDXLArray(memory_pool);
+	DXLColumnDescrArray *column_descrs = GPOS_NEW(memory_pool) DXLColumnDescrArray(memory_pool);
 
 	ForEach (col_name, col_names)
 	{
@@ -558,7 +558,7 @@ CTranslatorUtils::GetColumnDescriptorsFromRecord
 //		Get column descriptor from a base type
 //
 //---------------------------------------------------------------------------
-ColumnDescrDXLArray *
+DXLColumnDescrArray *
 CTranslatorUtils::GetColumnDescriptorsFromBase
 	(
 	IMemoryPool *memory_pool,
@@ -568,7 +568,7 @@ CTranslatorUtils::GetColumnDescriptorsFromBase
 	CMDName *pmdName
 	)
 {
-	ColumnDescrDXLArray *column_descrs = GPOS_NEW(memory_pool) ColumnDescrDXLArray(memory_pool);
+	DXLColumnDescrArray *column_descrs = GPOS_NEW(memory_pool) DXLColumnDescrArray(memory_pool);
 
 	mdid_return_type->AddRef();
 	CMDName *col_mdname = GPOS_NEW(memory_pool) CMDName(memory_pool, pmdName->GetMDName());
@@ -597,7 +597,7 @@ CTranslatorUtils::GetColumnDescriptorsFromBase
 //		Get column descriptors from a composite type
 //
 //---------------------------------------------------------------------------
-ColumnDescrDXLArray *
+DXLColumnDescrArray *
 CTranslatorUtils::GetColumnDescriptorsFromComposite
 	(
 	IMemoryPool *memory_pool,
@@ -608,7 +608,7 @@ CTranslatorUtils::GetColumnDescriptorsFromComposite
 {
 	MDColumnPtrArray *col_ptr_arr = ExpandCompositeType(memory_pool, md_accessor, type);
 
-	ColumnDescrDXLArray *column_descrs = GPOS_NEW(memory_pool) ColumnDescrDXLArray(memory_pool);
+	DXLColumnDescrArray *column_descrs = GPOS_NEW(memory_pool) DXLColumnDescrArray(memory_pool);
 
 	for (ULONG ul = 0; ul < col_ptr_arr->Size(); ul++)
 	{
@@ -1511,15 +1511,15 @@ CTranslatorUtils::GetTargetListReturnTypeOid
 
 //---------------------------------------------------------------------------
 //	@function:
-//		CTranslatorUtils::GetColumnDescrDXLArray
+//		CTranslatorUtils::GetDXLColumnDescrArray
 //
 //	@doc:
 //		Construct an array of DXL column descriptors for a target list using the
 // 		column ids in the given array
 //
 //---------------------------------------------------------------------------
-ColumnDescrDXLArray *
-CTranslatorUtils::GetColumnDescrDXLArray
+DXLColumnDescrArray *
+CTranslatorUtils::GetDXLColumnDescrArray
 	(
 	IMemoryPool *memory_pool,
 	List *target_list,
@@ -1531,7 +1531,7 @@ CTranslatorUtils::GetColumnDescrDXLArray
 	GPOS_ASSERT(NULL != col_ids);
 
 	ListCell *target_entry_cell = NULL;
-	ColumnDescrDXLArray *dxl_col_descrs = GPOS_NEW(memory_pool) ColumnDescrDXLArray(memory_pool);
+	DXLColumnDescrArray *dxl_col_descrs = GPOS_NEW(memory_pool) DXLColumnDescrArray(memory_pool);
 	ULONG ul = 0;
 	ForEach (target_entry_cell, target_list)
 	{
@@ -2260,18 +2260,18 @@ CTranslatorUtils::IsDuplicateSensitiveMotion
 BOOL
 CTranslatorUtils::HasProjElem
 	(
-	CDXLNode *project_list_dxl,
+	CDXLNode *project_list_dxlnode,
 	Edxlopid dxl_opid
 	)
 {
-	GPOS_ASSERT(NULL != project_list_dxl);
-	GPOS_ASSERT(EdxlopScalarProjectList == project_list_dxl->GetOperator()->GetDXLOperator());
+	GPOS_ASSERT(NULL != project_list_dxlnode);
+	GPOS_ASSERT(EdxlopScalarProjectList == project_list_dxlnode->GetOperator()->GetDXLOperator());
 	GPOS_ASSERT(EdxlopSentinel > dxl_opid);
 
-	const ULONG arity = project_list_dxl->Arity();
+	const ULONG arity = project_list_dxlnode->Arity();
 	for (ULONG ul = 0; ul < arity; ul++)
 	{
-		CDXLNode *dxl_project_element = (*project_list_dxl)[ul];
+		CDXLNode *dxl_project_element = (*project_list_dxlnode)[ul];
 		GPOS_ASSERT(EdxlopScalarProjectElem == dxl_project_element->GetOperator()->GetDXLOperator());
 
 		CDXLNode *dxl_child_node = (*dxl_project_element)[0];

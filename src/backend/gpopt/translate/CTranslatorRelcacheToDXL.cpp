@@ -2067,7 +2067,7 @@ CTranslatorRelcacheToDXL::RetrieveCheckConstraints
 
 	// generate a mock mapping between var to column information
 	CMappingVarColId *var_col_id_mapping = GPOS_NEW(memory_pool) CMappingVarColId(memory_pool);
-	ColumnDescrDXLArray *col_descr_dxl_array = GPOS_NEW(memory_pool) ColumnDescrDXLArray(memory_pool);
+	DXLColumnDescrArray *dxl_col_descr_array = GPOS_NEW(memory_pool) DXLColumnDescrArray(memory_pool);
 	const IMDRelation *md_rel = md_accessor->RetrieveRel(mdid_rel);
 	const ULONG length = md_rel->ColumnCount();
 	for (ULONG ul = 0; ul < length; ul++)
@@ -2088,15 +2088,15 @@ CTranslatorRelcacheToDXL::RetrieveCheckConstraints
 										md_col->TypeModifier(),
 										false /* fColDropped */
 										);
-		col_descr_dxl_array->Append(dxl_col_descr);
+		dxl_col_descr_array->Append(dxl_col_descr);
 	}
-	var_col_id_mapping->LoadColumns(0 /*query_level */, 1 /* rteIndex */, col_descr_dxl_array);
+	var_col_id_mapping->LoadColumns(0 /*query_level */, 1 /* rteIndex */, dxl_col_descr_array);
 
 	// translate the check constraint expression
 	CDXLNode *scalar_dxlnode = sctranslator.CreateScalarOpFromExpr((Expr *) node, var_col_id_mapping);
 
 	// cleanup
-	col_descr_dxl_array->Release();
+	dxl_col_descr_array->Release();
 	GPOS_DELETE(var_col_id_mapping);
 
 	mdid->AddRef();
@@ -2959,8 +2959,8 @@ CTranslatorRelcacheToDXL::TransformMcvToOrcaHistogram
 	ULONG num_mcv_values
 	)
 {
-	DrgPdatum *datums = GPOS_NEW(memory_pool) DrgPdatum(memory_pool);
-	DrgPdouble *freqs = GPOS_NEW(memory_pool) DrgPdouble(memory_pool);
+	DrgPdatum *datums = GPOS_NEW(memory_pool) IDatumArray(memory_pool);
+	DrgPdouble *freqs = GPOS_NEW(memory_pool) CDoubleArray(memory_pool);
 
 	for (ULONG ul = 0; ul < num_mcv_values; ul++)
 	{
@@ -3423,7 +3423,7 @@ CTranslatorRelcacheToDXL::RetrievePartConstraintForIndex
 	BOOL is_unbounded
 	)
 {
-	ColumnDescrDXLArray *col_descr_dxl_array = GPOS_NEW(memory_pool) ColumnDescrDXLArray(memory_pool);
+	DXLColumnDescrArray *dxl_col_descr_array = GPOS_NEW(memory_pool) DXLColumnDescrArray(memory_pool);
 	const ULONG num_columns = md_rel->ColumnCount();
 	
 	for (ULONG ul = 0; ul < num_columns; ul++)
@@ -3444,12 +3444,12 @@ CTranslatorRelcacheToDXL::RetrievePartConstraintForIndex
 										md_col->TypeModifier(),
 										false // fColDropped
 										);
-		col_descr_dxl_array->Append(dxl_col_descr);
+		dxl_col_descr_array->Append(dxl_col_descr);
 	}
+
+	CMDPartConstraintGPDB *mdpart_constraint = RetrievePartConstraintFromNode(memory_pool, md_accessor, dxl_col_descr_array, pnodePartCnstr, level_with_default_part_array, is_unbounded);
 	
-	CMDPartConstraintGPDB *mdpart_constraint = RetrievePartConstraintFromNode(memory_pool, md_accessor, col_descr_dxl_array, part_constraint, level_with_default_part_array, is_unbounded);
-	
-	col_descr_dxl_array->Release();
+	dxl_col_descr_array->Release();
 
 	return mdpart_constraint;
 }
@@ -3513,7 +3513,7 @@ CTranslatorRelcacheToDXL::RetrievePartConstraintForRel
 	}
 	else
 	{
-		ColumnDescrDXLArray *col_descr_dxl_array = GPOS_NEW(memory_pool) ColumnDescrDXLArray(memory_pool);
+		DXLColumnDescrArray *dxl_col_descr_array = GPOS_NEW(memory_pool) DXLColumnDescrArray(memory_pool);
 		const ULONG num_columns = mdcol_array->Size();
 		for (ULONG ul = 0; ul < num_columns; ul++)
 		{
@@ -3533,11 +3533,11 @@ CTranslatorRelcacheToDXL::RetrievePartConstraintForRel
 											md_col->TypeModifier(),
 											false // fColDropped
 											);
-			col_descr_dxl_array->Append(dxl_col_descr);
+			dxl_col_descr_array->Append(dxl_col_descr);
 		}
 
-		mdpart_constraint = RetrievePartConstraintFromNode(memory_pool, md_accessor, col_descr_dxl_array, node, default_levels_derived, is_unbounded);
-		col_descr_dxl_array->Release();
+		mdpart_constraint = RetrievePartConstraintFromNode(memory_pool, md_accessor, dxl_col_descr_array, node, default_levels_derived, is_unbounded);
+		dxl_col_descr_array->Release();
 	}
 
 	gpdb::ListFree(default_levels_rel);
@@ -3559,7 +3559,7 @@ CTranslatorRelcacheToDXL::RetrievePartConstraintFromNode
 	(
 	IMemoryPool *memory_pool,
 	CMDAccessor *md_accessor,
-	ColumnDescrDXLArray *col_descr_dxl_array,
+	DXLColumnDescrArray *dxl_col_descr_array,
 	Node *part_constraints,
 	ULongPtrArray *level_with_default_part_array,
 	BOOL is_unbounded
@@ -3585,7 +3585,7 @@ CTranslatorRelcacheToDXL::RetrievePartConstraintFromNode
 	// generate a mock mapping between var to column information
 	CMappingVarColId *var_col_id_mapping = GPOS_NEW(memory_pool) CMappingVarColId(memory_pool);
 
-	var_col_id_mapping->LoadColumns(0 /*query_level */, 1 /* rteIndex */, col_descr_dxl_array);
+	var_col_id_mapping->LoadColumns(0 /*query_level */, 1 /* rteIndex */, dxl_col_descr_array);
 
 	// translate the check constraint expression
 	CDXLNode *scalar_dxlnode = sctranslator.CreateScalarOpFromExpr((Expr *) part_constraints, var_col_id_mapping);

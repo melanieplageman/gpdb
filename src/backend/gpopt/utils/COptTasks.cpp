@@ -680,14 +680,14 @@ COptTasks::ConvertToPlanStmtFromDXL
 //		Load search strategy from given file
 //
 //---------------------------------------------------------------------------
-DrgPss *
+SearchStageArray *
 COptTasks::LoadSearchStrategy
 	(
 	IMemoryPool *memory_pool,
 	char *path
 	)
 {
-	DrgPss *search_strategy_arr = NULL;
+	SearchStageArray *search_strategy_arr = NULL;
 	CParseHandlerDXL *dxl_parse_handler = NULL;
 
 	GPOS_TRY
@@ -976,7 +976,7 @@ COptTasks::OptimizeTask
 
 
 	// load search strategy
-	DrgPss *search_strategy_arr = LoadSearchStrategy(memory_pool, optimizer_search_strategy_path);
+	SearchStageArray *search_strategy_arr = LoadSearchStrategy(memory_pool, optimizer_search_strategy_path);
 
 	CBitSet *trace_flags = NULL;
 	CBitSet *enabled_trace_flags = NULL;

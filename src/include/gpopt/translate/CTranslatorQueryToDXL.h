@@ -204,10 +204,10 @@ namespace gpdxl
 				);
 
 			// translate window spec
-			DXLWindowSpecArray *TranslateWindowSpecToDXL(List *window_clause, IntUlongHashMap *sort_col_attno_to_colid_mapping, CDXLNode *project_list_dxl_node);
+			DXLWindowSpecArray *TranslateWindowSpecToDXL(List *window_clause, IntUlongHashMap *sort_col_attno_to_colid_mapping, CDXLNode *project_list_dxlnode_node);
 
 			// update window spec positions of LEAD/LAG functions
-			void UpdateLeadLagWinSpecPos(CDXLNode *project_list_dxl, DXLWindowSpecArray *window_specs_dxl_node) const;
+			void UpdateLeadLagWinSpecPos(CDXLNode *project_list_dxlnode, DXLWindowSpecArray *window_specs_dxl_node) const;
 
 			// manufucture window frame for lead/lag functions
 			CDXLWindowFrame *CreateWindowFramForLeadLag(BOOL is_lead_func, CDXLNode *dxl_offset) const;
@@ -349,7 +349,7 @@ namespace gpdxl
 			CDXLNode *TranslateColumnValuesToDXL
 			 	(
 			 	DXLDatumArray *dxl_datum_array,
-			 	ColumnDescrDXLArray *dxl_column_descriptors,
+			 	DXLColumnDescrArray *dxl_column_descriptors,
 			 	DXLNodeArray *dxl_project_elements
 			    )
 			    const;

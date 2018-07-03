@@ -219,7 +219,7 @@ class COptTasks
 
 		// load search strategy from given path
 		static
-		DrgPss *LoadSearchStrategy(IMemoryPool *memory_pool, char *path);
+		SearchStageArray *LoadSearchStrategy(IMemoryPool *memory_pool, char *path);
 
 		// helper for converting wide character string to regular string
 		static
