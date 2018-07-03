@@ -662,7 +662,7 @@ CTranslatorDXLToScalar::CreateScalarSubplanExprFromDXL
 	SubLinkType slink = CTranslatorUtils::MapDXLSubplanToSublinkType(dxlop->GetDxlSubplanType());
 	Expr *test_expr = CreateSubplanTestExprFromDXL(dxlop->GetDxlTestExpr(), slink, col_id_var, &param_ids);
 
-	const DrgPdxlcr *outer_refs= dxlop->GetDxlOuterColRefsArray();
+	const DXLColRefArray *outer_refs= dxlop->GetDxlOuterColRefsArray();
 
 	const ULONG len = outer_refs->Size();
 
@@ -858,7 +858,7 @@ CTranslatorDXLToScalar::TranslateSubplanParams
 	(
 	SubPlan *sub_plan,
 	CDXLTranslateContext *dxl_translator_ctxt,
-	const DrgPdxlcr *outer_refs,
+	const DXLColRefArray *outer_refs,
 	CMappingColIdVar *col_id_var
 	)
 {
