@@ -303,7 +303,7 @@ CMappingVarColId::LoadColumns
 	(
 	ULONG query_level,
 	ULONG RTE_index,
-	const ColumnDescrDXLArray *column_descrs
+	const DXLColumnDescrArray *column_descrs
 	)
 {
 	GPOS_ASSERT(NULL != column_descrs);
@@ -427,15 +427,15 @@ CMappingVarColId::LoadProjectElements
 	(
 	ULONG query_level,
 	ULONG RTE_index,
-	const CDXLNode *project_list_dxl
+	const CDXLNode *project_list_dxlnode
 	)
 {
-	GPOS_ASSERT(NULL != project_list_dxl);
-	const ULONG size = project_list_dxl->Arity();
+	GPOS_ASSERT(NULL != project_list_dxlnode);
+	const ULONG size = project_list_dxlnode->Arity();
 	// add mapping information for columns
 	for (ULONG i = 0; i < size; i++)
 	{
-		CDXLNode *dxlnode = (*project_list_dxl)[i];
+		CDXLNode *dxlnode = (*project_list_dxlnode)[i];
 		CDXLScalarProjElem *dxl_proj_elem = CDXLScalarProjElem::Cast(dxlnode->GetOperator());
 		this->Insert
 				(

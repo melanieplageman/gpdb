@@ -144,7 +144,7 @@ namespace gpdxl
 			void LoadTblColumns(ULONG query_level, ULONG RTE_index, const CDXLTableDescr *table_descr);
 
 			// load up column id mapping information from the array of column descriptors
-			void LoadColumns(ULONG query_level, ULONG RTE_index, const ColumnDescrDXLArray *column_descrs);
+			void LoadColumns(ULONG query_level, ULONG RTE_index, const DXLColumnDescrArray *column_descrs);
 
 			// load up mapping information from derived table columns
 			void LoadDerivedTblColumns(ULONG query_level, ULONG RTE_index, const DXLNodeArray *derived_columns_dxl, List *target_list);
@@ -153,7 +153,7 @@ namespace gpdxl
 			void LoadCTEColumns(ULONG query_level, ULONG RTE_index, const ULongPtrArray *pdrgpulCTE, List *target_list);
 
 			// load up mapping information from scalar projection list
-			void LoadProjectElements(ULONG query_level, ULONG RTE_index, const CDXLNode *project_list_dxl);
+			void LoadProjectElements(ULONG query_level, ULONG RTE_index, const CDXLNode *project_list_dxlnode);
 
 			// load up mapping information from list of column names
 			void Load(ULONG query_level, ULONG RTE_index,	CIdGenerator *id_generator, List *col_names);

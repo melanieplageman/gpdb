@@ -499,7 +499,7 @@ namespace gpdxl
 			// translate DXL projection list into a target list
 			List *TranslateDXLProjList
 				(
-				const CDXLNode *project_list_dxl,
+				const CDXLNode *project_list_dxlnode,
 				const CDXLTranslateContextBaseTable *base_table_context,
 				DXLTranslationContextArr *child_contexts,
 				CDXLTranslateContext *output_context
@@ -512,7 +512,7 @@ namespace gpdxl
 			// project list of its child node
 			List *TranslateDXLProjectListToHashTargetList
 				(
-				const CDXLNode *project_list_dxl,
+				const CDXLNode *project_list_dxlnode,
 				CDXLTranslateContext *child_context,
 				CDXLTranslateContext *output_context
 				);
@@ -540,7 +540,7 @@ namespace gpdxl
 			// shortcut for translating both the projection list and the filter
 			void TranslateProjListAndFilter
 				(
-				const CDXLNode *project_list_dxl,
+				const CDXLNode *project_list_dxlnode,
 				const CDXLNode *filter_dxlnode,
 				const CDXLTranslateContextBaseTable *base_table_context,
 				DXLTranslationContextArr *child_contexts,

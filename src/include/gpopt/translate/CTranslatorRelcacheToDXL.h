@@ -326,9 +326,9 @@ namespace gpdxl
 			CMDPartConstraintGPDB *RetrievePartConstraintFromNode
 				(
 				IMemoryPool *memory_pool, 
-				CMDAccessor *md_accessor, 
-				ColumnDescrDXLArray *col_descr_dxl_array, 
-				Node *part_constraint, 
+				CMDAccessor *md_accessor,
+				DXLColumnDescrArray *dxl_col_descr_array, 
+				Node *part_constraint,
 				ULongPtrArray *level_with_default_part_array,
 				BOOL is_unbounded
 				);

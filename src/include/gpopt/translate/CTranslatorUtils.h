@@ -165,7 +165,7 @@ namespace gpdxl
 
 			// get column descriptors from a record type
 			static
-			ColumnDescrDXLArray *GetColumnDescriptorsFromRecord
+			DXLColumnDescrArray *GetColumnDescriptorsFromRecord
 						(
 						IMemoryPool *memory_pool,
 						CIdGenerator *id_generator,
@@ -176,7 +176,7 @@ namespace gpdxl
 
 			// get column descriptors from a record type
 			static
-			ColumnDescrDXLArray *GetColumnDescriptorsFromRecord
+			DXLColumnDescrArray *GetColumnDescriptorsFromRecord
 						(
 						IMemoryPool *memory_pool,
 						CIdGenerator *id_generator,
@@ -186,7 +186,7 @@ namespace gpdxl
 
 			// get column descriptor from a base type
 			static
-			ColumnDescrDXLArray *GetColumnDescriptorsFromBase
+			DXLColumnDescrArray *GetColumnDescriptorsFromBase
 						(
 						IMemoryPool *memory_pool,
 						CIdGenerator *id_generator,
@@ -197,7 +197,7 @@ namespace gpdxl
 
 			// get column descriptors from a composite type
 			static
-			ColumnDescrDXLArray *GetColumnDescriptorsFromComposite
+			DXLColumnDescrArray *GetColumnDescriptorsFromComposite
 						(
 						IMemoryPool *memory_pool,
 						CMDAccessor *md_accessor,
@@ -246,7 +246,7 @@ namespace gpdxl
 			// construct an array of DXL column descriptors for a target list
 			// using the column ids in the given array
 			static
-			ColumnDescrDXLArray *GetColumnDescrDXLArray(IMemoryPool *memory_pool, List *target_list, ULongPtrArray *col_ids, BOOL keep_res_junked);
+			DXLColumnDescrArray *GetDXLColumnDescrArray(IMemoryPool *memory_pool, List *target_list, ULongPtrArray *col_ids, BOOL keep_res_junked);
 
 			// return the positions of the target list entries included in the output
 			static
@@ -332,7 +332,7 @@ namespace gpdxl
 			// check whether the given project list has a project element of the given
 			// operator type
 			static
-			BOOL HasProjElem(CDXLNode *project_list_dxl, Edxlopid dxl_op_id);
+			BOOL HasProjElem(CDXLNode *project_list_dxlnode, Edxlopid dxl_op_id);
 
 			// create a multi-byte character string from a wide character string
 			static
