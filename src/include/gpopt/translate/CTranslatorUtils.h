@@ -67,11 +67,11 @@ namespace gpdxl
 
 			// construct a set of column attnos corresponding to a single grouping set
 			static
-			CBitSet *CreateAttnoSetForGroupingSet(IMemoryPool *memory_pool, List *group_elems, ULONG num_cols, UlongUlongHashMap *group_col_pos, CBitSet *group_cols);
+			CBitSet *CreateAttnoSetForGroupingSet(IMemoryPool *mp, List *group_elems, ULONG num_cols, UlongUlongHashMap *group_col_pos, CBitSet *group_cols);
 
 			// create a set of grouping sets for a rollup
 			static
-			BitSetArray *CreateGroupingSetsForRollup(IMemoryPool *memory_pool, GroupingClause *grouping_clause, ULONG num_cols, UlongUlongHashMap *grouping_col_to_pos_map, CBitSet *group_cols);
+			BitSetArray *CreateGroupingSetsForRollup(IMemoryPool *mp, GroupingClause *grouping_clause, ULONG num_cols, UlongUlongHashMap *grouping_col_to_pos_map, CBitSet *group_cols);
 
 			// check if the given mdid array contains any of the polymorphic
 			// types (ANYELEMENT, ANYARRAY)
@@ -83,7 +83,7 @@ namespace gpdxl
 			static
 			MdidPtrArray *ResolvePolymorphicTypes
 						(
-						IMemoryPool *memory_pool,
+						IMemoryPool *mp,
 						MdidPtrArray *mdid_array,
 						List *arg_types,
 						FuncExpr *func_expr
@@ -91,7 +91,7 @@ namespace gpdxl
 			
 			// update grouping col position mappings
 			static
-			void UpdateGrpColMapping(IMemoryPool *memory_pool, UlongUlongHashMap *grouping_col_to_pos_map, CBitSet *group_cols, ULONG sort_group_ref);
+			void UpdateGrpColMapping(IMemoryPool *mp, UlongUlongHashMap *grouping_col_to_pos_map, CBitSet *group_cols, ULONG sort_group_ref);
 
 		public:
 
@@ -116,7 +116,7 @@ namespace gpdxl
 			
 			// return the type for the system column with the given number
 			static
-			CMDIdGPDB *GetSystemColType(IMemoryPool *memory_pool, AttrNumber attno);
+			CMDIdGPDB *GetSystemColType(IMemoryPool *mp, AttrNumber attno);
 
 			// find the n-th column descriptor in the table descriptor
 			static
@@ -140,13 +140,13 @@ namespace gpdxl
 
 			// create a DXL index descriptor from an index MD id
 			static
-			CDXLIndexDescr *GetIndexDescr(IMemoryPool *memory_pool, CMDAccessor *md_accessor, IMDId *mdid);
+			CDXLIndexDescr *GetIndexDescr(IMemoryPool *mp, CMDAccessor *md_accessor, IMDId *mdid);
 
 			// translate a RangeTableEntry into a CDXLTableDescr
 			static
 			CDXLTableDescr *GetTableDescr
 								(
-								IMemoryPool *memory_pool,
+								IMemoryPool *mp,
 								CMDAccessor *md_accessor,
 								CIdGenerator *id_generator,
 								const RangeTblEntry *rte,
@@ -157,7 +157,7 @@ namespace gpdxl
 			static
 			CDXLLogicalTVF *ConvertToCDXLLogicalTVF
 								(
-								IMemoryPool *memory_pool,
+								IMemoryPool *mp,
 								CMDAccessor *md_accessor,
 								CIdGenerator *id_generator,
 								const RangeTblEntry *rte
@@ -167,7 +167,7 @@ namespace gpdxl
 			static
 			DXLColumnDescrArray *GetColumnDescriptorsFromRecord
 						(
-						IMemoryPool *memory_pool,
+						IMemoryPool *mp,
 						CIdGenerator *id_generator,
 						List *col_names,
 						List *col_types,
@@ -178,7 +178,7 @@ namespace gpdxl
 			static
 			DXLColumnDescrArray *GetColumnDescriptorsFromRecord
 						(
-						IMemoryPool *memory_pool,
+						IMemoryPool *mp,
 						CIdGenerator *id_generator,
 						List *col_names,
 						MdidPtrArray *out_arg_types
@@ -188,7 +188,7 @@ namespace gpdxl
 			static
 			DXLColumnDescrArray *GetColumnDescriptorsFromBase
 						(
-						IMemoryPool *memory_pool,
+						IMemoryPool *mp,
 						CIdGenerator *id_generator,
 						IMDId *mdid_return_type,
 						INT type_modifier,
@@ -199,7 +199,7 @@ namespace gpdxl
 			static
 			DXLColumnDescrArray *GetColumnDescriptorsFromComposite
 						(
-						IMemoryPool *memory_pool,
+						IMemoryPool *mp,
 						CMDAccessor *md_accessor,
 						CIdGenerator *id_generator,
 						const IMDType *md_type
@@ -209,7 +209,7 @@ namespace gpdxl
 			static
 			MDColumnPtrArray *ExpandCompositeType
 						(
-						IMemoryPool *memory_pool,
+						IMemoryPool *mp,
 						CMDAccessor *md_accessor,
 						const IMDType *md_type
 						);
@@ -221,7 +221,7 @@ namespace gpdxl
 			// construct a dynamic array of sets of column attnos corresponding
 			// to the group by clause
 			static
-			BitSetArray *GetColumnAttnosForGroupBy(IMemoryPool *memory_pool, List *group_clause, ULONG num_cols, UlongUlongHashMap *group_col_pos, CBitSet *group_cold);
+			BitSetArray *GetColumnAttnosForGroupBy(IMemoryPool *mp, List *group_clause, ULONG num_cols, UlongUlongHashMap *group_col_pos, CBitSet *group_cold);
 
 			// return a copy of the query with constant of unknown type being coerced
 			// to the common data type of the output target list
@@ -235,7 +235,7 @@ namespace gpdxl
 			static
 			ULongPtrArray *GenerateColIds
 					(
-					IMemoryPool *memory_pool,
+					IMemoryPool *mp,
 					List *target_list,
 					MdidPtrArray *input_mdids,
 					ULongPtrArray *input_nums,
@@ -246,28 +246,28 @@ namespace gpdxl
 			// construct an array of DXL column descriptors for a target list
 			// using the column ids in the given array
 			static
-			DXLColumnDescrArray *GetDXLColumnDescrArray(IMemoryPool *memory_pool, List *target_list, ULongPtrArray *col_ids, BOOL keep_res_junked);
+			DXLColumnDescrArray *GetDXLColumnDescrArray(IMemoryPool *mp, List *target_list, ULongPtrArray *col_ids, BOOL keep_res_junked);
 
 			// return the positions of the target list entries included in the output
 			static
-			ULongPtrArray *GetPosInTargetList(IMemoryPool *memory_pool, List *target_list, BOOL keep_res_junked);
+			ULongPtrArray *GetPosInTargetList(IMemoryPool *mp, List *target_list, BOOL keep_res_junked);
 
 			// construct a column descriptor from the given target entry, column identifier and position in the output
 			static
-			CDXLColDescr *GetColumnDescrAt(IMemoryPool *memory_pool, TargetEntry *target_entry, ULONG col_id, ULONG pos);
+			CDXLColDescr *GetColumnDescrAt(IMemoryPool *mp, TargetEntry *target_entry, ULONG col_id, ULONG pos);
 
 			// create a dummy project element to rename the input column identifier
 			static
-			CDXLNode *CreateDummyProjectElem(IMemoryPool *memory_pool, ULONG col_id_input, ULONG col_id_output, CDXLColDescr *dxl_col_descr);
+			CDXLNode *CreateDummyProjectElem(IMemoryPool *mp, ULONG col_id_input, ULONG col_id_output, CDXLColDescr *dxl_col_descr);
 
 			// construct a list of colids corresponding to the given target list
 			// using the given attno->colid map
 			static
-			ULongPtrArray *GetOutputColIdsArray(IMemoryPool *memory_pool, List *target_list, IntUlongHashMap *attno_to_col_id_map);
+			ULongPtrArray *GetOutputColIdsArray(IMemoryPool *mp, List *target_list, IntUlongHashMap *attno_to_col_id_map);
 
 			// construct an array of column ids for the given group by set
 			static
-			ULongPtrArray *GetGroupingColidArray(IMemoryPool *memory_pool, CBitSet *group_by_cols, IntUlongHashMap *sort_group_cols_to_col_id_map);
+			ULongPtrArray *GetGroupingColidArray(IMemoryPool *mp, CBitSet *group_by_cols, IntUlongHashMap *sort_group_cols_to_col_id_map);
 
 			// return the Colid of column with given index
 			static
@@ -294,7 +294,7 @@ namespace gpdxl
 
 			// create a scalar const value expression for the given int8 value
 			static
-			CDXLNode *CreateDXLProjElemFromInt8Const(IMemoryPool *memory_pool, CMDAccessor *md_accessor, INT val);
+			CDXLNode *CreateDXLProjElemFromInt8Const(IMemoryPool *mp, CMDAccessor *md_accessor, INT val);
 
 			// check to see if the target list entry is a grouping column
 			static
@@ -339,7 +339,7 @@ namespace gpdxl
 			CHAR *CreateMultiByteCharStringFromWCString(const WCHAR *wcstr);
 			
 			static 
-			UlongUlongHashMap *MakeNewToOldColMapping(IMemoryPool *memory_pool, ULongPtrArray *old_col_ids, ULongPtrArray *new_col_ids);
+			UlongUlongHashMap *MakeNewToOldColMapping(IMemoryPool *mp, ULongPtrArray *old_col_ids, ULongPtrArray *new_col_ids);
 
 			// check if the given tree contains a subquery
 			static
@@ -348,7 +348,7 @@ namespace gpdxl
 			// check if the given function is a SIRV (single row volatile) that reads
 			// or modifies SQL data
 			static
-			BOOL IsSirvFunc(IMemoryPool *memory_pool, CMDAccessor *md_accessor, OID func_oid);
+			BOOL IsSirvFunc(IMemoryPool *mp, CMDAccessor *md_accessor, OID func_oid);
 			
 			// is this a motion sensitive to duplicates
 			static
@@ -356,16 +356,16 @@ namespace gpdxl
 
 			// construct a project element with a const NULL expression
 			static
-			CDXLNode *CreateDXLProjElemConstNULL(IMemoryPool *memory_pool, CMDAccessor *md_accessor, IMDId *mdid, ULONG col_id, const WCHAR *col_name);
+			CDXLNode *CreateDXLProjElemConstNULL(IMemoryPool *mp, CMDAccessor *md_accessor, IMDId *mdid, ULONG col_id, const WCHAR *col_name);
 
 			// construct a project element with a const NULL expression
 			static
-			CDXLNode *CreateDXLProjElemConstNULL(IMemoryPool *memory_pool, CMDAccessor *md_accessor, IMDId *mdid, ULONG col_id, CHAR *alias_name);
+			CDXLNode *CreateDXLProjElemConstNULL(IMemoryPool *mp, CMDAccessor *md_accessor, IMDId *mdid, ULONG col_id, CHAR *alias_name);
 
 			// create a DXL project element node with a Const NULL of type provided
 			// by the column descriptor
 			static
-			CDXLNode *CreateDXLProjElemConstNULL(IMemoryPool *memory_pool, CMDAccessor *md_accessor, CIdGenerator *col_id_generator, const IMDColumn *col);
+			CDXLNode *CreateDXLProjElemConstNULL(IMemoryPool *mp, CMDAccessor *md_accessor, CIdGenerator *col_id_generator, const IMDColumn *col);
 
 			// check required permissions for the range table
 			static 
@@ -390,7 +390,7 @@ namespace gpdxl
 			// check whether there are triggers for the given operation on
 			// the given relation
 			static
-			BOOL RelHasTriggers(IMemoryPool *memory_pool, CMDAccessor *md_accessor, const IMDRelation *mdrel, const EdxlDmlType dml_type_dxl);
+			BOOL RelHasTriggers(IMemoryPool *mp, CMDAccessor *md_accessor, const IMDRelation *mdrel, const EdxlDmlType dml_type_dxl);
 
 			// check whether the given trigger is applicable to the given DML operation
 			static

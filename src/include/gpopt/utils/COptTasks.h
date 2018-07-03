@@ -203,7 +203,7 @@ class COptTasks
 
 		// create optimizer configuration object
 		static
-		COptimizerConfig *CreateOptimizerConfig(IMemoryPool *memory_pool, ICostModel *cost_model);
+		COptimizerConfig *CreateOptimizerConfig(IMemoryPool *mp, ICostModel *cost_model);
 
 		// optimize a query to a physical DXL
 		static
@@ -215,11 +215,11 @@ class COptTasks
 
 		// translate a DXL tree into a planned statement
 		static
-		PlannedStmt *ConvertToPlanStmtFromDXL(IMemoryPool *memory_pool, CMDAccessor *md_accessor, const CDXLNode *dxlnode, bool can_set_tag);
+		PlannedStmt *ConvertToPlanStmtFromDXL(IMemoryPool *mp, CMDAccessor *md_accessor, const CDXLNode *dxlnode, bool can_set_tag);
 
 		// load search strategy from given path
 		static
-		SearchStageArray *LoadSearchStrategy(IMemoryPool *memory_pool, char *path);
+		SearchStageArray *LoadSearchStrategy(IMemoryPool *mp, char *path);
 
 		// helper for converting wide character string to regular string
 		static
@@ -243,11 +243,11 @@ class COptTasks
 
 		// generate an instance of optimizer cost model
 		static
-		ICostModel *GetCostModel(IMemoryPool *memory_pool, ULONG num_segments);
+		ICostModel *GetCostModel(IMemoryPool *mp, ULONG num_segments);
 
 		// print warning messages for columns with missing statistics
 		static
-		void PrintMissingStatsWarning(IMemoryPool *memory_pool, CMDAccessor *md_accessor, MdidPtrArray *col_stats, MdidHashSet *phsmdidRel);
+		void PrintMissingStatsWarning(IMemoryPool *mp, CMDAccessor *md_accessor, MdidPtrArray *col_stats, MdidHashSet *phsmdidRel);
 
 	public:
 
