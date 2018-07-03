@@ -3024,12 +3024,12 @@ CTranslatorQueryToDXL::TranslateRTEToDXLLogicalGet
 		dxlop = GPOS_NEW(m_mp) CDXLLogicalGet(m_mp, table_descr);
 	}
 
-	CDXLNode *pdxlnGet = GPOS_NEW(m_mp) CDXLNode(m_mp, dxlop);
+	CDXLNode *get_dxlnode = GPOS_NEW(m_mp) CDXLNode(m_mp, dxlop);
 
 	// make note of new columns from base relation
 	m_var_to_colid_map->LoadTblColumns(m_query_level, rti, table_descr);
 
-	return pdxlnGet;
+	return get_dxlnode;
 }
 
 //---------------------------------------------------------------------------
@@ -3455,12 +3455,12 @@ CTranslatorQueryToDXL::TranslateDerivedTablesToDXL
 		);
 
 	// translate query representing the derived table to its DXL representation
-	CDXLNode *pdxlnDerTbl = query_to_dxl_translator.TranslateSelectQueryToDXL();
+	CDXLNode *derived_tbl_dxlnode = query_to_dxl_translator.TranslateSelectQueryToDXL();
 
 	// get the output columns of the derived table
 	DXLNodeArray *query_output_cols_dxlnode_array = query_to_dxl_translator.GetQueryOutputCols();
 	DXLNodeArray *cte_dxlnode_array = query_to_dxl_translator.GetCTEs();
-	GPOS_ASSERT(NULL != pdxlnDerTbl && query_output_cols_dxlnode_array != NULL);
+	GPOS_ASSERT(NULL != derived_tbl_dxlnode && query_output_cols_dxlnode_array != NULL);
 
 	CUtils::AddRefAppend(m_dxl_cte_producers, cte_dxlnode_array);
 	
@@ -3469,7 +3469,7 @@ CTranslatorQueryToDXL::TranslateDerivedTablesToDXL
 	// make note of new columns from derived table
 	m_var_to_colid_map->LoadDerivedTblColumns(current_query_level, rti, query_output_cols_dxlnode_array, query_to_dxl_translator.Pquery()->targetList);
 
-	return pdxlnDerTbl;
+	return derived_tbl_dxlnode;
 }
 
 //---------------------------------------------------------------------------

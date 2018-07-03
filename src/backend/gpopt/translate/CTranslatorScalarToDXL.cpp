@@ -1762,7 +1762,7 @@ CTranslatorScalarToDXL::CreateQuantifiedSubqueryFromSublink
 							m_cte_entries
 							);
 
-	CDXLNode *pdxlnInner = query_to_dxl_translator->TranslateSelectQueryToDXL();
+	CDXLNode *inner_dxlnode = query_to_dxl_translator->TranslateSelectQueryToDXL();
 
 	DXLNodeArray *query_output_dxlnode_array = query_to_dxl_translator->GetQueryOutputCols();
 	DXLNodeArray *cte_dxlnode_array = query_to_dxl_translator->GetCTEs();
@@ -1798,7 +1798,7 @@ CTranslatorScalarToDXL::CreateQuantifiedSubqueryFromSublink
 	GPOS_ASSERT(NULL != op_expr->args);
 	Expr* pexprLHS = (Expr*) gpdb::ListNth(op_expr->args, 0);
 
-	CDXLNode *pdxlnOuter = CreateScalarOpFromExpr(pexprLHS, var_colid_mapping);
+	CDXLNode *outer_dxlnode = CreateScalarOpFromExpr(pexprLHS, var_colid_mapping);
 
 	CDXLNode *dxlnode = NULL;
 	CDXLScalar *pdxlopSubquery = NULL;
@@ -1828,8 +1828,8 @@ CTranslatorScalarToDXL::CreateQuantifiedSubqueryFromSublink
 
 	dxlnode = GPOS_NEW(m_mp) CDXLNode(m_mp, pdxlopSubquery);
 
-	dxlnode->AddChild(pdxlnOuter);
-	dxlnode->AddChild(pdxlnInner);
+	dxlnode->AddChild(outer_dxlnode);
+	dxlnode->AddChild(inner_dxlnode);
 
 #ifdef GPOS_DEBUG
 	dxlnode->GetOperator()->AssertValid(dxlnode, false /* fValidateChildren */);
@@ -1867,7 +1867,7 @@ CTranslatorScalarToDXL::CreateScalarSubqueryFromSublink
 							m_query_level + 1,
 							m_cte_entries
 							);
-	CDXLNode *pdxlnSubQuery = query_to_dxl_translator->TranslateSelectQueryToDXL();
+	CDXLNode *subquery_dxlnode = query_to_dxl_translator->TranslateSelectQueryToDXL();
 
 	DXLNodeArray *query_output_dxlnode_array = query_to_dxl_translator->GetQueryOutputCols();
 
@@ -1889,7 +1889,7 @@ CTranslatorScalarToDXL::CreateScalarSubqueryFromSublink
 
 	CDXLNode *dxlnode = GPOS_NEW(m_mp) CDXLNode(m_mp, GPOS_NEW(m_mp) CDXLScalarSubquery(m_mp, colid));
 
-	dxlnode->AddChild(pdxlnSubQuery);
+	dxlnode->AddChild(subquery_dxlnode);
 
 	return dxlnode;
 }
@@ -2003,15 +2003,15 @@ CTranslatorScalarToDXL::AddArrayIndexList
 	GPOS_ASSERT(EdxlopScalarArrayRef == dxlnode->GetOperator()->GetDXLOperator());
 	GPOS_ASSERT(CDXLScalarArrayRefIndexList::EilbSentinel > index_list_bound);
 
-	CDXLNode *pdxlnIndexList =
+	CDXLNode *index_list_dxlnode =
 			GPOS_NEW(m_mp) CDXLNode
 					(
 					m_mp,
 					GPOS_NEW(m_mp) CDXLScalarArrayRefIndexList(m_mp, index_list_bound)
 					);
 
-	TranslateScalarChildren(pdxlnIndexList, list, var_colid_mapping);
-	dxlnode->AddChild(pdxlnIndexList);
+	TranslateScalarChildren(index_list_dxlnode, list, var_colid_mapping);
+	dxlnode->AddChild(index_list_dxlnode);
 }
 
 //---------------------------------------------------------------------------
