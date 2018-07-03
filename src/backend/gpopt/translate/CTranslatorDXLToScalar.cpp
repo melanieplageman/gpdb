@@ -706,7 +706,7 @@ CTranslatorDXLToScalar::CreateScalarSubplanExprFromDXL
 							(dynamic_cast<CMappingColIdVarPlStmt*>(col_id_var))->GetDXLToPlStmtContext(),
 							m_num_of_segments
 							);
-	DXLTranslationContextArr *prev_siblings_ctxt_arr = GPOS_NEW(m_mp) DXLTranslationContextArr(m_mp);
+	DXLTranslationContextArray *prev_siblings_ctxt_arr = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
 	Plan *plan_child = dxl_to_plstmt_translator.TranslateDXLOperatorToPlan(child_dxl, &sub_plan_translate_ctxt, prev_siblings_ctxt_arr);
 	prev_siblings_ctxt_arr->Release();
 
