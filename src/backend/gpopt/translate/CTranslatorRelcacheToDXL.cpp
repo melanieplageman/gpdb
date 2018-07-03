@@ -2959,8 +2959,8 @@ CTranslatorRelcacheToDXL::TransformMcvToOrcaHistogram
 	ULONG num_mcv_values
 	)
 {
-	DrgPdatum *datums = GPOS_NEW(mp) IDatumArray(mp);
-	DrgPdouble *freqs = GPOS_NEW(mp) CDoubleArray(mp);
+	IDatumArray *datums = GPOS_NEW(mp) IDatumArray(mp);
+	CDoubleArray *freqs = GPOS_NEW(mp) CDoubleArray(mp);
 
 	for (ULONG ul = 0; ul < num_mcv_values; ul++)
 	{
@@ -3447,7 +3447,7 @@ CTranslatorRelcacheToDXL::RetrievePartConstraintForIndex
 		dxl_col_descr_array->Append(dxl_col_descr);
 	}
 
-	CMDPartConstraintGPDB *mdpart_constraint = RetrievePartConstraintFromNode(mp, md_accessor, dxl_col_descr_array, pnodePartCnstr, level_with_default_part_array, is_unbounded);
+	CMDPartConstraintGPDB *mdpart_constraint = RetrievePartConstraintFromNode(mp, md_accessor, dxl_col_descr_array, part_constraint, level_with_default_part_array, is_unbounded);
 	
 	dxl_col_descr_array->Release();
 
