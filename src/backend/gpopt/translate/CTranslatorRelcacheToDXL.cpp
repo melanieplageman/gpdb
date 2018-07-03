@@ -887,7 +887,7 @@ CTranslatorRelcacheToDXL::GetDefaultColumnValue
 	return sctranslator.CreateScalarOpFromExpr
 							(
 							(Expr *) node,
-							NULL /* var_col_id_mapping --- subquery or external variable are not supported in default expression */
+							NULL /* var_colid_mapping --- subquery or external variable are not supported in default expression */
 							);
 }
 
@@ -2066,7 +2066,7 @@ CTranslatorRelcacheToDXL::RetrieveCheckConstraints
 							);
 
 	// generate a mock mapping between var to column information
-	CMappingVarColId *var_col_id_mapping = GPOS_NEW(mp) CMappingVarColId(mp);
+	CMappingVarColId *var_colid_mapping = GPOS_NEW(mp) CMappingVarColId(mp);
 	DXLColumnDescrArray *dxl_col_descr_array = GPOS_NEW(mp) DXLColumnDescrArray(mp);
 	const IMDRelation *md_rel = md_accessor->RetrieveRel(mdid_rel);
 	const ULONG length = md_rel->ColumnCount();
@@ -2082,7 +2082,7 @@ CTranslatorRelcacheToDXL::RetrieveCheckConstraints
 										(
 										mp,
 										md_colname,
-										ul + 1 /*col_id*/,
+										ul + 1 /*colid*/,
 										md_col->AttrNum(),
 										mdid_col_type,
 										md_col->TypeModifier(),
@@ -2090,14 +2090,14 @@ CTranslatorRelcacheToDXL::RetrieveCheckConstraints
 										);
 		dxl_col_descr_array->Append(dxl_col_descr);
 	}
-	var_col_id_mapping->LoadColumns(0 /*query_level */, 1 /* rteIndex */, dxl_col_descr_array);
+	var_colid_mapping->LoadColumns(0 /*query_level */, 1 /* rteIndex */, dxl_col_descr_array);
 
 	// translate the check constraint expression
-	CDXLNode *scalar_dxlnode = sctranslator.CreateScalarOpFromExpr((Expr *) node, var_col_id_mapping);
+	CDXLNode *scalar_dxlnode = sctranslator.CreateScalarOpFromExpr((Expr *) node, var_colid_mapping);
 
 	// cleanup
 	dxl_col_descr_array->Release();
-	GPOS_DELETE(var_col_id_mapping);
+	GPOS_DELETE(var_colid_mapping);
 
 	mdid->AddRef();
 
@@ -3438,7 +3438,7 @@ CTranslatorRelcacheToDXL::RetrievePartConstraintForIndex
 										(
 										mp,
 										md_colname,
-										ul + 1, // col_id
+										ul + 1, // colid
 										md_col->AttrNum(),
 										mdid_col_type,
 										md_col->TypeModifier(),
@@ -3527,7 +3527,7 @@ CTranslatorRelcacheToDXL::RetrievePartConstraintForRel
 											(
 											mp,
 											md_colname,
-											ul + 1, // col_id
+											ul + 1, // colid
 											md_col->AttrNum(),
 											mdid_col_type,
 											md_col->TypeModifier(),
@@ -3583,15 +3583,15 @@ CTranslatorRelcacheToDXL::RetrievePartConstraintFromNode
 							);
 
 	// generate a mock mapping between var to column information
-	CMappingVarColId *var_col_id_mapping = GPOS_NEW(mp) CMappingVarColId(mp);
+	CMappingVarColId *var_colid_mapping = GPOS_NEW(mp) CMappingVarColId(mp);
 
-	var_col_id_mapping->LoadColumns(0 /*query_level */, 1 /* rteIndex */, dxl_col_descr_array);
+	var_colid_mapping->LoadColumns(0 /*query_level */, 1 /* rteIndex */, dxl_col_descr_array);
 
 	// translate the check constraint expression
-	CDXLNode *scalar_dxlnode = sctranslator.CreateScalarOpFromExpr((Expr *) part_constraints, var_col_id_mapping);
+	CDXLNode *scalar_dxlnode = sctranslator.CreateScalarOpFromExpr((Expr *) part_constraints, var_colid_mapping);
 
 	// cleanup
-	GPOS_DELETE(var_col_id_mapping);
+	GPOS_DELETE(var_colid_mapping);
 
 	level_with_default_part_array->AddRef();
 	return GPOS_NEW(mp) CMDPartConstraintGPDB(mp, level_with_default_part_array, is_unbounded, scalar_dxlnode);

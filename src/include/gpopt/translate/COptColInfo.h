@@ -47,8 +47,8 @@ namespace gpdxl
 
 		public:
 			// ctor
-			COptColInfo(ULONG col_id, CWStringBase *str)
-				: m_colid(col_id), m_str(str)
+			COptColInfo(ULONG colid, CWStringBase *str)
+				: m_colid(colid), m_str(str)
 			{
 				GPOS_ASSERT(m_str);
 			}

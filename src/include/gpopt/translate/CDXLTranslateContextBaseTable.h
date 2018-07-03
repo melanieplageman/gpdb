@@ -76,7 +76,7 @@ namespace gpdxl
 			Index GetRelIndex() const;
 
 			// return the index of the column in the base relation for the given DXL ColId
-			INT GetAttnoForColId(ULONG dxl_col_id) const;
+			INT GetAttnoForColId(ULONG dxl_colid) const;
 
 			// setters
 			void SetOID(OID oid);
@@ -84,7 +84,7 @@ namespace gpdxl
 			void SetRelIndex(Index rel_index);
 
 			// store the mapping of the given DXL column id and index in the base relation schema
-			BOOL InsertMapping(ULONG dxl_col_id, INT att_no);
+			BOOL InsertMapping(ULONG dxl_colid, INT att_no);
 
 	};
 }

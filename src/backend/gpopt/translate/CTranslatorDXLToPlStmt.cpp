@@ -2056,8 +2056,8 @@ CTranslatorDXLToPlStmt::TranslateDXLRedistributeMotionToResultHashFilters
 			INT resno = gpos::int_max;
 			if (EdxlopScalarIdent == expr_dxlnode->GetOperator()->GetDXLOperator())
 			{
-				ULONG col_id = CDXLScalarIdent::Cast(expr_dxlnode->GetOperator())->MakeDXLColRef()->Id();
-				resno = output_context->GetTargetEntry(col_id)->resno;
+				ULONG colid = CDXLScalarIdent::Cast(expr_dxlnode->GetOperator())->MakeDXLColRef()->Id();
+				resno = output_context->GetTargetEntry(colid)->resno;
 			}
 			else
 			{
@@ -3381,8 +3381,8 @@ CTranslatorDXLToPlStmt::TranslateDXLCTEConsumerToSharedScan
 	{
 		CDXLNode *proj_elem_dxlnode = (*project_list_dxlnode)[ul];
 		CDXLScalarProjElem *sc_proj_elem_dxlop = CDXLScalarProjElem::Cast(proj_elem_dxlnode->GetOperator());
-		ULONG col_id = sc_proj_elem_dxlop->Id();
-		GPOS_ASSERT(col_id == *(*output_colids_array)[ul]);
+		ULONG colid = sc_proj_elem_dxlop->Id();
+		GPOS_ASSERT(colid == *(*output_colids_array)[ul]);
 
 		CDXLNode *sc_ident_dxlnode = (*proj_elem_dxlnode)[0];
 		CDXLScalarIdent *sc_ident_dxlop = CDXLScalarIdent::Cast(sc_ident_dxlnode->GetOperator());
@@ -3394,7 +3394,7 @@ CTranslatorDXLToPlStmt::TranslateDXLCTEConsumerToSharedScan
 		TargetEntry *target_entry = gpdb::MakeTargetEntry((Expr *) var, (AttrNumber) (ul + 1), resname, false /* resjunk */);
 		plan->targetlist = gpdb::LAppend(plan->targetlist, target_entry);
 
-		output_context->InsertMapping(col_id, target_entry);
+		output_context->InsertMapping(colid, target_entry);
 	}
 
 	plan->qual = NULL;
@@ -4363,11 +4363,11 @@ CTranslatorDXLToPlStmt::TranslateDXLProjList
 
 				GPOS_ASSERT(NULL != child_contexts);
 				GPOS_ASSERT(0 != child_contexts->Size());
-				ULONG col_id = CDXLScalarIdent::Cast(expr_dxlnode->GetOperator())->MakeDXLColRef()->Id();
+				ULONG colid = CDXLScalarIdent::Cast(expr_dxlnode->GetOperator())->MakeDXLColRef()->Id();
 
 				const CDXLTranslateContext *translate_ctxt_left = (*child_contexts)[0];
 				GPOS_ASSERT(NULL != translate_ctxt_left);
-				const TargetEntry *pteOriginal = translate_ctxt_left->GetTargetEntry(col_id);
+				const TargetEntry *pteOriginal = translate_ctxt_left->GetTargetEntry(colid);
 
 				if (NULL == pteOriginal)
 				{
@@ -4376,12 +4376,12 @@ CTranslatorDXLToPlStmt::TranslateDXLProjList
 					const CDXLTranslateContext *pdxltrctxRight = (*child_contexts)[1];
 
 					GPOS_ASSERT(NULL != pdxltrctxRight);
-					pteOriginal = pdxltrctxRight->GetTargetEntry(col_id);
+					pteOriginal = pdxltrctxRight->GetTargetEntry(colid);
 				}
 
 				if (NULL  == pteOriginal)
 				{
-					GPOS_RAISE(gpdxl::ExmaDXL, gpdxl::ExmiDXL2PlStmtAttributeNotFound, col_id);
+					GPOS_RAISE(gpdxl::ExmaDXL, gpdxl::ExmiDXL2PlStmtAttributeNotFound, colid);
 				}	
 				target_entry->resorigtbl = pteOriginal->resorigtbl;
 				target_entry->resorigcol = pteOriginal->resorigcol;
@@ -4848,13 +4848,13 @@ CTranslatorDXLToPlStmt::AddTargetEntryForColId
 	(
 	List **target_list,
 	CDXLTranslateContext *dxl_translate_ctxt,
-	ULONG col_id,
+	ULONG colid,
 	BOOL is_resjunk
 	)
 {
 	GPOS_ASSERT(NULL != target_list);
 	
-	const TargetEntry *target_entry = dxl_translate_ctxt->GetTargetEntry(col_id);
+	const TargetEntry *target_entry = dxl_translate_ctxt->GetTargetEntry(colid);
 	
 	if (NULL == target_entry)
 	{

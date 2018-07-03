@@ -147,7 +147,7 @@ CMappingVarColId::Insert
 	ULONG query_level,
 	ULONG var_no,
 	INT attrnum,
-	ULONG col_id,
+	ULONG colid,
 	CWStringBase *column_name
 	)
 {
@@ -159,7 +159,7 @@ CMappingVarColId::Insert
 	CGPDBAttInfo *gpdb_att_info = GPOS_NEW(m_mp) CGPDBAttInfo(query_level, var_no, attrnum);
 
 	// create value
-	COptColInfo *opt_col_info = GPOS_NEW(m_mp) COptColInfo(col_id, column_name);
+	COptColInfo *opt_col_info = GPOS_NEW(m_mp) COptColInfo(colid, column_name);
 
 	// key is part of value, bump up refcount
 	gpdb_att_info->AddRef();
@@ -398,7 +398,7 @@ CMappingVarColId::LoadCTEColumns
 		if (!target_entry->resjunk)
 		{
 			GPOS_ASSERT(0 < target_entry->resno);
-			ULONG CTE_col_id = *((*CTE_columns)[idx]);
+			ULONG CTE_colid = *((*CTE_columns)[idx]);
 			
 			CWStringDynamic *column_name = CDXLUtils::CreateDynamicStringFromCharArray(m_mp, target_entry->resname);
 			this->Insert
@@ -406,7 +406,7 @@ CMappingVarColId::LoadCTEColumns
 					query_level,
 					RTE_index,
 					INT(target_entry->resno),
-					CTE_col_id,
+					CTE_colid,
 					column_name
 					);
 			idx++;
@@ -463,7 +463,7 @@ CMappingVarColId::CopyMapColId
 	)
 	const
 {
-	CMappingVarColId *var_col_id_mapping = GPOS_NEW(m_mp) CMappingVarColId(m_mp);
+	CMappingVarColId *var_colid_mapping = GPOS_NEW(m_mp) CMappingVarColId(m_mp);
 
 	// iterate over full map
 	GPDBAttOptColHashMapIter col_map_iterator(this->m_gpdb_att_opt_col_mapping);
@@ -485,12 +485,12 @@ CMappingVarColId::CopyMapColId
 #ifdef GPOS_DEBUG
 			BOOL result =
 #endif // GPOS_DEBUG
-					var_col_id_mapping->m_gpdb_att_opt_col_mapping->Insert(gpdb_att_info_new, gpdb_att_opt_col_new);
+					var_colid_mapping->m_gpdb_att_opt_col_mapping->Insert(gpdb_att_info_new, gpdb_att_opt_col_new);
 			GPOS_ASSERT(result);
 		}
 	}
 
-	return var_col_id_mapping;
+	return var_colid_mapping;
 }
 
 //---------------------------------------------------------------------------
@@ -508,7 +508,7 @@ CMappingVarColId::CopyMapColId
 	)
 	const
 {
-	CMappingVarColId *var_col_id_mapping = GPOS_NEW(mp) CMappingVarColId(mp);
+	CMappingVarColId *var_colid_mapping = GPOS_NEW(mp) CMappingVarColId(mp);
 
 	// iterate over full map
 	GPDBAttOptColHashMapIter col_map_iterator(this->m_gpdb_att_opt_col_mapping);
@@ -527,11 +527,11 @@ CMappingVarColId::CopyMapColId
 #ifdef GPOS_DEBUG
 	BOOL result =
 #endif // GPOS_DEBUG
-		var_col_id_mapping->m_gpdb_att_opt_col_mapping->Insert(gpdb_att_info_new, gpdb_att_opt_col_new);
+		var_colid_mapping->m_gpdb_att_opt_col_mapping->Insert(gpdb_att_info_new, gpdb_att_opt_col_new);
 		GPOS_ASSERT(result);
 	}
 
-	return var_col_id_mapping;
+	return var_colid_mapping;
 }
 
 //---------------------------------------------------------------------------
@@ -546,19 +546,19 @@ CMappingVarColId *
 CMappingVarColId::CopyRemapColId
 	(
 	IMemoryPool *mp,
-	ULongPtrArray *old_col_ids,
-	ULongPtrArray *new_col_ids
+	ULongPtrArray *old_colids,
+	ULongPtrArray *new_colids
 	)
 	const
 {
-	GPOS_ASSERT(NULL != old_col_ids);
-	GPOS_ASSERT(NULL != new_col_ids);
-	GPOS_ASSERT(new_col_ids->Size() == old_col_ids->Size());
+	GPOS_ASSERT(NULL != old_colids);
+	GPOS_ASSERT(NULL != new_colids);
+	GPOS_ASSERT(new_colids->Size() == old_colids->Size());
 	
 	// construct a mapping old cols -> new cols
-	UlongUlongHashMap *old_new_col_mapping = CTranslatorUtils::MakeNewToOldColMapping(mp, old_col_ids, new_col_ids);
+	UlongUlongHashMap *old_new_col_mapping = CTranslatorUtils::MakeNewToOldColMapping(mp, old_colids, new_colids);
 		
-	CMappingVarColId *var_col_id_mapping = GPOS_NEW(mp) CMappingVarColId(mp);
+	CMappingVarColId *var_colid_mapping = GPOS_NEW(mp) CMappingVarColId(mp);
 
 	GPDBAttOptColHashMapIter col_map_iterator(this->m_gpdb_att_opt_col_mapping);
 	while (col_map_iterator.Advance())
@@ -568,27 +568,27 @@ CMappingVarColId::CopyRemapColId
 		const COptColInfo *opt_col_info = gpdb_att_opt_col_info->GetOptColInfo();
 
 		CGPDBAttInfo *gpdb_att_info_new = GPOS_NEW(mp) CGPDBAttInfo(gpdb_att_info->GetQueryLevel(), gpdb_att_info->GetVarNo(), gpdb_att_info->GetAttNo());
-		ULONG col_id = opt_col_info->GetColId();
-		ULONG *new_col_id = old_new_col_mapping->Find(&col_id);
-		if (NULL != new_col_id)
+		ULONG colid = opt_col_info->GetColId();
+		ULONG *new_colid = old_new_col_mapping->Find(&colid);
+		if (NULL != new_colid)
 		{
-			col_id = *new_col_id;
+			colid = *new_colid;
 		}
 		
-		COptColInfo *opt_col_info_new = GPOS_NEW(mp) COptColInfo(col_id, GPOS_NEW(mp) CWStringConst(mp, opt_col_info->GetOptColName()->GetBuffer()));
+		COptColInfo *opt_col_info_new = GPOS_NEW(mp) COptColInfo(colid, GPOS_NEW(mp) CWStringConst(mp, opt_col_info->GetOptColName()->GetBuffer()));
 		gpdb_att_info_new->AddRef();
 		CGPDBAttOptCol *gpdb_att_opt_col_new = GPOS_NEW(mp) CGPDBAttOptCol(gpdb_att_info_new, opt_col_info_new);
 
 #ifdef GPOS_DEBUG
 		BOOL result =
 #endif // GPOS_DEBUG
-		var_col_id_mapping->m_gpdb_att_opt_col_mapping->Insert(gpdb_att_info_new, gpdb_att_opt_col_new);
+		var_colid_mapping->m_gpdb_att_opt_col_mapping->Insert(gpdb_att_info_new, gpdb_att_opt_col_new);
 		GPOS_ASSERT(result);
 	}
 	
 	old_new_col_mapping->Release();
 
-	return var_col_id_mapping;
+	return var_colid_mapping;
 }
 
 // EOF

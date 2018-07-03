@@ -104,8 +104,8 @@ CMappingColIdVarPlStmt::ParamFromDXLNodeScId
 
 	Param *param = NULL;
 
-	const ULONG col_id = dxlop->MakeDXLColRef()->Id();
-	const CMappingElementColIdParamId *elem = m_output_context->GetParamIdMappingElement(col_id);
+	const ULONG colid = dxlop->MakeDXLColRef()->Id();
+	const CMappingElementColIdParamId *elem = m_output_context->GetParamIdMappingElement(colid);
 
 	if (NULL != elem)
 	{

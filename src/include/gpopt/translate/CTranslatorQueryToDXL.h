@@ -150,7 +150,7 @@ namespace gpdxl
 				CMDAccessor *md_accessor,
 				CIdGenerator *m_colid_counter,
 				CIdGenerator *cte_id_counter,
-				CMappingVarColId *var_col_id_mapping,
+				CMappingVarColId *var_colid_mapping,
 				Query *query,
 				ULONG query_level,
 				BOOL is_top_query_dml,
@@ -182,8 +182,8 @@ namespace gpdxl
 				(
 				EdxlSetOpType setop_type,
 				List *output_target_list,
-				ULongPtrArray *output_col_ids,
-				ULongPtrArray2D *input_col_ids,
+				ULongPtrArray *output_colids,
+				ULongPtrArray2D *input_colids,
 				DXLNodeArray *children_dxl_nodes,
 				BOOL is_cast_across_input,
 				BOOL keep_res_junked
@@ -291,7 +291,7 @@ namespace gpdxl
 				const;
 
 			// add sorting and grouping column into the hash map
-			void AddSortingGroupingColumn(TargetEntry *target_entry, IntUlongHashMap *phmiulSortGrpColsColId, ULONG col_id) const;
+			void AddSortingGroupingColumn(TargetEntry *target_entry, IntUlongHashMap *phmiulSortGrpColsColId, ULONG colid) const;
 
 			// translate the list of sorting columns
 			DXLNodeArray *TranslateSortColumsToDXL(List *sort_clause, IntUlongHashMap *col_attno_colid_mapping) const;
@@ -382,7 +382,7 @@ namespace gpdxl
 			CDXLNode *CreateDXLConstValueTrue();
 
 			// store mapping attno->colid
-			void StoreAttnoColIdMapping(IntUlongHashMap *attno_to_colid_mapping, INT attno, ULONG col_id) const;
+			void StoreAttnoColIdMapping(IntUlongHashMap *attno_to_colid_mapping, INT attno, ULONG colid) const;
 
 			// construct an array of output columns
 			DXLNodeArray *CreateDXLOutputCols(List *target_list, IntUlongHashMap *attno_to_colid_mapping) const;
@@ -496,7 +496,7 @@ namespace gpdxl
 				CMDAccessor *md_accessor,
 				CIdGenerator *m_colid_counter,
 				CIdGenerator *cte_id_counter,
-				CMappingVarColId *var_col_id_mapping,
+				CMappingVarColId *var_colid_mapping,
 				Query *query,
 				ULONG query_level,
 				HMUlCTEListEntry *query_level_to_cte_map = NULL // hash map between query level -> list of CTEs defined at that level

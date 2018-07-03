@@ -578,7 +578,7 @@ COptTasks::ConvertToDXLFromQueryTask
 	CIdGenerator *cteid_generator = GPOS_NEW(mp) CIdGenerator(GPDXL_CTE_ID_START);
 
 	// map that stores gpdb att to optimizer col mapping
-	CMappingVarColId *var_col_id_mapping = GPOS_NEW(mp) CMappingVarColId(mp);
+	CMappingVarColId *var_colid_mapping = GPOS_NEW(mp) CMappingVarColId(mp);
 
 	// relcache MD provider
 	CMDProviderRelcache *relcache_provider = GPOS_NEW(mp) CMDProviderRelcache(mp);
@@ -593,7 +593,7 @@ COptTasks::ConvertToDXLFromQueryTask
 						md_accessor.Pmda(),
 						colid_generator,
 						cteid_generator,
-						var_col_id_mapping,
+						var_colid_mapping,
 						(Query*)opt_ctxt->m_query,
 						0 /* query_level */
 						);
@@ -1004,7 +1004,7 @@ COptTasks::OptimizeTask
 			CIdGenerator cteid_generator(GPDXL_CTE_ID_START);
 
 			// map that stores gpdb att to optimizer col mapping
-			CMappingVarColId *var_col_id_mapping = GPOS_NEW(mp) CMappingVarColId(mp);
+			CMappingVarColId *var_colid_mapping = GPOS_NEW(mp) CMappingVarColId(mp);
 
 			ULONG num_segments = gpdb::GetGPSegmentCount();
 			ULONG num_segments_for_costing = optimizer_segments;
@@ -1020,7 +1020,7 @@ COptTasks::OptimizeTask
 							&mda,
 							&colid_generator,
 							&cteid_generator,
-							var_col_id_mapping,
+							var_colid_mapping,
 							(Query*) opt_ctxt->m_query,
 							0 /* query_level */
 							);

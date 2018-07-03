@@ -168,8 +168,8 @@ namespace gpdxl
 			CMappingVarColId *CopyRemapColId
 				(
 				IMemoryPool *mp,
-				ULongPtrArray *old_col_ids,
-				ULongPtrArray *new_col_ids
+				ULongPtrArray *old_colids,
+				ULongPtrArray *new_colids
 				)
 				const;
 	};

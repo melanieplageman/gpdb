@@ -240,13 +240,13 @@ namespace gpdxl
 					MdidPtrArray *input_mdids,
 					ULongPtrArray *input_nums,
 					BOOL *is_outer_ref,
-					CIdGenerator *col_id_generator
+					CIdGenerator *colid_generator
 					);
 
 			// construct an array of DXL column descriptors for a target list
 			// using the column ids in the given array
 			static
-			DXLColumnDescrArray *GetDXLColumnDescrArray(IMemoryPool *mp, List *target_list, ULongPtrArray *col_ids, BOOL keep_res_junked);
+			DXLColumnDescrArray *GetDXLColumnDescrArray(IMemoryPool *mp, List *target_list, ULongPtrArray *colids, BOOL keep_res_junked);
 
 			// return the positions of the target list entries included in the output
 			static
@@ -254,28 +254,28 @@ namespace gpdxl
 
 			// construct a column descriptor from the given target entry, column identifier and position in the output
 			static
-			CDXLColDescr *GetColumnDescrAt(IMemoryPool *mp, TargetEntry *target_entry, ULONG col_id, ULONG pos);
+			CDXLColDescr *GetColumnDescrAt(IMemoryPool *mp, TargetEntry *target_entry, ULONG colid, ULONG pos);
 
 			// create a dummy project element to rename the input column identifier
 			static
-			CDXLNode *CreateDummyProjectElem(IMemoryPool *mp, ULONG col_id_input, ULONG col_id_output, CDXLColDescr *dxl_col_descr);
+			CDXLNode *CreateDummyProjectElem(IMemoryPool *mp, ULONG colid_input, ULONG colid_output, CDXLColDescr *dxl_col_descr);
 
 			// construct a list of colids corresponding to the given target list
 			// using the given attno->colid map
 			static
-			ULongPtrArray *GetOutputColIdsArray(IMemoryPool *mp, List *target_list, IntUlongHashMap *attno_to_col_id_map);
+			ULongPtrArray *GetOutputColIdsArray(IMemoryPool *mp, List *target_list, IntUlongHashMap *attno_to_colid_map);
 
 			// construct an array of column ids for the given group by set
 			static
-			ULongPtrArray *GetGroupingColidArray(IMemoryPool *mp, CBitSet *group_by_cols, IntUlongHashMap *sort_group_cols_to_col_id_map);
+			ULongPtrArray *GetGroupingColidArray(IMemoryPool *mp, CBitSet *group_by_cols, IntUlongHashMap *sort_group_cols_to_colid_map);
 
 			// return the Colid of column with given index
 			static
-			ULONG GetColId(INT index, IntUlongHashMap *index_to_col_id_map);
+			ULONG GetColId(INT index, IntUlongHashMap *index_to_colid_map);
 
 			// return the corresponding ColId for the given varno, varattno and querylevel
 			static
-			ULONG GetColId(ULONG query_level, INT varno, INT var_attno, IMDId *mdid, CMappingVarColId *var_col_id_mapping);
+			ULONG GetColId(ULONG query_level, INT varno, INT var_attno, IMDId *mdid, CMappingVarColId *var_colid_mapping);
 
 			// check to see if the target list entry is a sorting column
 			static
@@ -339,7 +339,7 @@ namespace gpdxl
 			CHAR *CreateMultiByteCharStringFromWCString(const WCHAR *wcstr);
 			
 			static 
-			UlongUlongHashMap *MakeNewToOldColMapping(IMemoryPool *mp, ULongPtrArray *old_col_ids, ULongPtrArray *new_col_ids);
+			UlongUlongHashMap *MakeNewToOldColMapping(IMemoryPool *mp, ULongPtrArray *old_colids, ULongPtrArray *new_colids);
 
 			// check if the given tree contains a subquery
 			static
@@ -356,16 +356,16 @@ namespace gpdxl
 
 			// construct a project element with a const NULL expression
 			static
-			CDXLNode *CreateDXLProjElemConstNULL(IMemoryPool *mp, CMDAccessor *md_accessor, IMDId *mdid, ULONG col_id, const WCHAR *col_name);
+			CDXLNode *CreateDXLProjElemConstNULL(IMemoryPool *mp, CMDAccessor *md_accessor, IMDId *mdid, ULONG colid, const WCHAR *col_name);
 
 			// construct a project element with a const NULL expression
 			static
-			CDXLNode *CreateDXLProjElemConstNULL(IMemoryPool *mp, CMDAccessor *md_accessor, IMDId *mdid, ULONG col_id, CHAR *alias_name);
+			CDXLNode *CreateDXLProjElemConstNULL(IMemoryPool *mp, CMDAccessor *md_accessor, IMDId *mdid, ULONG colid, CHAR *alias_name);
 
 			// create a DXL project element node with a Const NULL of type provided
 			// by the column descriptor
 			static
-			CDXLNode *CreateDXLProjElemConstNULL(IMemoryPool *mp, CMDAccessor *md_accessor, CIdGenerator *col_id_generator, const IMDColumn *col);
+			CDXLNode *CreateDXLProjElemConstNULL(IMemoryPool *mp, CMDAccessor *md_accessor, CIdGenerator *colid_generator, const IMDColumn *col);
 
 			// check required permissions for the range table
 			static 
@@ -377,7 +377,7 @@ namespace gpdxl
 
 			// check if given column ids are outer references in the tree rooted by given node
                         static
-			void MarkOuterRefs(ULONG *col_id, BOOL *is_outer_ref, ULONG num_columns, CDXLNode *node);
+			void MarkOuterRefs(ULONG *colid, BOOL *is_outer_ref, ULONG num_columns, CDXLNode *node);
 
 			// map DXL Subplan type to GPDB SubLinkType
 			static

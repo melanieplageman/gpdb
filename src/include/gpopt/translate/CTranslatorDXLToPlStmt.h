@@ -625,7 +625,7 @@ namespace gpdxl
 				(
 				List **target_list, 
 				CDXLTranslateContext *dxl_translate_ctxt, 
-				ULONG col_id, 
+				ULONG colid, 
 				BOOL is_resjunk
 				);
 			

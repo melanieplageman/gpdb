@@ -96,16 +96,16 @@ namespace gpdxl
 			}
 
 			// return the target entry corresponding to the given ColId
-			const TargetEntry *GetTargetEntry(ULONG col_id) const;
+			const TargetEntry *GetTargetEntry(ULONG colid) const;
 
 			// return the param id corresponding to the given ColId
-			const CMappingElementColIdParamId *GetParamIdMappingElement(ULONG col_id) const;
+			const CMappingElementColIdParamId *GetParamIdMappingElement(ULONG colid) const;
 
 			// store the mapping of the given column id and target entry
-			void InsertMapping(ULONG col_id, TargetEntry *target_entry);
+			void InsertMapping(ULONG colid, TargetEntry *target_entry);
 
 			// store the mapping of the given column id and param id
-			BOOL FInsertParamMapping(ULONG col_id, CMappingElementColIdParamId *pmecolidparamid);
+			BOOL FInsertParamMapping(ULONG colid, CMappingElementColIdParamId *pmecolidparamid);
 	};
 
 
