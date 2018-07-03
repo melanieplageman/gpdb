@@ -2140,7 +2140,7 @@ CTranslatorQueryToDXL::TranslateGroupingSets
 
 	// grouping functions refer to grouping col positions, so construct a map pos->grouping column
 	// while processing the grouping clause
-	UlongUlongHashMap *grpcol_index_to_colid_mapping = GPOS_NEW(m_mp) UlongUlongHashMap(m_mp);
+	UlongToUlongMap *grpcol_index_to_colid_mapping = GPOS_NEW(m_mp) UlongToUlongMap(m_mp);
 	CBitSet *unique_grp_cols_bitset = GPOS_NEW(m_mp) CBitSet(m_mp, num_of_cols);
 	BitSetArray *bitset_array = CTranslatorUtils::GetColumnAttnosForGroupBy(m_mp, group_clause, num_of_cols, grpcol_index_to_colid_mapping, unique_grp_cols_bitset);
 
@@ -2223,7 +2223,7 @@ CTranslatorQueryToDXL::CreateDXLUnionAllForGroupingSets
 	BitSetArray *bitset_array,
 	IntUlongHashMap *sort_grpref_to_colid_mapping,
 	IntUlongHashMap *output_attno_to_colid_mapping,
-	UlongUlongHashMap *grpcol_index_to_colid_mapping		// mapping pos->unique grouping columns for grouping func arguments
+	UlongToUlongMap *grpcol_index_to_colid_mapping		// mapping pos->unique grouping columns for grouping func arguments
 	)
 {
 	GPOS_ASSERT(NULL != bitset_array);
@@ -3732,7 +3732,7 @@ CTranslatorQueryToDXL::CreateDXLProjectNullsForGroupingSets
 	CBitSet *bitset,					// group by columns
 	IntUlongHashMap *sort_grouping_col_mapping,	// mapping of sorting and grouping columns
 	IntUlongHashMap *output_attno_to_colid_mapping,		// mapping of output columns
-	UlongUlongHashMap *grpcol_index_to_colid_mapping		// mapping of unique grouping col positions
+	UlongToUlongMap *grpcol_index_to_colid_mapping		// mapping of unique grouping col positions
 	)
 	const
 {
@@ -3822,7 +3822,7 @@ CTranslatorQueryToDXL::CreateDXLProjectGroupingFuncs
 	CDXLNode *dxl_node_child,
 	CBitSet *bitset,
 	IntUlongHashMap *output_attno_to_colid_mapping,
-	UlongUlongHashMap *grpcol_index_to_colid_mapping,
+	UlongToUlongMap *grpcol_index_to_colid_mapping,
 	IntUlongHashMap *sort_grpref_to_colid_mapping
 	)
 	const
@@ -4059,7 +4059,7 @@ CTranslatorQueryToDXL::TranslateGroupingFuncToDXL
 	(
 	const Expr *expr,
 	CBitSet *bitset,
-	UlongUlongHashMap *grpcol_index_to_colid_mapping
+	UlongToUlongMap *grpcol_index_to_colid_mapping
 	)
 	const
 {
@@ -4299,7 +4299,7 @@ CTranslatorQueryToDXL::ExtractColIds
 	)
 	const
 {
-	UlongUlongHashMap *old_new_col_mapping = GPOS_NEW(mp) UlongUlongHashMap(mp);
+	UlongToUlongMap *old_new_col_mapping = GPOS_NEW(mp) UlongToUlongMap(mp);
 	
 	ULongPtrArray *colid_array = GPOS_NEW(mp) ULongPtrArray(mp);
 	
@@ -4344,7 +4344,7 @@ CTranslatorQueryToDXL::RemapColIds
 	GPOS_ASSERT(from_list_colids->Size() == to_list_colids->Size());
 	
 	// compute a map of the positions in the from array
-	UlongUlongHashMap *old_new_col_mapping = GPOS_NEW(mp) UlongUlongHashMap(mp);
+	UlongToUlongMap *old_new_col_mapping = GPOS_NEW(mp) UlongToUlongMap(mp);
 	const ULONG size = from_list_colids->Size();
 	for (ULONG ul = 0; ul < size; ul++)
 	{
