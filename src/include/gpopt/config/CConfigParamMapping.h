@@ -69,7 +69,7 @@ namespace gpdxl
 		public:
 			// pack enabled optimizer config params in a traceflag bitset
 			static
-			CBitSet *PackConfigParamInBitset(IMemoryPool *memory_pool, ULONG xform_id);
+			CBitSet *PackConfigParamInBitset(IMemoryPool *mp, ULONG xform_id);
 	};
 }
 

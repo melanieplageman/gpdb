@@ -28,16 +28,16 @@ using namespace gpos;
 //---------------------------------------------------------------------------
 CDXLTranslateContext::CDXLTranslateContext
 	(
-	IMemoryPool *memory_pool,
+	IMemoryPool *mp,
 	BOOL is_child_agg_node
 	)
 	:
-	m_memory_pool(memory_pool),
+	m_mp(mp),
 	m_is_child_agg_node(is_child_agg_node)
 {
 	// initialize hash table
-	m_colid_to_target_entry_map = GPOS_NEW(m_memory_pool) ULongToTargetEntryMap(m_memory_pool);
-	m_colid_to_paramid_map = GPOS_NEW(m_memory_pool) ULongToColParamMap(m_memory_pool);
+	m_colid_to_target_entry_map = GPOS_NEW(m_mp) ULongToTargetEntryMap(m_mp);
+	m_colid_to_paramid_map = GPOS_NEW(m_mp) ULongToColParamMap(m_mp);
 }
 
 //---------------------------------------------------------------------------
@@ -50,16 +50,16 @@ CDXLTranslateContext::CDXLTranslateContext
 //---------------------------------------------------------------------------
 CDXLTranslateContext::CDXLTranslateContext
 	(
-	IMemoryPool *memory_pool,
+	IMemoryPool *mp,
 	BOOL is_child_agg_node,
 	ULongToColParamMap *original
 	)
 	:
-	m_memory_pool(memory_pool),
+	m_mp(mp),
 	m_is_child_agg_node(is_child_agg_node)
 {
-	m_colid_to_target_entry_map = GPOS_NEW(m_memory_pool) ULongToTargetEntryMap(m_memory_pool);
-	m_colid_to_paramid_map = GPOS_NEW(m_memory_pool) ULongToColParamMap(m_memory_pool);
+	m_colid_to_target_entry_map = GPOS_NEW(m_mp) ULongToTargetEntryMap(m_mp);
+	m_colid_to_paramid_map = GPOS_NEW(m_mp) ULongToColParamMap(m_mp);
 	CopyParamHashmap(original);
 }
 
@@ -112,7 +112,7 @@ CDXLTranslateContext::CopyParamHashmap
 		CMappingElementColIdParamId *colidparamid = const_cast<CMappingElementColIdParamId *>(hashmapiter.Value());
 
 		const ULONG col_id = colidparamid->GetColId();
-		ULONG *key = GPOS_NEW(m_memory_pool) ULONG(col_id);
+		ULONG *key = GPOS_NEW(m_mp) ULONG(col_id);
 		colidparamid->AddRef();
 		m_colid_to_paramid_map->Insert(key, colidparamid);
 	}
@@ -170,7 +170,7 @@ CDXLTranslateContext::InsertMapping
 	)
 {
 	// copy key
-	ULONG *key = GPOS_NEW(m_memory_pool) ULONG(col_id);
+	ULONG *key = GPOS_NEW(m_mp) ULONG(col_id);
 
 	// insert colid->target entry mapping in the hash map
 	BOOL result = m_colid_to_target_entry_map->Insert(key, target_entry);
@@ -197,7 +197,7 @@ CDXLTranslateContext::FInsertParamMapping
 	)
 {
 	// copy key
-	ULONG *key = GPOS_NEW(m_memory_pool) ULONG(col_id);
+	ULONG *key = GPOS_NEW(m_mp) ULONG(col_id);
 
 	// insert colid->target entry mapping in the hash map
 	return m_colid_to_paramid_map->Insert(key, colidparamid);

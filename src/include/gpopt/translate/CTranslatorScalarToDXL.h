@@ -64,7 +64,7 @@ namespace gpdxl
 		typedef CDXLNode * (CTranslatorScalarToDXL::*ExprToDXLFn)(const Expr *expr, const CMappingVarColId* var_col_id_mapping);
 
 		// shorthand for functions for translating DXL nodes to GPDB expressions
-		typedef CDXLDatum * (DxlDatumFromDatum)(IMemoryPool *memory_pool, const IMDType *md_type, BOOL is_null, ULONG len, Datum datum);
+		typedef CDXLDatum * (DxlDatumFromDatum)(IMemoryPool *mp, const IMDType *md_type, BOOL is_null, ULONG len, Datum datum);
 
 		private:
 
@@ -76,7 +76,7 @@ namespace gpdxl
 			};
 
 			// memory pool
-			IMemoryPool *m_memory_pool;
+			IMemoryPool *m_mp;
 
 			// meta data accessor
 			CMDAccessor *m_md_accessor;
@@ -363,7 +363,7 @@ namespace gpdxl
 			// ctor
 			CTranslatorScalarToDXL
 				(
-				IMemoryPool *memory_pool,
+				IMemoryPool *mp,
 				CMDAccessor *md_accessor,
 				CIdGenerator *col_id_generator,
 				CIdGenerator *cte_id_generator,
@@ -423,7 +423,7 @@ namespace gpdxl
 			static
 			CDXLDatum *GetDatumVal
 				(
-				IMemoryPool *memory_pool,
+				IMemoryPool *mp,
 				CMDAccessor *mda,
 				const Const *constant
 				);
@@ -432,7 +432,7 @@ namespace gpdxl
 			static
 			CDXLDatum *GetDatumVal
 				(
-				IMemoryPool *memory_pool,
+				IMemoryPool *mp,
 				const IMDType *md_type,
 				INT type_modifier,
 				BOOL is_null,
@@ -444,7 +444,7 @@ namespace gpdxl
 			static
 			IDatum *GetDatum
 				(
-				IMemoryPool *memory_pool,
+				IMemoryPool *mp,
 				const IMDType *md_type,
 				BOOL is_null,
 				Datum datum
@@ -454,7 +454,7 @@ namespace gpdxl
 			static
 			BYTE *GetByteArray
 				(
-				IMemoryPool *memory_pool,
+				IMemoryPool *mp,
 				const IMDType *md_type,
 				BOOL is_null,
 				ULONG len,
@@ -491,7 +491,7 @@ namespace gpdxl
 			static
 			CDXLDatum *CreateOidCDXLDatum
 				(
-				IMemoryPool *memory_pool,
+				IMemoryPool *mp,
 				const IMDType *md_type,
 				BOOL is_null,
 				ULONG len,
@@ -502,7 +502,7 @@ namespace gpdxl
 			static
 			CDXLDatum *PdxldatumInt2
 				(
-				IMemoryPool *memory_pool,
+				IMemoryPool *mp,
 				const IMDType *md_type,
 				BOOL is_null,
 				ULONG len,
@@ -513,7 +513,7 @@ namespace gpdxl
 			static
 			CDXLDatum *PdxldatumInt4
 				(
-				IMemoryPool *memory_pool,
+				IMemoryPool *mp,
 				const IMDType *md_type,
 				BOOL is_null,
 				ULONG len,
@@ -524,7 +524,7 @@ namespace gpdxl
 			static
 			CDXLDatum *PdxldatumInt8
 				(
-				IMemoryPool *memory_pool,
+				IMemoryPool *mp,
 				const IMDType *md_type,
 				BOOL is_null,
 				ULONG len,
@@ -535,7 +535,7 @@ namespace gpdxl
 			static
 			CDXLDatum *CreateBoolCDXLDatum
 				(
-				IMemoryPool *memory_pool,
+				IMemoryPool *mp,
 				const IMDType *md_type,
 				BOOL is_null,
 				ULONG len,
@@ -546,7 +546,7 @@ namespace gpdxl
 			static
 			CDXLDatum *CreateGenericCDXLDatum
 				(
-				IMemoryPool *memory_pool,
+				IMemoryPool *mp,
 				const IMDType *md_type,
 				INT type_modifier,
 				BOOL is_null,

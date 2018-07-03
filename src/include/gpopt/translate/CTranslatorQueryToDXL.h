@@ -95,7 +95,7 @@ namespace gpdxl
 		
 		private:
 			// memory pool
-			IMemoryPool *m_memory_pool;
+			IMemoryPool *m_mp;
 
 			// source system id
 			CSystemId m_sysid;
@@ -146,7 +146,7 @@ namespace gpdxl
 			// private constructor, called from the public factory function QueryToDXLInstance
 			CTranslatorQueryToDXL
 				(
-				IMemoryPool *memory_pool,
+				IMemoryPool *mp,
 				CMDAccessor *md_accessor,
 				CIdGenerator *m_colid_counter,
 				CIdGenerator *cte_id_counter,
@@ -448,14 +448,14 @@ namespace gpdxl
 			void ConstructCTEAnchors(DXLNodeArray *dxl_nodes, CDXLNode **dxl_cte_anchor_top, CDXLNode **dxl_cte_anchor_bottom);
 			
 			// generate an array of new column ids of the given size
-			ULongPtrArray *GenerateColIds(IMemoryPool *memory_pool, ULONG size) const;
+			ULongPtrArray *GenerateColIds(IMemoryPool *mp, ULONG size) const;
 
 			// extract an array of colids from the given column mapping
-			ULongPtrArray *ExtractColIds(IMemoryPool *memory_pool, IntUlongHashMap *attno_to_colid_mapping) const;
+			ULongPtrArray *ExtractColIds(IMemoryPool *mp, IntUlongHashMap *attno_to_colid_mapping) const;
 			
 			// construct a new mapping based on the given one by replacing the colid in the "From" list
 			// with the colid at the same position in the "To" list
-			IntUlongHashMap *RemapColIds(IMemoryPool *memory_pool, IntUlongHashMap *attno_to_colid_mapping, ULongPtrArray *from_list_colids, ULongPtrArray *to_list_colids) const;
+			IntUlongHashMap *RemapColIds(IMemoryPool *mp, IntUlongHashMap *attno_to_colid_mapping, ULongPtrArray *from_list_colids, ULongPtrArray *to_list_colids) const;
 
 			// true iff this query or one of its ancestors is a DML query
 			BOOL IsDMLQuery();
@@ -492,7 +492,7 @@ namespace gpdxl
 			static
 			CTranslatorQueryToDXL *QueryToDXLInstance
 				(
-				IMemoryPool *memory_pool,
+				IMemoryPool *mp,
 				CMDAccessor *md_accessor,
 				CIdGenerator *m_colid_counter,
 				CIdGenerator *cte_id_counter,

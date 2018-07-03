@@ -33,7 +33,7 @@ using namespace gpdxl;
 //---------------------------------------------------------------------------
 CCTEListEntry::CCTEListEntry
 	(
-	IMemoryPool *memory_pool,
+	IMemoryPool *mp,
 	ULONG query_level,
 	CommonTableExpr *cte,
 	CDXLNode *cte_producer
@@ -44,13 +44,13 @@ CCTEListEntry::CCTEListEntry
 {
 	GPOS_ASSERT(NULL != cte && NULL != cte_producer);
 	
-	m_cte_info = GPOS_NEW(memory_pool) HMSzCTEInfo(memory_pool);
+	m_cte_info = GPOS_NEW(mp) HMSzCTEInfo(mp);
 	Query *cte_query = (Query*) cte->ctequery;
 		
 #ifdef GPOS_DEBUG
 		BOOL result =
 #endif
-	m_cte_info->Insert(cte->ctename, GPOS_NEW(memory_pool) SCTEProducerInfo(cte_producer, cte_query->targetList));
+	m_cte_info->Insert(cte->ctename, GPOS_NEW(mp) SCTEProducerInfo(cte_producer, cte_query->targetList));
 		
 	GPOS_ASSERT(result);
 }
@@ -65,7 +65,7 @@ CCTEListEntry::CCTEListEntry
 //---------------------------------------------------------------------------
 CCTEListEntry::CCTEListEntry
 	(
-	IMemoryPool *memory_pool,
+	IMemoryPool *mp,
 	ULONG query_level,
 	List *cte_list, 
 	DXLNodeArray *cte_dxl_arr
@@ -77,7 +77,7 @@ CCTEListEntry::CCTEListEntry
 	GPOS_ASSERT(NULL != cte_dxl_arr);
 	GPOS_ASSERT(cte_dxl_arr->Size() == gpdb::ListLength(cte_list));
 	
-	m_cte_info = GPOS_NEW(memory_pool) HMSzCTEInfo(memory_pool);
+	m_cte_info = GPOS_NEW(mp) HMSzCTEInfo(mp);
 	const ULONG num_cte = cte_dxl_arr->Size();
 	
 	for (ULONG ul = 0; ul < num_cte; ul++)
@@ -90,7 +90,7 @@ CCTEListEntry::CCTEListEntry
 #ifdef GPOS_DEBUG
 		BOOL result =
 #endif
-		m_cte_info->Insert(cte->ctename, GPOS_NEW(memory_pool) SCTEProducerInfo(cte_producer, cte_query->targetList));
+		m_cte_info->Insert(cte->ctename, GPOS_NEW(mp) SCTEProducerInfo(cte_producer, cte_query->targetList));
 		
 		GPOS_ASSERT(result);
 		GPOS_ASSERT(NULL != m_cte_info->Find(cte->ctename));
@@ -156,7 +156,7 @@ CCTEListEntry::GetCTEProducerTargetList
 void
 CCTEListEntry::AddCTEProducer
 	(
-	IMemoryPool *memory_pool,
+	IMemoryPool *mp,
 	CommonTableExpr *cte,
 	const CDXLNode *cte_producer
 	)
@@ -167,7 +167,7 @@ CCTEListEntry::AddCTEProducer
 #ifdef GPOS_DEBUG
 	BOOL result =
 #endif
-	m_cte_info->Insert(cte->ctename, GPOS_NEW(memory_pool) SCTEProducerInfo(cte_producer, cte_query->targetList));
+	m_cte_info->Insert(cte->ctename, GPOS_NEW(mp) SCTEProducerInfo(cte_producer, cte_query->targetList));
 	
 	GPOS_ASSERT(result);
 }

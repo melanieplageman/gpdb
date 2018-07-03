@@ -385,28 +385,28 @@ COptTasks::ConvertToDXLFromMDCast
 	Oid dest_oid = gpdb::ListNthOid(relcache_ctxt->m_oid_list, 1);
 
 	CAutoMemoryPool amp(CAutoMemoryPool::ElcExc);
-	IMemoryPool *memory_pool = amp.Pmp();
+	IMemoryPool *mp = amp.Pmp();
 
-	IMDCachePtrArray *mdcache_obj_array = GPOS_NEW(memory_pool) IMDCachePtrArray(memory_pool);
+	IMDCachePtrArray *mdcache_obj_array = GPOS_NEW(mp) IMDCachePtrArray(mp);
 
-	IMDId *cast = GPOS_NEW(memory_pool) CMDIdCast(GPOS_NEW(memory_pool) CMDIdGPDB(src_oid), GPOS_NEW(memory_pool) CMDIdGPDB(dest_oid));
+	IMDId *cast = GPOS_NEW(mp) CMDIdCast(GPOS_NEW(mp) CMDIdGPDB(src_oid), GPOS_NEW(mp) CMDIdGPDB(dest_oid));
 
 	// relcache MD provider
-	CMDProviderRelcache *relcache_provider = GPOS_NEW(memory_pool) CMDProviderRelcache(memory_pool);
+	CMDProviderRelcache *relcache_provider = GPOS_NEW(mp) CMDProviderRelcache(mp);
 	
 	{
-		CAutoMDAccessor md_accessor(memory_pool, relcache_provider, default_sysid);
+		CAutoMDAccessor md_accessor(mp, relcache_provider, default_sysid);
 	
-		IMDCacheObject *md_obj = CTranslatorRelcacheToDXL::RetrieveObject(memory_pool, md_accessor.Pmda(), cast);
+		IMDCacheObject *md_obj = CTranslatorRelcacheToDXL::RetrieveObject(mp, md_accessor.Pmda(), cast);
 		GPOS_ASSERT(NULL != md_obj);
 	
 		mdcache_obj_array->Append(md_obj);
 		cast->Release();
 	
-		CWStringDynamic wcstr(memory_pool);
+		CWStringDynamic wcstr(mp);
 		COstreamString oss(&wcstr);
 
-		CDXLUtils::SerializeMetadata(memory_pool, mdcache_obj_array, oss, true /*serialize_header_footer*/, true /*indentation*/);
+		CDXLUtils::SerializeMetadata(mp, mdcache_obj_array, oss, true /*serialize_header_footer*/, true /*indentation*/);
 		CHAR *str = CreateMultiByteCharStringFromWCString(wcstr.GetBuffer());
 		GPOS_ASSERT(NULL != str);
 
@@ -445,28 +445,28 @@ COptTasks::ConvertToDXLFromMDScalarCmp
 	CmpType cmpt = (CmpType) relcache_ctxt->m_cmp_type;
 	
 	CAutoMemoryPool amp(CAutoMemoryPool::ElcExc);
-	IMemoryPool *memory_pool = amp.Pmp();
+	IMemoryPool *mp = amp.Pmp();
 
-	IMDCachePtrArray *mdcache_obj_array = GPOS_NEW(memory_pool) IMDCachePtrArray(memory_pool);
+	IMDCachePtrArray *mdcache_obj_array = GPOS_NEW(mp) IMDCachePtrArray(mp);
 
-	IMDId *scalar_cmp = GPOS_NEW(memory_pool) CMDIdScCmp(GPOS_NEW(memory_pool) CMDIdGPDB(left_oid), GPOS_NEW(memory_pool) CMDIdGPDB(right_oid), CTranslatorRelcacheToDXL::ParseCmpType(cmpt));
+	IMDId *scalar_cmp = GPOS_NEW(mp) CMDIdScCmp(GPOS_NEW(mp) CMDIdGPDB(left_oid), GPOS_NEW(mp) CMDIdGPDB(right_oid), CTranslatorRelcacheToDXL::ParseCmpType(cmpt));
 
 	// relcache MD provider
-	CMDProviderRelcache *relcache_provider = GPOS_NEW(memory_pool) CMDProviderRelcache(memory_pool);
+	CMDProviderRelcache *relcache_provider = GPOS_NEW(mp) CMDProviderRelcache(mp);
 	
 	{
-		CAutoMDAccessor md_accessor(memory_pool, relcache_provider, default_sysid);
+		CAutoMDAccessor md_accessor(mp, relcache_provider, default_sysid);
 	
-		IMDCacheObject *md_obj = CTranslatorRelcacheToDXL::RetrieveObject(memory_pool, md_accessor.Pmda(), scalar_cmp);
+		IMDCacheObject *md_obj = CTranslatorRelcacheToDXL::RetrieveObject(mp, md_accessor.Pmda(), scalar_cmp);
 		GPOS_ASSERT(NULL != md_obj);
 	
 		mdcache_obj_array->Append(md_obj);
 		scalar_cmp->Release();
 	
-		CWStringDynamic wcstr(memory_pool);
+		CWStringDynamic wcstr(mp);
 		COstreamString oss(&wcstr);
 
-		CDXLUtils::SerializeMetadata(memory_pool, mdcache_obj_array, oss, true /*serialize_header_footer*/, true /*indentation*/);
+		CDXLUtils::SerializeMetadata(mp, mdcache_obj_array, oss, true /*serialize_header_footer*/, true /*indentation*/);
 		CHAR *str = CreateMultiByteCharStringFromWCString(wcstr.GetBuffer());
 		GPOS_ASSERT(NULL != str);
 
@@ -571,25 +571,25 @@ COptTasks::ConvertToDXLFromQueryTask
 	GPOS_ASSERT(NULL == opt_ctxt->m_query_dxl);
 
 	AUTO_MEM_POOL(amp);
-	IMemoryPool *memory_pool = amp.Pmp();
+	IMemoryPool *mp = amp.Pmp();
 
 	// ColId generator
-	CIdGenerator *colid_generator = GPOS_NEW(memory_pool) CIdGenerator(GPDXL_COL_ID_START);
-	CIdGenerator *cteid_generator = GPOS_NEW(memory_pool) CIdGenerator(GPDXL_CTE_ID_START);
+	CIdGenerator *colid_generator = GPOS_NEW(mp) CIdGenerator(GPDXL_COL_ID_START);
+	CIdGenerator *cteid_generator = GPOS_NEW(mp) CIdGenerator(GPDXL_CTE_ID_START);
 
 	// map that stores gpdb att to optimizer col mapping
-	CMappingVarColId *var_col_id_mapping = GPOS_NEW(memory_pool) CMappingVarColId(memory_pool);
+	CMappingVarColId *var_col_id_mapping = GPOS_NEW(mp) CMappingVarColId(mp);
 
 	// relcache MD provider
-	CMDProviderRelcache *relcache_provider = GPOS_NEW(memory_pool) CMDProviderRelcache(memory_pool);
+	CMDProviderRelcache *relcache_provider = GPOS_NEW(mp) CMDProviderRelcache(mp);
 
 	{
-		CAutoMDAccessor md_accessor(memory_pool, relcache_provider, default_sysid);
+		CAutoMDAccessor md_accessor(mp, relcache_provider, default_sysid);
 
 		CAutoP<CTranslatorQueryToDXL> query_to_dxl_translator;
 		query_to_dxl_translator = CTranslatorQueryToDXL::QueryToDXLInstance
 						(
-						memory_pool,
+						mp,
 						md_accessor.Pmda(),
 						colid_generator,
 						cteid_generator,
@@ -605,12 +605,12 @@ COptTasks::ConvertToDXLFromQueryTask
 		GPOS_DELETE(colid_generator);
 		GPOS_DELETE(cteid_generator);
 
-		CWStringDynamic wcstr(memory_pool);
+		CWStringDynamic wcstr(mp);
 		COstreamString oss(&wcstr);
 
 		CDXLUtils::SerializeQuery
 						(
-						memory_pool,
+						mp,
 						oss,
 						query_dxl,
 						query_output_dxlnode_array,
@@ -639,7 +639,7 @@ COptTasks::ConvertToDXLFromQueryTask
 PlannedStmt *
 COptTasks::ConvertToPlanStmtFromDXL
 	(
-	IMemoryPool *memory_pool,
+	IMemoryPool *mp,
 	CMDAccessor *md_accessor,
 	const CDXLNode *dxlnode,
 	bool can_set_tag
@@ -658,7 +658,7 @@ COptTasks::ConvertToPlanStmtFromDXL
 
 	CContextDXLToPlStmt dxl_to_plan_stmt_ctxt
 							(
-							memory_pool,
+							mp,
 							&plan_id_generator,
 							&motion_id_generator,
 							&param_id_generator,
@@ -667,7 +667,7 @@ COptTasks::ConvertToPlanStmtFromDXL
 							);
 	
 	// translate DXL -> PlannedStmt
-	CTranslatorDXLToPlStmt dxl_to_plan_stmt_translator(memory_pool, md_accessor, &dxl_to_plan_stmt_ctxt, gpdb::GetGPSegmentCount());
+	CTranslatorDXLToPlStmt dxl_to_plan_stmt_translator(mp, md_accessor, &dxl_to_plan_stmt_ctxt, gpdb::GetGPSegmentCount());
 	return dxl_to_plan_stmt_translator.GetPlannedStmtFromDXL(dxlnode, can_set_tag);
 }
 
@@ -683,7 +683,7 @@ COptTasks::ConvertToPlanStmtFromDXL
 SearchStageArray *
 COptTasks::LoadSearchStrategy
 	(
-	IMemoryPool *memory_pool,
+	IMemoryPool *mp,
 	char *path
 	)
 {
@@ -694,7 +694,7 @@ COptTasks::LoadSearchStrategy
 	{
 		if (NULL != path)
 		{
-			dxl_parse_handler = CDXLUtils::GetParseHandlerForDXLFile(memory_pool, path, NULL);
+			dxl_parse_handler = CDXLUtils::GetParseHandlerForDXLFile(mp, path, NULL);
 			if (NULL != dxl_parse_handler)
 			{
 				elog(DEBUG2, "\n[OPT]: Using search strategy in (%s)", path);
@@ -730,7 +730,7 @@ COptTasks::LoadSearchStrategy
 COptimizerConfig *
 COptTasks::CreateOptimizerConfig
 	(
-	IMemoryPool *memory_pool,
+	IMemoryPool *mp,
 	ICostModel *cost_model
 	)
 {
@@ -749,13 +749,13 @@ COptTasks::CreateOptimizerConfig
 	ULONG join_order_threshold = (ULONG) optimizer_join_order_threshold;
 	ULONG broadcast_threshold = (ULONG) optimizer_penalize_broadcast_threshold;
 
-	return GPOS_NEW(memory_pool) COptimizerConfig
+	return GPOS_NEW(mp) COptimizerConfig
 						(
-						GPOS_NEW(memory_pool) CEnumeratorConfig(memory_pool, plan_id, num_samples, cost_threshold),
-						GPOS_NEW(memory_pool) CStatisticsConfig(memory_pool, damping_factor_filter, damping_factor_join, damping_factor_groupby),
-						GPOS_NEW(memory_pool) CCTEConfig(cte_inlining_cutoff),
+						GPOS_NEW(mp) CEnumeratorConfig(mp, plan_id, num_samples, cost_threshold),
+						GPOS_NEW(mp) CStatisticsConfig(mp, damping_factor_filter, damping_factor_join, damping_factor_groupby),
+						GPOS_NEW(mp) CCTEConfig(cte_inlining_cutoff),
 						cost_model,
-						GPOS_NEW(memory_pool) CHint
+						GPOS_NEW(mp) CHint
 								(
 								gpos::int_max /* optimizer_parts_to_force_sort_on_insert */,
 								join_arity_for_associativity_commutativity,
@@ -765,7 +765,7 @@ COptTasks::CreateOptimizerConfig
 								false /* don't create Assert nodes for constraints, we'll
 								      * enforce them ourselves in the executor */
 								),
-						GPOS_NEW(memory_pool) CWindowOids(OID(F_WINDOW_ROW_NUMBER), OID(F_WINDOW_RANK))
+						GPOS_NEW(mp) CWindowOids(OID(F_WINDOW_ROW_NUMBER), OID(F_WINDOW_RANK))
 						);
 }
 
@@ -904,18 +904,18 @@ COptTasks::SetCostModelParams
 ICostModel *
 COptTasks::GetCostModel
 	(
-	IMemoryPool *memory_pool,
+	IMemoryPool *mp,
 	ULONG num_segments
 	)
 {
 	ICostModel *cost_model = NULL;
 	if (OPTIMIZER_GPDB_CALIBRATED == optimizer_cost_model)
 	{
-		cost_model = GPOS_NEW(memory_pool) CCostModelGPDB(memory_pool, num_segments);
+		cost_model = GPOS_NEW(mp) CCostModelGPDB(mp, num_segments);
 	}
 	else
 	{
-		cost_model = GPOS_NEW(memory_pool) CCostModelGPDBLegacy(memory_pool, num_segments);
+		cost_model = GPOS_NEW(mp) CCostModelGPDBLegacy(mp, num_segments);
 	}
 
 	SetCostModelParams(cost_model);
@@ -948,7 +948,7 @@ COptTasks::OptimizeTask
 	opt_ctxt->m_is_unexpected_failure = false;
 
 	AUTO_MEM_POOL(amp);
-	IMemoryPool *memory_pool = amp.Pmp();
+	IMemoryPool *mp = amp.Pmp();
 
 	// Does the metadatacache need to be reset?
 	//
@@ -976,7 +976,7 @@ COptTasks::OptimizeTask
 
 
 	// load search strategy
-	SearchStageArray *search_strategy_arr = LoadSearchStrategy(memory_pool, optimizer_search_strategy_path);
+	SearchStageArray *search_strategy_arr = LoadSearchStrategy(mp, optimizer_search_strategy_path);
 
 	CBitSet *trace_flags = NULL;
 	CBitSet *enabled_trace_flags = NULL;
@@ -989,22 +989,22 @@ COptTasks::OptimizeTask
 	GPOS_TRY
 	{
 		// set trace flags
-		trace_flags = CConfigParamMapping::PackConfigParamInBitset(memory_pool, CXform::ExfSentinel);
-		SetTraceflags(memory_pool, trace_flags, &enabled_trace_flags, &disabled_trace_flags);
+		trace_flags = CConfigParamMapping::PackConfigParamInBitset(mp, CXform::ExfSentinel);
+		SetTraceflags(mp, trace_flags, &enabled_trace_flags, &disabled_trace_flags);
 
 		// set up relcache MD provider
-		CMDProviderRelcache *relcache_provider = GPOS_NEW(memory_pool) CMDProviderRelcache(memory_pool);
+		CMDProviderRelcache *relcache_provider = GPOS_NEW(mp) CMDProviderRelcache(mp);
 
 		{
 			// scope for MD accessor
-			CMDAccessor mda(memory_pool, CMDCache::Pcache(), default_sysid, relcache_provider);
+			CMDAccessor mda(mp, CMDCache::Pcache(), default_sysid, relcache_provider);
 
 			// ColId generator
 			CIdGenerator colid_generator(GPDXL_COL_ID_START);
 			CIdGenerator cteid_generator(GPDXL_CTE_ID_START);
 
 			// map that stores gpdb att to optimizer col mapping
-			CMappingVarColId *var_col_id_mapping = GPOS_NEW(memory_pool) CMappingVarColId(memory_pool);
+			CMappingVarColId *var_col_id_mapping = GPOS_NEW(mp) CMappingVarColId(mp);
 
 			ULONG num_segments = gpdb::GetGPSegmentCount();
 			ULONG num_segments_for_costing = optimizer_segments;
@@ -1016,7 +1016,7 @@ COptTasks::OptimizeTask
 			CAutoP<CTranslatorQueryToDXL> query_to_dxl_translator;
 			query_to_dxl_translator = CTranslatorQueryToDXL::QueryToDXLInstance
 							(
-							memory_pool,
+							mp,
 							&mda,
 							&colid_generator,
 							&cteid_generator,
@@ -1025,11 +1025,11 @@ COptTasks::OptimizeTask
 							0 /* query_level */
 							);
 
-			ICostModel *cost_model = GetCostModel(memory_pool, num_segments_for_costing);
-			COptimizerConfig *optimizer_config = CreateOptimizerConfig(memory_pool, cost_model);
-			CConstExprEvaluatorProxy expr_eval_proxy(memory_pool, &mda);
+			ICostModel *cost_model = GetCostModel(mp, num_segments_for_costing);
+			COptimizerConfig *optimizer_config = CreateOptimizerConfig(mp, cost_model);
+			CConstExprEvaluatorProxy expr_eval_proxy(mp, &mda);
 			IConstExprEvaluator *expr_evaluator =
-					GPOS_NEW(memory_pool) CConstExprEvaluatorDXL(memory_pool, &mda, &expr_eval_proxy);
+					GPOS_NEW(mp) CConstExprEvaluatorDXL(mp, &mda, &expr_eval_proxy);
 
 			CDXLNode *query_dxl = query_to_dxl_translator->TranslateQueryToDXL();
 			DXLNodeArray *query_output_dxlnode_array = query_to_dxl_translator->GetQueryOutputCols();
@@ -1042,7 +1042,7 @@ COptTasks::OptimizeTask
 
 			plan_dxl = COptimizer::PdxlnOptimize
 									(
-									memory_pool,
+									mp,
 									&mda,
 									query_dxl,
 									query_output_dxlnode_array,
@@ -1058,9 +1058,9 @@ COptTasks::OptimizeTask
 			if (opt_ctxt->m_should_serialize_plan_dxl)
 			{
 				// serialize DXL to xml
-				CWStringDynamic plan_str(memory_pool);
+				CWStringDynamic plan_str(mp);
 				COstreamString oss(&plan_str);
-				CDXLUtils::SerializePlan(memory_pool, oss, plan_dxl, optimizer_config->GetEnumeratorCfg()->GetPlanId(), optimizer_config->GetEnumeratorCfg()->GetPlanSpaceSize(), true /*serialize_header_footer*/, true /*indentation*/);
+				CDXLUtils::SerializePlan(mp, oss, plan_dxl, optimizer_config->GetEnumeratorCfg()->GetPlanId(), optimizer_config->GetEnumeratorCfg()->GetPlanSpaceSize(), true /*serialize_header_footer*/, true /*indentation*/);
 				opt_ctxt->m_plan_dxl = CreateMultiByteCharStringFromWCString(plan_str.GetBuffer());
 			}
 
@@ -1069,15 +1069,15 @@ COptTasks::OptimizeTask
 			{
 				// always use opt_ctxt->m_query->can_set_tag as the query_to_dxl_translator->Pquery() is a mutated Query object
 				// that may not have the correct can_set_tag
-				opt_ctxt->m_plan_stmt = (PlannedStmt *) gpdb::CopyObject(ConvertToPlanStmtFromDXL(memory_pool, &mda, plan_dxl, opt_ctxt->m_query->canSetTag));
+				opt_ctxt->m_plan_stmt = (PlannedStmt *) gpdb::CopyObject(ConvertToPlanStmtFromDXL(mp, &mda, plan_dxl, opt_ctxt->m_query->canSetTag));
 			}
 
 			CStatisticsConfig *stats_conf = optimizer_config->GetStatsConf();
-			col_stats = GPOS_NEW(memory_pool) MdidPtrArray(memory_pool);
+			col_stats = GPOS_NEW(mp) MdidPtrArray(mp);
 			stats_conf->CollectMissingStatsColumns(col_stats);
 
-			rel_stats = GPOS_NEW(memory_pool) MdidHashSet(memory_pool);
-			PrintMissingStatsWarning(memory_pool, &mda, col_stats, rel_stats);
+			rel_stats = GPOS_NEW(mp) MdidHashSet(mp);
+			PrintMissingStatsWarning(mp, &mda, col_stats, rel_stats);
 
 			rel_stats->Release();
 			col_stats->Release();
@@ -1141,7 +1141,7 @@ COptTasks::OptimizeTask
 void
 COptTasks::PrintMissingStatsWarning
 	(
-	IMemoryPool *memory_pool,
+	IMemoryPool *mp,
 	CMDAccessor *md_accessor,
 	MdidPtrArray *col_stats,
 	MdidHashSet *rel_stats
@@ -1151,7 +1151,7 @@ COptTasks::PrintMissingStatsWarning
 	GPOS_ASSERT(NULL != col_stats);
 	GPOS_ASSERT(NULL != rel_stats);
 
-	CWStringDynamic wcstr(memory_pool);
+	CWStringDynamic wcstr(mp);
 	COstreamString oss(&wcstr);
 
 	const ULONG num_missing_col_stats = col_stats->Size();
@@ -1226,7 +1226,7 @@ COptTasks::OptimizeMinidumpTask
 	GPOS_ASSERT(NULL == minidump_ctxt->m_dxl_result);
 
 	AUTO_MEM_POOL(amp);
-	IMemoryPool *memory_pool = amp.Pmp();
+	IMemoryPool *mp = amp.Pmp();
 
 	ULONG num_segments = gpdb::GetGPSegmentCount();
 	ULONG num_segments_for_costing = optimizer_segments;
@@ -1235,13 +1235,13 @@ COptTasks::OptimizeMinidumpTask
 		num_segments_for_costing = num_segments;
 	}
 
-	ICostModel *cost_model = GetCostModel(memory_pool, num_segments_for_costing);
-	COptimizerConfig *optimizer_config = CreateOptimizerConfig(memory_pool, cost_model);
+	ICostModel *cost_model = GetCostModel(mp, num_segments_for_costing);
+	COptimizerConfig *optimizer_config = CreateOptimizerConfig(mp, cost_model);
 	CDXLNode *result_dxl = NULL;
 
 	GPOS_TRY
 	{
-		result_dxl = CMinidumperUtils::PdxlnExecuteMinidump(memory_pool, minidump_ctxt->m_szFileName, num_segments, gp_session_id, gp_command_count, optimizer_config);
+		result_dxl = CMinidumperUtils::PdxlnExecuteMinidump(mp, minidump_ctxt->m_szFileName, num_segments, gp_session_id, gp_command_count, optimizer_config);
 	}
 	GPOS_CATCH_EX(ex)
 	{
@@ -1251,11 +1251,11 @@ COptTasks::OptimizeMinidumpTask
 	}
 	GPOS_CATCH_END;
 
-	CWStringDynamic wcstr(memory_pool);
+	CWStringDynamic wcstr(mp);
 	COstreamString oss(&wcstr);
 	CDXLUtils::SerializePlan
 					(
-					memory_pool,
+					mp,
 					oss,
 					result_dxl,
 					0,  // plan_id
@@ -1292,15 +1292,15 @@ COptTasks::ConvertToPlanStmtFromDXLTask
 	GPOS_ASSERT(NULL != opt_ctxt->m_plan_dxl);
 
 	AUTO_MEM_POOL(amp);
-	IMemoryPool *memory_pool = amp.Pmp();
+	IMemoryPool *mp = amp.Pmp();
 
-	CWStringDynamic wcstr(memory_pool);
+	CWStringDynamic wcstr(mp);
 	COstreamString oss(&wcstr);
 
 	ULLONG plan_id = 0;
 	ULLONG plan_space_size = 0;
 	CDXLNode *original_plan_dxl =
-		CDXLUtils::GetPlanDXLNode(memory_pool, opt_ctxt->m_plan_dxl, NULL /*XSD location*/, &plan_id, &plan_space_size);
+		CDXLUtils::GetPlanDXLNode(mp, opt_ctxt->m_plan_dxl, NULL /*XSD location*/, &plan_id, &plan_space_size);
 
 	CIdGenerator plan_id_generator(1);
 	CIdGenerator motion_id_generator(1);
@@ -1311,7 +1311,7 @@ COptTasks::ConvertToPlanStmtFromDXLTask
 
 	CContextDXLToPlStmt dxl_to_plan_stmt_ctxt
 							(
-							memory_pool,
+							mp,
 							&plan_id_generator,
 							&motion_id_generator,
 							&param_id_generator,
@@ -1320,13 +1320,13 @@ COptTasks::ConvertToPlanStmtFromDXLTask
 							);
 
 	// relcache MD provider
-	CMDProviderRelcache *relcache_provider = GPOS_NEW(memory_pool) CMDProviderRelcache(memory_pool);
+	CMDProviderRelcache *relcache_provider = GPOS_NEW(mp) CMDProviderRelcache(mp);
 
 	{
-		CAutoMDAccessor md_accessor(memory_pool, relcache_provider, default_sysid);
+		CAutoMDAccessor md_accessor(mp, relcache_provider, default_sysid);
 
 		// translate DXL -> PlannedStmt
-		CTranslatorDXLToPlStmt dxl_to_plan_stmt_translator(memory_pool, md_accessor.Pmda(), &dxl_to_plan_stmt_ctxt, gpdb::GetGPSegmentCount());
+		CTranslatorDXLToPlStmt dxl_to_plan_stmt_translator(mp, md_accessor.Pmda(), &dxl_to_plan_stmt_ctxt, gpdb::GetGPSegmentCount());
 		PlannedStmt *plan_stmt = dxl_to_plan_stmt_translator.GetPlannedStmtFromDXL(original_plan_dxl, opt_ctxt->m_query->canSetTag);
 		if (optimizer_print_plan)
 		{
@@ -1365,22 +1365,22 @@ COptTasks::ConvertToDXLFromMDObjsTask
 	GPOS_ASSERT(NULL != relcache_ctxt);
 
 	AUTO_MEM_POOL(amp);
-	IMemoryPool *memory_pool = amp.Pmp();
+	IMemoryPool *mp = amp.Pmp();
 
-	IMDCachePtrArray *mdcache_obj_array = GPOS_NEW(memory_pool) IMDCachePtrArray(memory_pool, 1024, 1024);
+	IMDCachePtrArray *mdcache_obj_array = GPOS_NEW(mp) IMDCachePtrArray(mp, 1024, 1024);
 
 	// relcache MD provider
-	CMDProviderRelcache *md_provider = GPOS_NEW(memory_pool) CMDProviderRelcache(memory_pool);
+	CMDProviderRelcache *md_provider = GPOS_NEW(mp) CMDProviderRelcache(mp);
 	{
-		CAutoMDAccessor md_accessor(memory_pool, md_provider, default_sysid);
+		CAutoMDAccessor md_accessor(mp, md_provider, default_sysid);
 		ListCell *lc = NULL;
 		ForEach (lc, relcache_ctxt->m_oid_list)
 		{
 			Oid oid = lfirst_oid(lc);
 			// get object from relcache
-			CMDIdGPDB *mdid = GPOS_NEW(memory_pool) CMDIdGPDB(oid, 1 /* major */, 0 /* minor */);
+			CMDIdGPDB *mdid = GPOS_NEW(mp) CMDIdGPDB(oid, 1 /* major */, 0 /* minor */);
 
-			IMDCacheObject *mdobj = CTranslatorRelcacheToDXL::RetrieveObject(memory_pool, md_accessor.Pmda(), mdid);
+			IMDCacheObject *mdobj = CTranslatorRelcacheToDXL::RetrieveObject(mp, md_accessor.Pmda(), mdid);
 			GPOS_ASSERT(NULL != mdobj);
 
 			mdcache_obj_array->Append(mdobj);
@@ -1391,14 +1391,14 @@ COptTasks::ConvertToDXLFromMDObjsTask
 		{
 			COstreamFile cofs(relcache_ctxt->m_filename);
 
-			CDXLUtils::SerializeMetadata(memory_pool, mdcache_obj_array, cofs, true /*serialize_header_footer*/, true /*indentation*/);
+			CDXLUtils::SerializeMetadata(mp, mdcache_obj_array, cofs, true /*serialize_header_footer*/, true /*indentation*/);
 		}
 		else
 		{
-			CWStringDynamic wcstr(memory_pool);
+			CWStringDynamic wcstr(mp);
 			COstreamString oss(&wcstr);
 
-			CDXLUtils::SerializeMetadata(memory_pool, mdcache_obj_array, oss, true /*serialize_header_footer*/, true /*indentation*/);
+			CDXLUtils::SerializeMetadata(mp, mdcache_obj_array, oss, true /*serialize_header_footer*/, true /*indentation*/);
 
 			CHAR *str = CreateMultiByteCharStringFromWCString(wcstr.GetBuffer());
 
@@ -1434,15 +1434,15 @@ COptTasks::ConvertToDXLFromRelStatsTask
 	GPOS_ASSERT(NULL != relcache_ctxt);
 
 	AUTO_MEM_POOL(amp);
-	IMemoryPool *memory_pool = amp.Pmp();
+	IMemoryPool *mp = amp.Pmp();
 
 	// relcache MD provider
-	CMDProviderRelcache *relcache_provider = GPOS_NEW(memory_pool) CMDProviderRelcache(memory_pool);
-	CAutoMDAccessor md_accessor(memory_pool, relcache_provider, default_sysid);
-	ICostModel *cost_model = GetCostModel(memory_pool, gpdb::GetGPSegmentCount());
-	CAutoOptCtxt aoc(memory_pool, md_accessor.Pmda(), NULL /*expr_evaluator*/, cost_model);
+	CMDProviderRelcache *relcache_provider = GPOS_NEW(mp) CMDProviderRelcache(mp);
+	CAutoMDAccessor md_accessor(mp, relcache_provider, default_sysid);
+	ICostModel *cost_model = GetCostModel(mp, gpdb::GetGPSegmentCount());
+	CAutoOptCtxt aoc(mp, md_accessor.Pmda(), NULL /*expr_evaluator*/, cost_model);
 
-	IMDCachePtrArray *mdcache_obj_array = GPOS_NEW(memory_pool) IMDCachePtrArray(memory_pool);
+	IMDCachePtrArray *mdcache_obj_array = GPOS_NEW(mp) IMDCachePtrArray(mp);
 
 	ListCell *lc = NULL;
 	ForEach (lc, relcache_ctxt->m_oid_list)
@@ -1450,10 +1450,10 @@ COptTasks::ConvertToDXLFromRelStatsTask
 		Oid relation_oid = lfirst_oid(lc);
 
 		// get object from relcache
-		CMDIdGPDB *mdid = GPOS_NEW(memory_pool) CMDIdGPDB(relation_oid, 1 /* major */, 0 /* minor */);
+		CMDIdGPDB *mdid = GPOS_NEW(mp) CMDIdGPDB(relation_oid, 1 /* major */, 0 /* minor */);
 
 		// generate mdid for relstats
-		CMDIdRelStats *m_rel_stats_mdid = GPOS_NEW(memory_pool) CMDIdRelStats(mdid);
+		CMDIdRelStats *m_rel_stats_mdid = GPOS_NEW(mp) CMDIdRelStats(mdid);
 		IMDRelStats *mdobj_rel_stats = const_cast<IMDRelStats *>(md_accessor.Pmda()->Pmdrelstats(m_rel_stats_mdid));
 		mdcache_obj_array->Append(dynamic_cast<IMDCacheObject *>(mdobj_rel_stats));
 
@@ -1465,7 +1465,7 @@ COptTasks::ConvertToDXLFromRelStatsTask
 			if (!rel->rd_att->attrs[ul]->attisdropped)
 			{
 				mdid->AddRef();
-				CMDIdColStats *mdid_col_stats = GPOS_NEW(memory_pool) CMDIdColStats(mdid, pos_counter);
+				CMDIdColStats *mdid_col_stats = GPOS_NEW(mp) CMDIdColStats(mdid, pos_counter);
 				pos_counter++;
 				IMDColStats *mdobj_col_stats = const_cast<IMDColStats *>(md_accessor.Pmda()->Pmdcolstats(mdid_col_stats));
 				mdcache_obj_array->Append(dynamic_cast<IMDCacheObject *>(mdobj_col_stats));
@@ -1480,14 +1480,14 @@ COptTasks::ConvertToDXLFromRelStatsTask
 	{
 		COstreamFile cofs(relcache_ctxt->m_filename);
 
-		CDXLUtils::SerializeMetadata(memory_pool, mdcache_obj_array, cofs, true /*serialize_header_footer*/, true /*indentation*/);
+		CDXLUtils::SerializeMetadata(mp, mdcache_obj_array, cofs, true /*serialize_header_footer*/, true /*indentation*/);
 	}
 	else
 	{
-		CWStringDynamic wcstr(memory_pool);
+		CWStringDynamic wcstr(mp);
 		COstreamString oss(&wcstr);
 
-		CDXLUtils::SerializeMetadata(memory_pool, mdcache_obj_array, oss, true /*serialize_header_footer*/, true /*indentation*/);
+		CDXLUtils::SerializeMetadata(mp, mdcache_obj_array, oss, true /*serialize_header_footer*/, true /*indentation*/);
 
 		CHAR *str = CreateMultiByteCharStringFromWCString(wcstr.GetBuffer());
 
@@ -1525,9 +1525,9 @@ COptTasks::EvalExprFromDXLTask
 	GPOS_ASSERT(NULL == eval_expr_ctxt->m_dxl_result);
 
 	AUTO_MEM_POOL(amp);
-	IMemoryPool *memory_pool = amp.Pmp();
+	IMemoryPool *mp = amp.Pmp();
 
-	CDXLNode *input_dxl = CDXLUtils::ParseDXLToScalarExprDXLNode(memory_pool, eval_expr_ctxt->m_dxl, NULL /*xsd_file_path*/);
+	CDXLNode *input_dxl = CDXLUtils::ParseDXLToScalarExprDXLNode(mp, eval_expr_ctxt->m_dxl, NULL /*xsd_file_path*/);
 	GPOS_ASSERT(NULL != input_dxl);
 
 	CDXLNode *result_dxl = NULL;
@@ -1561,12 +1561,12 @@ COptTasks::EvalExprFromDXLTask
 	GPOS_TRY
 	{
 		// set up relcache MD provider
-		CMDProviderRelcache *relcache_provider = GPOS_NEW(memory_pool) CMDProviderRelcache(memory_pool);
+		CMDProviderRelcache *relcache_provider = GPOS_NEW(mp) CMDProviderRelcache(mp);
 		{
 			// scope for MD accessor
-			CMDAccessor mda(memory_pool, CMDCache::Pcache(), default_sysid, relcache_provider);
+			CMDAccessor mda(mp, CMDCache::Pcache(), default_sysid, relcache_provider);
 
-			CConstExprEvaluatorProxy expr_eval_proxy(memory_pool, &mda);
+			CConstExprEvaluatorProxy expr_eval_proxy(mp, &mda);
 			result_dxl = expr_eval_proxy.PdxlnEvaluateExpr(input_dxl);
 		}
 	}
@@ -1592,7 +1592,7 @@ COptTasks::EvalExprFromDXLTask
 	CWStringDynamic *dxl_string =
 			CDXLUtils::SerializeScalarExpr
 						(
-						memory_pool,
+						mp,
 						result_dxl,
 						true, // serialize_header_footer
 						true // indentation

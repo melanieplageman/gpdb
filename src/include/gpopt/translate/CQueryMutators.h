@@ -59,7 +59,7 @@ namespace gpdxl
 		{
 			public:
 				// memory pool
-				IMemoryPool *m_memory_pool;
+				IMemoryPool *m_mp;
 
 				// MD accessor for function names
 				CMDAccessor *m_md_accessor;
@@ -86,13 +86,13 @@ namespace gpdxl
 				// ctor
 				SContextHavingQualMutator
 					(
-					IMemoryPool *memory_pool,
+					IMemoryPool *mp,
 					CMDAccessor *md_accessor,
 					ULONG num_target_entries,
 					List *groupby_target_list
 					)
 					:
-					m_memory_pool(memory_pool),
+					m_mp(mp),
 					m_md_accessor(md_accessor),
 					m_num_target_entries(num_target_entries),
 					m_groupby_target_list(groupby_target_list),
@@ -115,7 +115,7 @@ namespace gpdxl
 			public:
 
 				// memory pool
-				IMemoryPool *m_memory_pool;
+				IMemoryPool *m_mp;
 
 				// MD accessor to get the function name
 				CMDAccessor *m_md_accessor;
@@ -138,13 +138,13 @@ namespace gpdxl
 				// ctor
 				SContextGrpbyPlMutator
 					(
-					IMemoryPool *memory_pool,
+					IMemoryPool *mp,
 					CMDAccessor *md_accessor,
 					Query *query,
 					List *groupby_target_list
 					)
 					:
-					m_memory_pool(memory_pool),
+					m_mp(mp),
 					m_md_accessor(md_accessor),
 					m_query(query),
 					m_groupby_target_list(groupby_target_list),
@@ -235,7 +235,7 @@ namespace gpdxl
 
 			// normalize query
 			static
-			Query *NormalizeQuery(IMemoryPool *memory_pool, CMDAccessor *md_accessor, const Query *query, ULONG query_level);
+			Query *NormalizeQuery(IMemoryPool *mp, CMDAccessor *md_accessor, const Query *query, ULONG query_level);
 
 			// check if the project list contains expressions on window operators thereby needing normalization
 			static
@@ -243,7 +243,7 @@ namespace gpdxl
 
 			// flatten expressions in window operation project list
 			static
-			Query *NormalizeWindowProjList(IMemoryPool *memory_pool, CMDAccessor *md_accessor, const Query *query);
+			Query *NormalizeWindowProjList(IMemoryPool *mp, CMDAccessor *md_accessor, const Query *query);
 
 			// traverse the project list to extract all window functions in an arbitrarily complex project element
 			static
@@ -251,7 +251,7 @@ namespace gpdxl
 
 			// flatten expressions in project list
 			static
-			Query *NormalizeGroupByProjList(IMemoryPool *memory_pool, CMDAccessor *md_accessor, const Query *query);
+			Query *NormalizeGroupByProjList(IMemoryPool *mp, CMDAccessor *md_accessor, const Query *query);
 
 			// make a copy of the aggref (minus the arguments)
 			static
@@ -271,7 +271,7 @@ namespace gpdxl
 
 			// pull up having clause into a select
 			static
-			Query *NormalizeHaving(IMemoryPool *memory_pool, CMDAccessor *md_accessor, const Query *query);
+			Query *NormalizeHaving(IMemoryPool *mp, CMDAccessor *md_accessor, const Query *query);
 
 			// traverse the expression and fix the levels up of any outer reference
 			static
@@ -296,7 +296,7 @@ namespace gpdxl
 
 			// return a target entry for the aggregate expression
 			static
-			TargetEntry *GetTargetEntryForAggExpr(IMemoryPool *memory_pool, CMDAccessor *md_accessor, Node *node, ULONG attno);
+			TargetEntry *GetTargetEntryForAggExpr(IMemoryPool *mp, CMDAccessor *md_accessor, Node *node, ULONG attno);
 
 			// traverse the having qual to extract all aggregate functions,
 			// fix correlated vars and return the modified having qual

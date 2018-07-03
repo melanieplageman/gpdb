@@ -29,15 +29,15 @@ using namespace gpos;
 //---------------------------------------------------------------------------
 CDXLTranslateContextBaseTable::CDXLTranslateContextBaseTable
 	(
-	IMemoryPool *memory_pool
+	IMemoryPool *mp
 	)
 	:
-	m_memory_pool(memory_pool),
+	m_mp(mp),
 	m_oid(InvalidOid),
 	m_rel_index(0)
 {
 	// initialize hash table
-	m_colid_to_attno_map = GPOS_NEW(m_memory_pool) HMUlI(m_memory_pool);
+	m_colid_to_attno_map = GPOS_NEW(m_mp) HMUlI(m_mp);
 }
 
 //---------------------------------------------------------------------------
@@ -162,8 +162,8 @@ CDXLTranslateContextBaseTable::InsertMapping
 	)
 {
 	// copy key and value
-	ULONG *key = GPOS_NEW(m_memory_pool) ULONG(dxl_col_id);
-	INT *value = GPOS_NEW(m_memory_pool) INT(att_no);
+	ULONG *key = GPOS_NEW(m_mp) ULONG(dxl_col_id);
+	INT *value = GPOS_NEW(m_mp) INT(att_no);
 
 	// insert colid-idx mapping in the hash map
 

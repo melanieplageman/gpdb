@@ -155,7 +155,7 @@ CQueryMutators::ShouldFallback
 Query *
 CQueryMutators::NormalizeGroupByProjList
 	(
-	IMemoryPool *memory_pool,
+	IMemoryPool *mp,
 	CMDAccessor *md_accessor,
 	const Query *query
 	)
@@ -172,7 +172,7 @@ CQueryMutators::NormalizeGroupByProjList
 
 	GPOS_ASSERT(1 == gpdb::ListLength(new_query->rtable));
 	Query *derived_table_query = (Query *) ((RangeTblEntry *) gpdb::ListNth(new_query->rtable, 0))->subquery;
-	SContextGrpbyPlMutator context(memory_pool, md_accessor, derived_table_query, NULL);
+	SContextGrpbyPlMutator context(mp, md_accessor, derived_table_query, NULL);
 	List *target_list_copy = (List*) gpdb::CopyObject(derived_table_query->targetList);
 	ListCell *lc = NULL;
 
@@ -512,7 +512,7 @@ CQueryMutators::RunGroupByProjListMutator
 		aggref->args = new_args;
 
 		const ULONG attno = gpdb::ListLength(context->m_groupby_target_list) + 1;
-		TargetEntry *target_entry = GetTargetEntryForAggExpr(context->m_memory_pool, context->m_md_accessor, (Node *) aggref, attno);
+		TargetEntry *target_entry = GetTargetEntryForAggExpr(context->m_mp, context->m_md_accessor, (Node *) aggref, attno);
 
 		// Add a new target entry to the query
 		context->m_groupby_target_list = gpdb::LAppend(context->m_groupby_target_list, target_entry);
@@ -534,7 +534,7 @@ CQueryMutators::RunGroupByProjListMutator
 		Node *pnodeCopy = (Node *) gpdb::CopyObject(node);
 
 		const ULONG attno = gpdb::ListLength(context->m_groupby_target_list) + 1;
-		TargetEntry *target_entry = GetTargetEntryForAggExpr(context->m_memory_pool, context->m_md_accessor, pnodeCopy, attno);
+		TargetEntry *target_entry = GetTargetEntryForAggExpr(context->m_mp, context->m_md_accessor, pnodeCopy, attno);
 
 		// Add a new target entry to the query
 		context->m_groupby_target_list = gpdb::LAppend(context->m_groupby_target_list, target_entry);
@@ -818,7 +818,7 @@ CQueryMutators::FixGroupingCols
 TargetEntry *
 CQueryMutators::GetTargetEntryForAggExpr
 	(
-	IMemoryPool *memory_pool,
+	IMemoryPool *mp,
 	CMDAccessor *md_accessor,
 	Node *node,
 	ULONG attno
@@ -836,7 +836,7 @@ CQueryMutators::GetTargetEntryForAggExpr
 	{
 		Aggref *aggref = (Aggref*) node;
 
-		CMDIdGPDB *agg_mdid = GPOS_NEW(memory_pool) CMDIdGPDB(aggref->aggfnoid);
+		CMDIdGPDB *agg_mdid = GPOS_NEW(mp) CMDIdGPDB(aggref->aggfnoid);
 		const IMDAggregate *md_agg = md_accessor->RetrieveAgg(agg_mdid);
 		agg_mdid->Release();
 
@@ -1065,7 +1065,7 @@ CQueryMutators::MakeVarInDerivedTable
 	GPOS_ASSERT(IsA(node, Aggref) || IsA(node, GroupingFunc));
 
 	const ULONG attno = gpdb::ListLength(context->m_groupby_target_list) + 1;
-	TargetEntry *target_entry = GetTargetEntryForAggExpr(context->m_memory_pool, context->m_md_accessor, (Node *) node, attno);
+	TargetEntry *target_entry = GetTargetEntryForAggExpr(context->m_mp, context->m_md_accessor, (Node *) node, attno);
 	context->m_groupby_target_list = gpdb::LAppend(context->m_groupby_target_list, target_entry);
 
 	Var *new_var = gpdb::MakeVar
@@ -1180,7 +1180,7 @@ CQueryMutators::IncrLevelsUpInVar
 Query *
 CQueryMutators::NormalizeHaving
 	(
-	IMemoryPool *memory_pool,
+	IMemoryPool *mp,
 	CMDAccessor *md_accessor,
 	const Query *query
 	)
@@ -1225,7 +1225,7 @@ CQueryMutators::NormalizeHaving
 		}
 	}
 
-	SContextHavingQualMutator context(memory_pool, md_accessor, num_target_entries, derived_table_query->targetList);
+	SContextHavingQualMutator context(mp, md_accessor, num_target_entries, derived_table_query->targetList);
 
 	// fix outer references in the qual
 	new_query->jointree->quals = RunHavingQualMutator(derived_table_query->havingQual, &context);
@@ -1292,7 +1292,7 @@ CQueryMutators::NormalizeHaving
 Query *
 CQueryMutators::NormalizeQuery
 	(
-	IMemoryPool *memory_pool,
+	IMemoryPool *mp,
 	CMDAccessor *md_accessor,
 	const Query *query,
 	ULONG query_level
@@ -1307,16 +1307,16 @@ CQueryMutators::NormalizeQuery
 	gpdb::GPDBFree(pqueryResolveJoinVarReferences);
 
 	// normalize window operator's project list
-	Query *pqueryWindowPlNormalized = CQueryMutators::NormalizeWindowProjList(memory_pool, md_accessor, pqueryEliminateDistinct);
+	Query *pqueryWindowPlNormalized = CQueryMutators::NormalizeWindowProjList(mp, md_accessor, pqueryEliminateDistinct);
 	gpdb::GPDBFree(pqueryEliminateDistinct);
 
 	// pull-up having quals into a select
-	Query *pqueryHavingNormalized = CQueryMutators::NormalizeHaving(memory_pool, md_accessor, pqueryWindowPlNormalized);
+	Query *pqueryHavingNormalized = CQueryMutators::NormalizeHaving(mp, md_accessor, pqueryWindowPlNormalized);
 	GPOS_ASSERT(NULL == pqueryHavingNormalized->havingQual);
 	gpdb::GPDBFree(pqueryWindowPlNormalized);
 
 	// normalize the group by project list
-	Query *new_query = CQueryMutators::NormalizeGroupByProjList(memory_pool, md_accessor, pqueryHavingNormalized);
+	Query *new_query = CQueryMutators::NormalizeGroupByProjList(mp, md_accessor, pqueryHavingNormalized);
 	gpdb::GPDBFree(pqueryHavingNormalized);
 
 	return new_query;
@@ -1605,7 +1605,7 @@ CQueryMutators::NeedsProjListWindowNormalization
 Query *
 CQueryMutators::NormalizeWindowProjList
 	(
-	IMemoryPool *memory_pool,
+	IMemoryPool *mp,
 	CMDAccessor *md_accessor,
 	const Query *query
 	)
@@ -1625,7 +1625,7 @@ CQueryMutators::NormalizeWindowProjList
 	GPOS_ASSERT(1 == gpdb::ListLength(new_query->rtable));
 	Query *derived_table_query = (Query *) ((RangeTblEntry *) gpdb::ListNth(new_query->rtable, 0))->subquery;
 
-	SContextGrpbyPlMutator context(memory_pool, md_accessor, derived_table_query, NULL);
+	SContextGrpbyPlMutator context(mp, md_accessor, derived_table_query, NULL);
 	ListCell *lc = NULL;
 	List *target_entries = derived_table_query->targetList;
 	ForEach (lc, target_entries)
@@ -1719,7 +1719,7 @@ CQueryMutators::RunWindowProjListMutator
 		WindowFunc *window_func = (WindowFunc *) gpdb::CopyObject(node);
 
 		// get the function name and add it to the target list
-		CMDIdGPDB *mdid_func = GPOS_NEW(context->m_memory_pool) CMDIdGPDB(window_func->winfnoid);
+		CMDIdGPDB *mdid_func = GPOS_NEW(context->m_mp) CMDIdGPDB(window_func->winfnoid);
 		const CWStringConst *str = CMDAccessorUtils::PstrWindowFuncName(context->m_md_accessor, mdid_func);
 		mdid_func->Release();
 

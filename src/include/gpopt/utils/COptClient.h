@@ -76,7 +76,7 @@ namespace gpoptudfs
 			const char *m_path;
 
 			// memory pool
-			IMemoryPool *m_memory_pool;
+			IMemoryPool *m_mp;
 
 			// communicator
 			CCommunicator *m_communicator;
@@ -99,7 +99,7 @@ namespace gpoptudfs
 				:
 				m_query(op->m_query),
 				m_path(op->m_path),
-				m_memory_pool(NULL),
+				m_mp(NULL),
 				m_communicator(NULL)
 			{
 				GPOS_ASSERT(NULL != m_query);

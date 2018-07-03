@@ -60,12 +60,12 @@ using namespace gpopt;
 //---------------------------------------------------------------------------
 CTranslatorDXLToScalar::CTranslatorDXLToScalar
 	(
-	IMemoryPool *memory_pool,
+	IMemoryPool *mp,
 	CMDAccessor *md_accessor,
 	ULONG num_segments
 	)
 	:
-	m_memory_pool(memory_pool),
+	m_mp(mp),
 	m_md_accessor(md_accessor),
 	m_has_subqueries(false),
 	m_num_of_segments(num_segments)
@@ -462,7 +462,7 @@ CTranslatorDXLToScalar::CreateScalarAggrefExprFromDXL
 	aggref->aggkind = 'n';
 	aggref->location = -1;
 
-	CMDIdGPDB *agg_mdid = GPOS_NEW(m_memory_pool) CMDIdGPDB(aggref->aggfnoid);
+	CMDIdGPDB *agg_mdid = GPOS_NEW(m_mp) CMDIdGPDB(aggref->aggfnoid);
 	const IMDAggregate *pmdagg = m_md_accessor->RetrieveAgg(agg_mdid);
 	agg_mdid->Release();
 
@@ -667,7 +667,7 @@ CTranslatorDXLToScalar::CreateScalarSubplanExprFromDXL
 	const ULONG len = outer_refs->Size();
 
 	// create a copy of the translate context: the param mappings from the outer scope get copied in the constructor
-	CDXLTranslateContext sub_plan_translate_ctxt(m_memory_pool, output_context->IsParentAggNode(), output_context->GetColIdToParamIdMap());
+	CDXLTranslateContext sub_plan_translate_ctxt(m_mp, output_context->IsParentAggNode(), output_context->GetColIdToParamIdMap());
 
 	// insert new outer ref mappings in the subplan translate context
 	for (ULONG ul = 0; ul < len; ul++)
@@ -680,7 +680,7 @@ CTranslatorDXLToScalar::CreateScalarSubplanExprFromDXL
 		if (NULL == sub_plan_translate_ctxt.GetParamIdMappingElement(col_id))
 		{
 			// keep outer reference mapping to the original column for subsequent subplans
-			CMappingElementColIdParamId *col_id_to_param_id_map = GPOS_NEW(m_memory_pool) CMappingElementColIdParamId(col_id, dxl_to_plstmt_ctxt->GetNextParamId(), mdid, type_modifier);
+			CMappingElementColIdParamId *col_id_to_param_id_map = GPOS_NEW(m_mp) CMappingElementColIdParamId(col_id, dxl_to_plstmt_ctxt->GetNextParamId(), mdid, type_modifier);
 
 #ifdef GPOS_DEBUG
 			BOOL is_inserted =
@@ -701,12 +701,12 @@ CTranslatorDXLToScalar::CreateScalarSubplanExprFromDXL
 	// create DXL->PlStmt translator to handle subplan's relational children
 	CTranslatorDXLToPlStmt dxl_to_plstmt_translator
 							(
-							m_memory_pool,
+							m_mp,
 							m_md_accessor,
 							(dynamic_cast<CMappingColIdVarPlStmt*>(col_id_var))->GetDXLToPlStmtContext(),
 							m_num_of_segments
 							);
-	DXLTranslationContextArr *prev_siblings_ctxt_arr = GPOS_NEW(m_memory_pool) DXLTranslationContextArr(m_memory_pool);
+	DXLTranslationContextArr *prev_siblings_ctxt_arr = GPOS_NEW(m_mp) DXLTranslationContextArr(m_mp);
 	Plan *plan_child = dxl_to_plstmt_translator.TranslateDXLOperatorToPlan(child_dxl, &sub_plan_translate_ctxt, prev_siblings_ctxt_arr);
 	prev_siblings_ctxt_arr->Release();
 
@@ -881,7 +881,7 @@ CTranslatorDXLToScalar::TranslateSubplanParams
 
 		GPOS_ASSERT(col_id_to_param_id_map->MDIdType()->Equals(dxl_colref->MDIdType()));
 
-		CDXLScalarIdent *scalar_ident_dxl = GPOS_NEW(m_memory_pool) CDXLScalarIdent(m_memory_pool, dxl_colref);
+		CDXLScalarIdent *scalar_ident_dxl = GPOS_NEW(m_mp) CDXLScalarIdent(m_mp, dxl_colref);
 		Expr *arg = (Expr *) col_id_var->VarFromDXLNodeScId(scalar_ident_dxl);
 
 		// not found in mapping, it must be an external parameter
@@ -944,7 +944,7 @@ CTranslatorDXLToScalar::GetSubplanAlias
 	ULONG plan_id
 	)
 {
-	CWStringDynamic *wcstr = GPOS_NEW(m_memory_pool) CWStringDynamic(m_memory_pool);
+	CWStringDynamic *wcstr = GPOS_NEW(m_mp) CWStringDynamic(m_mp);
 	wcstr->AppendFormat(GPOS_WSZ_LIT("SubPlan %d"), plan_id);
 	const WCHAR *wchar_str = wcstr->GetBuffer();
 

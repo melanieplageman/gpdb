@@ -47,7 +47,7 @@ namespace gpmd
 	{
 		private:
 			// memory pool
-			IMemoryPool *m_memory_pool;
+			IMemoryPool *m_mp;
 
 			// private copy ctor
 			CMDProviderRelcache(const CMDProviderRelcache&);
@@ -55,7 +55,7 @@ namespace gpmd
 		public:
 			// ctor/dtor
 			explicit
-			CMDProviderRelcache(IMemoryPool *memory_pool);
+			CMDProviderRelcache(IMemoryPool *mp);
 
 			~CMDProviderRelcache()
 			{
@@ -63,19 +63,19 @@ namespace gpmd
 
 			// returns the DXL string of the requested metadata object
 			virtual
-			CWStringBase *GetMDObjDXLStr(IMemoryPool *memory_pool, CMDAccessor *md_accessor, IMDId *md_id) const;
+			CWStringBase *GetMDObjDXLStr(IMemoryPool *mp, CMDAccessor *md_accessor, IMDId *md_id) const;
 
 			// return the mdid for the requested type
 			virtual
 			IMDId *MDId
 				(
-				IMemoryPool *memory_pool,
+				IMemoryPool *mp,
 				CSystemId sysid,
 				IMDType::ETypeInfo type_info
 				)
 				const
 			{
-				return GetGPDBTypeMdid(memory_pool, sysid, type_info);
+				return GetGPDBTypeMdid(mp, sysid, type_info);
 			}
 
 	};

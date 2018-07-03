@@ -35,7 +35,7 @@ using namespace gpdxl;
 //---------------------------------------------------------------------------
 CContextDXLToPlStmt::CContextDXLToPlStmt
 	(
-	IMemoryPool *memory_pool,
+	IMemoryPool *mp,
 	CIdGenerator *plan_id_counter,
 	CIdGenerator *motion_id_counter,
 	CIdGenerator *param_id_counter,
@@ -43,7 +43,7 @@ CContextDXLToPlStmt::CContextDXLToPlStmt
 	List **subplan_entries_list
 	)
 	:
-	m_memory_pool(memory_pool),
+	m_mp(mp),
 	m_plan_id_counter(plan_id_counter),
 	m_motion_id_counter(motion_id_counter),
 	m_param_id_counter(param_id_counter),
@@ -55,8 +55,8 @@ CContextDXLToPlStmt::CContextDXLToPlStmt
 	m_into_clause(NULL),
 	m_distribution_policy(NULL)
 {
-	m_cte_consumer_info = GPOS_NEW(m_memory_pool) HMUlCTEConsumerInfo(m_memory_pool);
-	m_num_partition_selectors_array = GPOS_NEW(m_memory_pool) ULongPtrArray(m_memory_pool);
+	m_cte_consumer_info = GPOS_NEW(m_mp) HMUlCTEConsumerInfo(m_mp);
+	m_num_partition_selectors_array = GPOS_NEW(m_mp) ULongPtrArray(m_mp);
 }
 
 //---------------------------------------------------------------------------
@@ -169,11 +169,11 @@ CContextDXLToPlStmt::AddCTEConsumerInfo
 
 	List *cte_plan = ListMake1(share_input_scan);
 
-	ULONG *key = GPOS_NEW(m_memory_pool) ULONG(cte_id);
+	ULONG *key = GPOS_NEW(m_mp) ULONG(cte_id);
 #ifdef GPOS_DEBUG
 	BOOL result =
 #endif
-			m_cte_consumer_info->Insert(key, GPOS_NEW(m_memory_pool) SCTEConsumerInfo(cte_plan));
+			m_cte_consumer_info->Insert(key, GPOS_NEW(m_mp) SCTEConsumerInfo(cte_plan));
 
 	GPOS_ASSERT(result);
 }
@@ -295,7 +295,7 @@ CContextDXLToPlStmt::IncrementPartitionSelectors
 	const ULONG len = m_num_partition_selectors_array->Size();
 	for (ULONG ul = len; ul <= scan_id; ul++)
 	{
-		ULONG *pul = GPOS_NEW(m_memory_pool) ULONG(0);
+		ULONG *pul = GPOS_NEW(m_mp) ULONG(0);
 		m_num_partition_selectors_array->Append(pul);
 	}
 

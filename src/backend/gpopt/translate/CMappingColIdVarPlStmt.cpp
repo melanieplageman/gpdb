@@ -43,14 +43,14 @@ using namespace gpmd;
 //---------------------------------------------------------------------------
 CMappingColIdVarPlStmt::CMappingColIdVarPlStmt
 	(
-	IMemoryPool *memory_pool,
+	IMemoryPool *mp,
 	const CDXLTranslateContextBaseTable *base_table_context,
 	DXLTranslationContextArr *child_contexts,
 	CDXLTranslateContext *output_context,
 	CContextDXLToPlStmt *dxl_to_plstmt_context
 	)
 	:
-	CMappingColIdVar(memory_pool),
+	CMappingColIdVar(mp),
 	m_base_table_context(base_table_context),
 	m_child_contexts(child_contexts),
 	m_output_context(output_context),
