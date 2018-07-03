@@ -67,11 +67,11 @@ namespace gpdxl
 
 			// construct a set of column attnos corresponding to a single grouping set
 			static
-			CBitSet *CreateAttnoSetForGroupingSet(IMemoryPool *mp, List *group_elems, ULONG num_cols, UlongUlongHashMap *group_col_pos, CBitSet *group_cols);
+			CBitSet *CreateAttnoSetForGroupingSet(IMemoryPool *mp, List *group_elems, ULONG num_cols, UlongToUlongMap *group_col_pos, CBitSet *group_cols);
 
 			// create a set of grouping sets for a rollup
 			static
-			BitSetArray *CreateGroupingSetsForRollup(IMemoryPool *mp, GroupingClause *grouping_clause, ULONG num_cols, UlongUlongHashMap *grouping_col_to_pos_map, CBitSet *group_cols);
+			BitSetArray *CreateGroupingSetsForRollup(IMemoryPool *mp, GroupingClause *grouping_clause, ULONG num_cols, UlongToUlongMap *grouping_col_to_pos_map, CBitSet *group_cols);
 
 			// check if the given mdid array contains any of the polymorphic
 			// types (ANYELEMENT, ANYARRAY)
@@ -91,7 +91,7 @@ namespace gpdxl
 			
 			// update grouping col position mappings
 			static
-			void UpdateGrpColMapping(IMemoryPool *mp, UlongUlongHashMap *grouping_col_to_pos_map, CBitSet *group_cols, ULONG sort_group_ref);
+			void UpdateGrpColMapping(IMemoryPool *mp, UlongToUlongMap *grouping_col_to_pos_map, CBitSet *group_cols, ULONG sort_group_ref);
 
 		public:
 
@@ -221,7 +221,7 @@ namespace gpdxl
 			// construct a dynamic array of sets of column attnos corresponding
 			// to the group by clause
 			static
-			BitSetArray *GetColumnAttnosForGroupBy(IMemoryPool *mp, List *group_clause, ULONG num_cols, UlongUlongHashMap *group_col_pos, CBitSet *group_cold);
+			BitSetArray *GetColumnAttnosForGroupBy(IMemoryPool *mp, List *group_clause, ULONG num_cols, UlongToUlongMap *group_col_pos, CBitSet *group_cold);
 
 			// return a copy of the query with constant of unknown type being coerced
 			// to the common data type of the output target list
@@ -339,7 +339,7 @@ namespace gpdxl
 			CHAR *CreateMultiByteCharStringFromWCString(const WCHAR *wcstr);
 			
 			static 
-			UlongUlongHashMap *MakeNewToOldColMapping(IMemoryPool *mp, ULongPtrArray *old_colids, ULongPtrArray *new_colids);
+			UlongToUlongMap *MakeNewToOldColMapping(IMemoryPool *mp, ULongPtrArray *old_colids, ULongPtrArray *new_colids);
 
 			// check if the given tree contains a subquery
 			static

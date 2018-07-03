@@ -1127,7 +1127,7 @@ CTranslatorUtils::GetColumnAttnosForGroupBy
 	IMemoryPool *mp,
 	List *group_clause_list,
 	ULONG num_cols,
-	UlongUlongHashMap *group_col_pos,	// mapping of grouping col positions to SortGroupRef ids
+	UlongToUlongMap *group_col_pos,	// mapping of grouping col positions to SortGroupRef ids
 	CBitSet *group_cols			// existing uniqueue grouping columns
 	)
 {
@@ -1219,7 +1219,7 @@ CTranslatorUtils::CreateGroupingSetsForRollup
 	IMemoryPool *mp,
 	GroupingClause *grouping_clause,
 	ULONG num_cols,
-	UlongUlongHashMap *group_col_pos,	// mapping of grouping col positions to SortGroupRef ids,
+	UlongToUlongMap *group_col_pos,	// mapping of grouping col positions to SortGroupRef ids,
 	CBitSet *group_cols			// existing grouping columns
 	)
 {
@@ -1304,7 +1304,7 @@ CTranslatorUtils::CreateAttnoSetForGroupingSet
 	IMemoryPool *mp,
 	List *group_elems,
 	ULONG num_cols,
-	UlongUlongHashMap *group_col_pos,	// mapping of grouping col positions to SortGroupRef ids,
+	UlongToUlongMap *group_col_pos,	// mapping of grouping col positions to SortGroupRef ids,
 	CBitSet *group_cols			// existing grouping columns
 	)
 {
@@ -2190,7 +2190,7 @@ CTranslatorUtils::CreateMultiByteCharStringFromWCString
 //		Create a mapping from old columns to the corresponding new column
 //
 //---------------------------------------------------------------------------
-UlongUlongHashMap *
+UlongToUlongMap *
 CTranslatorUtils::MakeNewToOldColMapping
 	(
 	IMemoryPool *mp,
@@ -2202,7 +2202,7 @@ CTranslatorUtils::MakeNewToOldColMapping
 	GPOS_ASSERT(NULL != new_colids);
 	GPOS_ASSERT(new_colids->Size() == old_colids->Size());
 	
-	UlongUlongHashMap *old_new_col_mapping = GPOS_NEW(mp) UlongUlongHashMap(mp);
+	UlongToUlongMap *old_new_col_mapping = GPOS_NEW(mp) UlongToUlongMap(mp);
 	const ULONG num_cols = old_colids->Size();
 	for (ULONG ul = 0; ul < num_cols; ul++)
 	{
@@ -2478,7 +2478,7 @@ void
 CTranslatorUtils::UpdateGrpColMapping
 	(
 	IMemoryPool *mp,
-	UlongUlongHashMap *group_col_pos, 
+	UlongToUlongMap *group_col_pos, 
 	CBitSet *group_cols,
 	ULONG sort_group_ref
 	)

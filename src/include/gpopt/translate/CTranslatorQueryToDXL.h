@@ -263,7 +263,7 @@ namespace gpdxl
 				BitSetArray *pdrgpbsGroupingSets,
 				IntUlongHashMap *phmiulSortGrpColsColId,
 				IntUlongHashMap *output_attno_to_colid_mapping,
-				UlongUlongHashMap *grpcol_index_to_colid_mapping		// mapping pos->unique grouping columns for grouping func arguments
+				UlongToUlongMap *grpcol_index_to_colid_mapping		// mapping pos->unique grouping columns for grouping func arguments
 				);
 
 			// construct a project node with NULL values for columns not included in the grouping set
@@ -274,7 +274,7 @@ namespace gpdxl
 				CBitSet *bitset, 
 				IntUlongHashMap *sort_grouping_col_mapping, 
 				IntUlongHashMap *output_attno_to_colid_mapping, 
-				UlongUlongHashMap *grpcol_index_to_colid_mapping
+				UlongToUlongMap *grpcol_index_to_colid_mapping
 				) 
 				const;
 
@@ -285,7 +285,7 @@ namespace gpdxl
 				CDXLNode *dxl_node_child,
 				CBitSet *bitset,
 				IntUlongHashMap *output_attno_to_colid_mapping,
-				UlongUlongHashMap *grpcol_index_to_colid_mapping,
+				UlongToUlongMap *grpcol_index_to_colid_mapping,
 				IntUlongHashMap *sort_grpref_to_colid_mapping
 				)
 				const;
@@ -439,7 +439,7 @@ namespace gpdxl
 			ULONG GetTupleOidColId();
 
 			// translate a grouping func expression
-			CDXLNode *TranslateGroupingFuncToDXL(const Expr *expr, CBitSet *bitset, UlongUlongHashMap *grpcol_index_to_colid_mapping) const;
+			CDXLNode *TranslateGroupingFuncToDXL(const Expr *expr, CBitSet *bitset, UlongToUlongMap *grpcol_index_to_colid_mapping) const;
 
 			// construct a list of CTE producers from the query's CTE list
 			void ConstructCTEProducerList(List *cte_list, ULONG query_level);

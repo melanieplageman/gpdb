@@ -556,7 +556,7 @@ CMappingVarColId::CopyRemapColId
 	GPOS_ASSERT(new_colids->Size() == old_colids->Size());
 	
 	// construct a mapping old cols -> new cols
-	UlongUlongHashMap *old_new_col_mapping = CTranslatorUtils::MakeNewToOldColMapping(mp, old_colids, new_colids);
+	UlongToUlongMap *old_new_col_mapping = CTranslatorUtils::MakeNewToOldColMapping(mp, old_colids, new_colids);
 		
 	CMappingVarColId *var_colid_mapping = GPOS_NEW(mp) CMappingVarColId(mp);
 
