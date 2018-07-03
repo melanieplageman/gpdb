@@ -124,7 +124,7 @@ CTranslatorDXLToPlStmt::InitTranslators()
 			{EdxlopPhysicalTableScan,				&gpopt::CTranslatorDXLToPlStmt::TranslateDXLTblScan},
 			{EdxlopPhysicalExternalScan,			&gpopt::CTranslatorDXLToPlStmt::TranslateDXLTblScan},
 			{EdxlopPhysicalIndexScan,				&gpopt::CTranslatorDXLToPlStmt::TranslateDXLIndexScan},
-			{EdxlopPhysicalHashJoin, 				&gpopt::CTranslatorDXLToPlStmt::PhjFromDXLHJ},
+			{EdxlopPhysicalHashJoin, 				&gpopt::CTranslatorDXLToPlStmt::TranslateDXLHashJoin},
 			{EdxlopPhysicalNLJoin, 					&gpopt::CTranslatorDXLToPlStmt::TranslateDXLNLJoin},
 			{EdxlopPhysicalMergeJoin,				&gpopt::CTranslatorDXLToPlStmt::TranslateDXLMergeJoin},
 			{EdxlopPhysicalMotionGather,			&gpopt::CTranslatorDXLToPlStmt::TranslateDXLMotion},
@@ -1002,14 +1002,14 @@ CTranslatorDXLToPlStmt::TranslateDXLLimit
 
 //---------------------------------------------------------------------------
 //	@function:
-//		CTranslatorDXLToPlStmt::PhjFromDXLHJ
+//		CTranslatorDXLToPlStmt::TranslateDXLHashJoin
 //
 //	@doc:
 //		Translates a DXL hash join node into a HashJoin node
 //
 //---------------------------------------------------------------------------
 Plan *
-CTranslatorDXLToPlStmt::PhjFromDXLHJ
+CTranslatorDXLToPlStmt::TranslateDXLHashJoin
 	(
 	const CDXLNode *hj_dxlnode,
 	CDXLTranslateContext *output_context,

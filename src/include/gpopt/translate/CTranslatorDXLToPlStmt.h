@@ -225,7 +225,7 @@ namespace gpdxl
 				);
 
 			// translate DXL hash join into a HashJoin node
-			Plan *PhjFromDXLHJ
+			Plan *TranslateDXLHashJoin
 				(
 				const CDXLNode *TranslateDXLHashJoin,
 				CDXLTranslateContext *output_context,
