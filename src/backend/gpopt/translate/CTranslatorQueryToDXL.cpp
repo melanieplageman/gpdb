@@ -490,8 +490,8 @@ CTranslatorQueryToDXL::TranslateSelectQueryToDXL()
 		GPOS_RAISE(gpdxl::ExmaDXL, gpdxl::ExmiQuery2DXLUnsupportedFeature, GPOS_WSZ_LIT("RETURNING clause"));
 
 	CDXLNode *dxl_node_child = NULL;
-	IntUlongHashMap *sort_group_attno_to_colid_mapping =  GPOS_NEW(m_mp) IntUlongHashMap(m_mp);
-	IntUlongHashMap *output_attno_to_colid_mapping = GPOS_NEW(m_mp) IntUlongHashMap(m_mp);
+	IntToUlongMap *sort_group_attno_to_colid_mapping =  GPOS_NEW(m_mp) IntToUlongMap(m_mp);
+	IntToUlongMap *output_attno_to_colid_mapping = GPOS_NEW(m_mp) IntToUlongMap(m_mp);
 
 	// construct CTEAnchor operators for the CTEs defined at the top level
 	CDXLNode *dxl_cte_anchor_top = NULL;
@@ -585,8 +585,8 @@ CTranslatorQueryToDXL::TranslateSelectProjectJoinToDXL
 	(
 	List *target_list,
 	FromExpr *from_expr,
-	IntUlongHashMap *sort_group_attno_to_colid_mapping,
-	IntUlongHashMap *output_attno_to_colid_mapping,
+	IntToUlongMap *sort_group_attno_to_colid_mapping,
+	IntToUlongMap *output_attno_to_colid_mapping,
 	List *group_clause
 	)
 {
@@ -610,8 +610,8 @@ CTranslatorQueryToDXL::TranslateSelectProjectJoinForGrpSetsToDXL
 	(
 	List *target_list,
 	FromExpr *from_expr,
-	IntUlongHashMap *sort_group_attno_to_colid_mapping,
-	IntUlongHashMap *output_attno_to_colid_mapping,
+	IntToUlongMap *sort_group_attno_to_colid_mapping,
+	IntToUlongMap *output_attno_to_colid_mapping,
 	List *group_clause
 	)
 {
@@ -1156,7 +1156,7 @@ CTranslatorQueryToDXL::TranslateUpdateQueryToDXL()
 	}
 
 	// get (resno -> colId) mapping of columns to be updated
-	IntUlongHashMap *update_column_map = UpdatedColumnMapping();
+	IntToUlongMap *update_column_map = UpdatedColumnMapping();
 
 	const ULONG num_of_non_sys_cols = md_rel->ColumnCount();
 	ULongPtrArray *insert_colid_array = GPOS_NEW(m_mp) ULongPtrArray(m_mp);
@@ -1203,10 +1203,10 @@ CTranslatorQueryToDXL::TranslateUpdateQueryToDXL()
 // 		Return resno -> colId mapping of columns to be updated
 //
 //---------------------------------------------------------------------------
-IntUlongHashMap *
+IntToUlongMap *
 CTranslatorQueryToDXL::UpdatedColumnMapping()
 {
-	IntUlongHashMap *update_column_map = GPOS_NEW(m_mp) IntUlongHashMap(m_mp);
+	IntToUlongMap *update_column_map = GPOS_NEW(m_mp) IntToUlongMap(m_mp);
 
 	ListCell *lc = NULL;
 	ULONG ul = 0;
@@ -1476,7 +1476,7 @@ DXLWindowSpecArray *
 CTranslatorQueryToDXL::TranslateWindowSpecToDXL
 	(
 	List *window_clause,
-	IntUlongHashMap *sort_col_attno_to_colid_mapping,
+	IntToUlongMap *sort_col_attno_to_colid_mapping,
 	CDXLNode *project_list_dxlnode_node
 	)
 {
@@ -1550,8 +1550,8 @@ CTranslatorQueryToDXL::TranslateWindowToDXL
 	List *target_list,
 	List *window_clause,
 	List *sort_clause,
-	IntUlongHashMap *sort_col_attno_to_colid_mapping,
-	IntUlongHashMap *output_attno_to_colid_mapping
+	IntToUlongMap *sort_col_attno_to_colid_mapping,
+	IntToUlongMap *output_attno_to_colid_mapping
 	)
 {
 	if (0 == gpdb::ListLength(window_clause))
@@ -1740,7 +1740,7 @@ ULongPtrArray *
 CTranslatorQueryToDXL::TranslatePartColumns
 	(
 	List *partition_by_clause,
-	IntUlongHashMap *col_attno_colid_mapping
+	IntToUlongMap *col_attno_colid_mapping
 	)
 	const
 {
@@ -1776,7 +1776,7 @@ DXLNodeArray *
 CTranslatorQueryToDXL::TranslateSortColumsToDXL
 	(
 	List *sort_clause,
-	IntUlongHashMap *col_attno_colid_mapping
+	IntToUlongMap *col_attno_colid_mapping
 	)
 	const
 {
@@ -1838,7 +1838,7 @@ CTranslatorQueryToDXL::TranslateLimitToDXLGroupBy
 	Node *limit_count,
 	Node *limit_offset_node,
 	CDXLNode *dxl_node_child,
-	IntUlongHashMap *grpcols_to_colid_mapping
+	IntToUlongMap *grpcols_to_colid_mapping
 	)
 {
 	if (0 == gpdb::ListLength(sort_clause) && NULL == limit_count && NULL == limit_offset_node)
@@ -1909,7 +1909,7 @@ void
 CTranslatorQueryToDXL::AddSortingGroupingColumn
 	(
 	TargetEntry *target_entry,
-	IntUlongHashMap *sort_grpref_to_colid_mapping,
+	IntToUlongMap *sort_grpref_to_colid_mapping,
 	ULONG colid
 	)
 	const
@@ -1946,9 +1946,9 @@ CTranslatorQueryToDXL::CreateSimpleGroupBy
 	BOOL has_aggs,
 	BOOL has_grouping_sets,
 	CDXLNode *dxl_node_child,
-	IntUlongHashMap *sort_grpref_to_colid_mapping,
-	IntUlongHashMap *child_attno_colid_mapping,
-	IntUlongHashMap *output_attno_to_colid_mapping
+	IntToUlongMap *sort_grpref_to_colid_mapping,
+	IntToUlongMap *child_attno_colid_mapping,
+	IntToUlongMap *output_attno_to_colid_mapping
 	)
 {
 	if (NULL == grpby_cols_bitset)
@@ -2100,15 +2100,15 @@ CTranslatorQueryToDXL::TranslateGroupingSets
 	List *target_list,
 	List *group_clause,
 	BOOL has_aggs,
-	IntUlongHashMap *sort_grpref_to_colid_mapping,
-	IntUlongHashMap *output_attno_to_colid_mapping
+	IntToUlongMap *sort_grpref_to_colid_mapping,
+	IntToUlongMap *output_attno_to_colid_mapping
 	)
 {
 	const ULONG num_of_cols = gpdb::ListLength(target_list) + 1;
 
 	if (NULL == group_clause)
 	{
-		IntUlongHashMap *child_attno_colid_mapping = GPOS_NEW(m_mp) IntUlongHashMap(m_mp);
+		IntToUlongMap *child_attno_colid_mapping = GPOS_NEW(m_mp) IntToUlongMap(m_mp);
 
 		CDXLNode *select_project_join_dxlnode = TranslateSelectProjectJoinToDXL(target_list, from_expr, sort_grpref_to_colid_mapping, child_attno_colid_mapping, group_clause);
 
@@ -2149,7 +2149,7 @@ CTranslatorQueryToDXL::TranslateGroupingSets
 	if (1 == num_of_grouping_sets)
 	{
 		// simple group by
-		IntUlongHashMap *child_attno_colid_mapping = GPOS_NEW(m_mp) IntUlongHashMap(m_mp);
+		IntToUlongMap *child_attno_colid_mapping = GPOS_NEW(m_mp) IntToUlongMap(m_mp);
 		CDXLNode *select_project_join_dxlnode = TranslateSelectProjectJoinToDXL(target_list, from_expr, sort_grpref_to_colid_mapping, child_attno_colid_mapping, group_clause);
 
 		// translate the groupby clauses into a logical group by operator
@@ -2221,8 +2221,8 @@ CTranslatorQueryToDXL::CreateDXLUnionAllForGroupingSets
 	List *group_clause,
 	BOOL has_aggs,
 	BitSetArray *bitset_array,
-	IntUlongHashMap *sort_grpref_to_colid_mapping,
-	IntUlongHashMap *output_attno_to_colid_mapping,
+	IntToUlongMap *sort_grpref_to_colid_mapping,
+	IntToUlongMap *output_attno_to_colid_mapping,
 	UlongToUlongMap *grpcol_index_to_colid_mapping		// mapping pos->unique grouping columns for grouping func arguments
 	)
 {
@@ -2236,8 +2236,8 @@ CTranslatorQueryToDXL::CreateDXLUnionAllForGroupingSets
 	const ULONG cte_id = m_cte_id_counter->next_id();
 	
 	// construct a CTE producer on top of the SPJ query
-	IntUlongHashMap *spj_output_attno_to_colid_mapping = GPOS_NEW(m_mp) IntUlongHashMap(m_mp);
-	IntUlongHashMap *sort_groupref_to_colid_producer_mapping = GPOS_NEW(m_mp) IntUlongHashMap(m_mp);
+	IntToUlongMap *spj_output_attno_to_colid_mapping = GPOS_NEW(m_mp) IntToUlongMap(m_mp);
+	IntToUlongMap *sort_groupref_to_colid_producer_mapping = GPOS_NEW(m_mp) IntToUlongMap(m_mp);
 	CDXLNode *select_project_join_dxlnode = TranslateSelectProjectJoinForGrpSetsToDXL(target_list, from_expr, sort_groupref_to_colid_producer_mapping, spj_output_attno_to_colid_mapping, group_clause);
 
 	// construct output colids
@@ -2262,13 +2262,13 @@ CTranslatorQueryToDXL::CreateDXLUnionAllForGroupingSets
 		GPOS_DELETE(m_var_to_colid_map);
 		m_var_to_colid_map = var_colid_orig_mapping->CopyRemapColId(m_mp, op_colid_array_cte_producer, colid_array_cte_consumer);
 		
-		IntUlongHashMap *spj_consumer_output_attno_to_colid_mapping = RemapColIds(m_mp, spj_output_attno_to_colid_mapping, op_colid_array_cte_producer, colid_array_cte_consumer);
-		IntUlongHashMap *phmiulSortgrouprefColIdConsumer = RemapColIds(m_mp, sort_groupref_to_colid_producer_mapping, op_colid_array_cte_producer, colid_array_cte_consumer);
+		IntToUlongMap *spj_consumer_output_attno_to_colid_mapping = RemapColIds(m_mp, spj_output_attno_to_colid_mapping, op_colid_array_cte_producer, colid_array_cte_consumer);
+		IntToUlongMap *phmiulSortgrouprefColIdConsumer = RemapColIds(m_mp, sort_groupref_to_colid_producer_mapping, op_colid_array_cte_producer, colid_array_cte_consumer);
 
 		// construct a CTE consumer
 		CDXLNode *cte_consumer_dxlnode = GPOS_NEW(m_mp) CDXLNode(m_mp, GPOS_NEW(m_mp) CDXLLogicalCTEConsumer(m_mp, cte_id, colid_array_cte_consumer));
 
-		IntUlongHashMap *groupby_attno_to_colid_mapping = GPOS_NEW(m_mp) IntUlongHashMap(m_mp);
+		IntToUlongMap *groupby_attno_to_colid_mapping = GPOS_NEW(m_mp) IntToUlongMap(m_mp);
 		CDXLNode *groupby_dxlnode = CreateSimpleGroupBy
 					(
 					target_list,
@@ -2435,7 +2435,7 @@ CTranslatorQueryToDXL::TranslateSetOpToDXL
 	(
 	Node *setop_node,
 	List *target_list,
-	IntUlongHashMap *output_attno_to_colid_mapping
+	IntToUlongMap *output_attno_to_colid_mapping
 	)
 {
 	GPOS_ASSERT(IsA(setop_node, SetOperationStmt));
@@ -2761,7 +2761,7 @@ CTranslatorQueryToDXL::TranslateSetOpChild
 	}
 	else if (IsA(child_node, SetOperationStmt))
 	{
-		IntUlongHashMap *output_attno_to_colid_mapping = GPOS_NEW(m_mp) IntUlongHashMap(m_mp);
+		IntToUlongMap *output_attno_to_colid_mapping = GPOS_NEW(m_mp) IntToUlongMap(m_mp);
 		CDXLNode *dxlnode = TranslateSetOpToDXL(child_node, target_list, output_attno_to_colid_mapping);
 
 		// cleanup
@@ -3599,8 +3599,8 @@ CTranslatorQueryToDXL::TranslateTargetListToDXLProject
 	(
 	List *target_list,
 	CDXLNode *dxl_node_child,
-	IntUlongHashMap *sort_grpref_to_colid_mapping,
-	IntUlongHashMap *output_attno_to_colid_mapping,
+	IntToUlongMap *sort_grpref_to_colid_mapping,
+	IntToUlongMap *output_attno_to_colid_mapping,
 	List *plgrpcl,
 	BOOL is_expand_aggref_expr
 	)
@@ -3730,8 +3730,8 @@ CTranslatorQueryToDXL::CreateDXLProjectNullsForGroupingSets
 	List *target_list,
 	CDXLNode *dxl_node_child,
 	CBitSet *bitset,					// group by columns
-	IntUlongHashMap *sort_grouping_col_mapping,	// mapping of sorting and grouping columns
-	IntUlongHashMap *output_attno_to_colid_mapping,		// mapping of output columns
+	IntToUlongMap *sort_grouping_col_mapping,	// mapping of sorting and grouping columns
+	IntToUlongMap *output_attno_to_colid_mapping,		// mapping of output columns
 	UlongToUlongMap *grpcol_index_to_colid_mapping		// mapping of unique grouping col positions
 	)
 	const
@@ -3821,9 +3821,9 @@ CTranslatorQueryToDXL::CreateDXLProjectGroupingFuncs
 	List *target_list,
 	CDXLNode *dxl_node_child,
 	CBitSet *bitset,
-	IntUlongHashMap *output_attno_to_colid_mapping,
+	IntToUlongMap *output_attno_to_colid_mapping,
 	UlongToUlongMap *grpcol_index_to_colid_mapping,
-	IntUlongHashMap *sort_grpref_to_colid_mapping
+	IntToUlongMap *sort_grpref_to_colid_mapping
 	)
 	const
 {
@@ -3884,7 +3884,7 @@ CTranslatorQueryToDXL::CreateDXLProjectGroupingFuncs
 void
 CTranslatorQueryToDXL::StoreAttnoColIdMapping
 	(
-	IntUlongHashMap *attno_to_colid_mapping,
+	IntToUlongMap *attno_to_colid_mapping,
 	INT attno,
 	ULONG colid
 	)
@@ -3915,7 +3915,7 @@ DXLNodeArray *
 CTranslatorQueryToDXL::CreateDXLOutputCols
 	(
 	List *target_list,
-	IntUlongHashMap *attno_to_colid_mapping
+	IntToUlongMap *attno_to_colid_mapping
 	)
 	const
 {
@@ -4295,7 +4295,7 @@ ULongPtrArray *
 CTranslatorQueryToDXL::ExtractColIds
 	(
 	IMemoryPool *mp,
-	IntUlongHashMap *attno_to_colid_mapping
+	IntToUlongMap *attno_to_colid_mapping
 	)
 	const
 {
@@ -4329,11 +4329,11 @@ CTranslatorQueryToDXL::ExtractColIds
 //		with the corresponding value in the To array
 //
 //---------------------------------------------------------------------------
-IntUlongHashMap *
+IntToUlongMap *
 CTranslatorQueryToDXL::RemapColIds
 	(
 	IMemoryPool *mp,
-	IntUlongHashMap *attno_to_colid_mapping,
+	IntToUlongMap *attno_to_colid_mapping,
 	ULongPtrArray *from_list_colids,
 	ULongPtrArray *to_list_colids
 	)
@@ -4355,7 +4355,7 @@ CTranslatorQueryToDXL::RemapColIds
 		GPOS_ASSERT(result);
 	}
 
-	IntUlongHashMap *result_attno_to_colid_mapping = GPOS_NEW(mp) IntUlongHashMap(mp);
+	IntToUlongMap *result_attno_to_colid_mapping = GPOS_NEW(mp) IntToUlongMap(mp);
 	IntUlongHashmapIter mi(attno_to_colid_mapping);
 	while (mi.Advance())
 	{

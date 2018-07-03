@@ -175,7 +175,7 @@ namespace gpdxl
 			CDXLNode *TranslateFromExprToDXL(FromExpr *from_expr);
 
 			// translate set operations
-			CDXLNode *TranslateSetOpToDXL(Node *setop_node, List *target_list, IntUlongHashMap *output_attno_to_colid_mapping);
+			CDXLNode *TranslateSetOpToDXL(Node *setop_node, List *target_list, IntToUlongMap *output_attno_to_colid_mapping);
 
 			// create the set operation given its children, input and output columns
 			CDXLNode *CreateDXLSetOpFromColumns
@@ -199,12 +199,12 @@ namespace gpdxl
 				List *target_list,
 				List *window_clause,
 				List *sort_clause,
-				IntUlongHashMap *sort_col_attno_to_colid_mapping,
-				IntUlongHashMap *output_attno_to_colid_mapping
+				IntToUlongMap *sort_col_attno_to_colid_mapping,
+				IntToUlongMap *output_attno_to_colid_mapping
 				);
 
 			// translate window spec
-			DXLWindowSpecArray *TranslateWindowSpecToDXL(List *window_clause, IntUlongHashMap *sort_col_attno_to_colid_mapping, CDXLNode *project_list_dxlnode_node);
+			DXLWindowSpecArray *TranslateWindowSpecToDXL(List *window_clause, IntToUlongMap *sort_col_attno_to_colid_mapping, CDXLNode *project_list_dxlnode_node);
 
 			// update window spec positions of LEAD/LAG functions
 			void UpdateLeadLagWinSpecPos(CDXLNode *project_list_dxlnode, DXLWindowSpecArray *window_specs_dxl_node) const;
@@ -233,9 +233,9 @@ namespace gpdxl
 				BOOL has_aggs,
 				BOOL has_grouping_sets,				// is this GB part of a GS query
 				CDXLNode *dxl_node_child,
-				IntUlongHashMap *phmiulSortGrpColsColId,  // mapping sortgroupref -> ColId
-				IntUlongHashMap *child_attno_colid_mapping,				// mapping attno->colid in child node
-				IntUlongHashMap *output_attno_to_colid_mapping			// mapping attno -> ColId for output columns
+				IntToUlongMap *phmiulSortGrpColsColId,  // mapping sortgroupref -> ColId
+				IntToUlongMap *child_attno_colid_mapping,				// mapping attno->colid in child node
+				IntToUlongMap *output_attno_to_colid_mapping			// mapping attno -> ColId for output columns
 				);
 
 			// check if the argument of a DQA has already being used by another DQA
@@ -249,8 +249,8 @@ namespace gpdxl
 				List *target_list,
 				List *group_clause,
 				BOOL has_aggs,
-				IntUlongHashMap *phmiulSortGrpColsColId,
-				IntUlongHashMap *output_attno_to_colid_mapping
+				IntToUlongMap *phmiulSortGrpColsColId,
+				IntToUlongMap *output_attno_to_colid_mapping
 				);
 
 			// expand the grouping sets into a union all operator
@@ -261,8 +261,8 @@ namespace gpdxl
 				List *group_clause,
 				BOOL has_aggs,
 				BitSetArray *pdrgpbsGroupingSets,
-				IntUlongHashMap *phmiulSortGrpColsColId,
-				IntUlongHashMap *output_attno_to_colid_mapping,
+				IntToUlongMap *phmiulSortGrpColsColId,
+				IntToUlongMap *output_attno_to_colid_mapping,
 				UlongToUlongMap *grpcol_index_to_colid_mapping		// mapping pos->unique grouping columns for grouping func arguments
 				);
 
@@ -272,8 +272,8 @@ namespace gpdxl
 				List *target_list, 
 				CDXLNode *dxl_node_child, 
 				CBitSet *bitset, 
-				IntUlongHashMap *sort_grouping_col_mapping, 
-				IntUlongHashMap *output_attno_to_colid_mapping, 
+				IntToUlongMap *sort_grouping_col_mapping, 
+				IntToUlongMap *output_attno_to_colid_mapping, 
 				UlongToUlongMap *grpcol_index_to_colid_mapping
 				) 
 				const;
@@ -284,20 +284,20 @@ namespace gpdxl
 				List *target_list,
 				CDXLNode *dxl_node_child,
 				CBitSet *bitset,
-				IntUlongHashMap *output_attno_to_colid_mapping,
+				IntToUlongMap *output_attno_to_colid_mapping,
 				UlongToUlongMap *grpcol_index_to_colid_mapping,
-				IntUlongHashMap *sort_grpref_to_colid_mapping
+				IntToUlongMap *sort_grpref_to_colid_mapping
 				)
 				const;
 
 			// add sorting and grouping column into the hash map
-			void AddSortingGroupingColumn(TargetEntry *target_entry, IntUlongHashMap *phmiulSortGrpColsColId, ULONG colid) const;
+			void AddSortingGroupingColumn(TargetEntry *target_entry, IntToUlongMap *phmiulSortGrpColsColId, ULONG colid) const;
 
 			// translate the list of sorting columns
-			DXLNodeArray *TranslateSortColumsToDXL(List *sort_clause, IntUlongHashMap *col_attno_colid_mapping) const;
+			DXLNodeArray *TranslateSortColumsToDXL(List *sort_clause, IntToUlongMap *col_attno_colid_mapping) const;
 
 			// translate the list of partition-by column identifiers
-			ULongPtrArray *TranslatePartColumns(List *sort_clause, IntUlongHashMap *col_attno_colid_mapping) const;
+			ULongPtrArray *TranslatePartColumns(List *sort_clause, IntToUlongMap *col_attno_colid_mapping) const;
 
 			CDXLNode *TranslateLimitToDXLGroupBy
 				(
@@ -305,7 +305,7 @@ namespace gpdxl
 				Node *limit_count, // query node representing the limit count
 				Node *limit_offset_node, // query node representing the limit offset
 				CDXLNode *dxlnode, // the dxl node representing the subtree
-				IntUlongHashMap *grpcols_to_colid_mapping // the mapping between the position in the TargetList to the ColId
+				IntToUlongMap *grpcols_to_colid_mapping // the mapping between the position in the TargetList to the ColId
 				);
 
 			// throws an exception when RTE kind not yet supported
@@ -319,8 +319,8 @@ namespace gpdxl
 				(
 				List *target_list,
 				CDXLNode *dxl_node_child,
-				IntUlongHashMap *	group_col_to_colid_mapping,
-				IntUlongHashMap *output_attno_to_colid_mapping,
+				IntToUlongMap *	group_col_to_colid_mapping,
+				IntToUlongMap *output_attno_to_colid_mapping,
 				List *group_clause,
 				BOOL is_aggref_expanded = false
 				);
@@ -382,20 +382,20 @@ namespace gpdxl
 			CDXLNode *CreateDXLConstValueTrue();
 
 			// store mapping attno->colid
-			void StoreAttnoColIdMapping(IntUlongHashMap *attno_to_colid_mapping, INT attno, ULONG colid) const;
+			void StoreAttnoColIdMapping(IntToUlongMap *attno_to_colid_mapping, INT attno, ULONG colid) const;
 
 			// construct an array of output columns
-			DXLNodeArray *CreateDXLOutputCols(List *target_list, IntUlongHashMap *attno_to_colid_mapping) const;
+			DXLNodeArray *CreateDXLOutputCols(List *target_list, IntToUlongMap *attno_to_colid_mapping) const;
 
 			// check for support command types, throws an exception when command type not yet supported
 			void CheckSupportedCmdType(Query *query);
 
 			// translate a select-project-join expression into DXL
-			CDXLNode *TranslateSelectProjectJoinToDXL(List *target_list, FromExpr *from_expr, IntUlongHashMap *sort_group_attno_to_colid_mapping, IntUlongHashMap *output_attno_to_colid_mapping, List *group_clause);
+			CDXLNode *TranslateSelectProjectJoinToDXL(List *target_list, FromExpr *from_expr, IntToUlongMap *sort_group_attno_to_colid_mapping, IntToUlongMap *output_attno_to_colid_mapping, List *group_clause);
 
 			// translate a select-project-join expression into DXL and keep variables appearing
 			// in aggregates and grouping columns in the output column map
-			CDXLNode *TranslateSelectProjectJoinForGrpSetsToDXL(List *target_list, FromExpr *from_expr, IntUlongHashMap *sort_group_attno_to_colid_mapping, IntUlongHashMap *output_attno_to_colid_mapping, List *group_clause);
+			CDXLNode *TranslateSelectProjectJoinForGrpSetsToDXL(List *target_list, FromExpr *from_expr, IntToUlongMap *sort_group_attno_to_colid_mapping, IntToUlongMap *output_attno_to_colid_mapping, List *group_clause);
 			
 			// helper to check if OID is included in given array of OIDs
 			static
@@ -428,7 +428,7 @@ namespace gpdxl
 			CWStringDynamic *ExtractStorageOptionStr(DefElem *def_elem);
 			
 			// return resno -> colId mapping of columns to be updated
-			IntUlongHashMap *UpdatedColumnMapping();
+			IntToUlongMap *UpdatedColumnMapping();
 
 			// obtain the ids of the ctid and segmentid columns for the target
 			// table of a DML query
@@ -451,11 +451,11 @@ namespace gpdxl
 			ULongPtrArray *GenerateColIds(IMemoryPool *mp, ULONG size) const;
 
 			// extract an array of colids from the given column mapping
-			ULongPtrArray *ExtractColIds(IMemoryPool *mp, IntUlongHashMap *attno_to_colid_mapping) const;
+			ULongPtrArray *ExtractColIds(IMemoryPool *mp, IntToUlongMap *attno_to_colid_mapping) const;
 			
 			// construct a new mapping based on the given one by replacing the colid in the "From" list
 			// with the colid at the same position in the "To" list
-			IntUlongHashMap *RemapColIds(IMemoryPool *mp, IntUlongHashMap *attno_to_colid_mapping, ULongPtrArray *from_list_colids, ULongPtrArray *to_list_colids) const;
+			IntToUlongMap *RemapColIds(IMemoryPool *mp, IntToUlongMap *attno_to_colid_mapping, ULongPtrArray *from_list_colids, ULongPtrArray *to_list_colids) const;
 
 			// true iff this query or one of its ancestors is a DML query
 			BOOL IsDMLQuery();

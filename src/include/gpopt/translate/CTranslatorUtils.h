@@ -263,15 +263,15 @@ namespace gpdxl
 			// construct a list of colids corresponding to the given target list
 			// using the given attno->colid map
 			static
-			ULongPtrArray *GetOutputColIdsArray(IMemoryPool *mp, List *target_list, IntUlongHashMap *attno_to_colid_map);
+			ULongPtrArray *GetOutputColIdsArray(IMemoryPool *mp, List *target_list, IntToUlongMap *attno_to_colid_map);
 
 			// construct an array of column ids for the given group by set
 			static
-			ULongPtrArray *GetGroupingColidArray(IMemoryPool *mp, CBitSet *group_by_cols, IntUlongHashMap *sort_group_cols_to_colid_map);
+			ULongPtrArray *GetGroupingColidArray(IMemoryPool *mp, CBitSet *group_by_cols, IntToUlongMap *sort_group_cols_to_colid_map);
 
 			// return the Colid of column with given index
 			static
-			ULONG GetColId(INT index, IntUlongHashMap *index_to_colid_map);
+			ULONG GetColId(INT index, IntToUlongMap *index_to_colid_map);
 
 			// return the corresponding ColId for the given varno, varattno and querylevel
 			static
