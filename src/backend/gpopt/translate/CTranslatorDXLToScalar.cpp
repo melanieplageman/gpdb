@@ -1983,7 +1983,6 @@ CTranslatorDXLToScalar::CreateArrayExprFromDXL
 	expr->array_collid = gpdb::TypeCollation(expr->array_typeid);
 	expr->multidims = dxlop->IsMultiDimensional();
 	expr->elements = PlistTranslateScalarChildren(expr->elements, scalar_array_node, colid_var);
-	expr->elements = PlistTranslateScalarChildren(expr->elements, scalar_array_node, colid_var);
 
 	/*
 	 * ORCA doesn't know how to construct array constants, so it will
