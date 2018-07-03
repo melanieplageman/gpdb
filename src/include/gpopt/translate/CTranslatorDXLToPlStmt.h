@@ -257,7 +257,7 @@ namespace gpdxl
 				);
 
 			// translate DXL motion node
-			Plan *PplanTranslateDXLMotion
+			Plan *TranslateDXLDuplicateSensitiveMotion
 				(
 				const CDXLNode *motion_dxlnode,
 				CDXLTranslateContext *output_context,
