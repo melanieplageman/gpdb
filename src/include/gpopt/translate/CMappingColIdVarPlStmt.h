@@ -51,7 +51,7 @@ namespace gpdxl
 			const CDXLTranslateContextBaseTable *m_base_table_context;
 
 			// the array of translator context (one for each child of the DXL operator)
-			DXLTranslationContextArr *m_child_contexts;
+			DXLTranslationContextArray *m_child_contexts;
 
 			CDXLTranslateContext *m_output_context;
 
@@ -65,7 +65,7 @@ namespace gpdxl
 				(
 				IMemoryPool *mp,
 				const CDXLTranslateContextBaseTable *base_table_context,
-				DXLTranslationContextArr *child_contexts,
+				DXLTranslationContextArray *child_contexts,
 				CDXLTranslateContext *output_context,
 				CContextDXLToPlStmt *dxl_to_plstmt_context
 				);

@@ -110,7 +110,7 @@ namespace gpdxl
 
 
 	// array of dxl translation context
-	typedef CDynamicPtrArray<const CDXLTranslateContext, CleanupNULL> DXLTranslationContextArr;
+	typedef CDynamicPtrArray<const CDXLTranslateContext, CleanupNULL> DXLTranslationContextArray;
 }
 
 #endif // !GPDXL_CDXLTranslateContext_H
