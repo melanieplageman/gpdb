@@ -1286,7 +1286,7 @@ CTranslatorQueryToDXL::IsLeadWindowFunc
 	{
 		CDXLScalarWindowRef *winref_dxlop = CDXLScalarWindowRef::Cast(dxlop);
 		const CMDIdGPDB *mdid_gpdb = CMDIdGPDB::CastMdid(winref_dxlop->FuncMdId());
-		OID oid = mdid_gpdb->OidObjectId();
+		OID oid = mdid_gpdb->Oid();
 		is_lead_func =  OIDFound(oid, lead_func_oids, GPOS_ARRAY_SIZE(lead_func_oids));
 	}
 
@@ -1313,7 +1313,7 @@ CTranslatorQueryToDXL::IsLagWindowFunc
 	{
 		CDXLScalarWindowRef *winref_dxlop = CDXLScalarWindowRef::Cast(dxlop);
 		const CMDIdGPDB *mdid_gpdb = CMDIdGPDB::CastMdid(winref_dxlop->FuncMdId());
-		OID oid = mdid_gpdb->OidObjectId();
+		OID oid = mdid_gpdb->Oid();
 		is_lag =  OIDFound(oid, lag_func_oids, GPOS_ARRAY_SIZE(lag_func_oids));
 	}
 
@@ -2398,7 +2398,7 @@ CTranslatorQueryToDXL::DXLDummyConstTableGet() const
 										mdname,
 										m_colid_counter->next_id(),
 										1 /* attno */,
-										GPOS_NEW(m_mp) CMDIdGPDB(mdid->OidObjectId()),
+										GPOS_NEW(m_mp) CMDIdGPDB(mdid->Oid()),
 										default_type_modifier,
 										false /* is_dropped */
 										);
@@ -2675,7 +2675,7 @@ CTranslatorQueryToDXL::SetOpNeedsCast
 		if (!target_entry->resjunk)
 		{
 			IMDId *mdid = (*input_col_mdids)[col_pos_idx];
-			if (CMDIdGPDB::CastMdid(mdid)->OidObjectId() != expr_type_oid)
+			if (CMDIdGPDB::CastMdid(mdid)->Oid() != expr_type_oid)
 			{
 				return true;
 			}

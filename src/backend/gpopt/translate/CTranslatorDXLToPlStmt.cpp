@@ -449,7 +449,7 @@ CTranslatorDXLToPlStmt::TranslateDXLTblScan
 	if (IMDRelation::ErelstorageExternal == md_rel->RetrieveRelStorageType())
 	{
 		const IMDRelationExternal *md_rel_ext = dynamic_cast<const IMDRelationExternal*>(md_rel);
-		OID oidRel = CMDIdGPDB::CastMdid(md_rel->MDId())->OidObjectId();
+		OID oidRel = CMDIdGPDB::CastMdid(md_rel->MDId())->Oid();
 		ExtTableEntry *ext_table_entry = gpdb::GetExtTableEntry(oidRel);
 		bool isMasterOnly;
 		
@@ -639,7 +639,7 @@ CTranslatorDXLToPlStmt::TranslateDXLIndexScan
 
 	CMDIdGPDB *mdid_index = CMDIdGPDB::CastMdid(physical_idx_scan_dxlop->GetDXLIndexDescr()->MDId());
 	const IMDIndex *md_index = m_md_accessor->RetrieveIndex(mdid_index);
-	Oid index_oid = mdid_index->OidObjectId();
+	Oid index_oid = mdid_index->Oid();
 
 	GPOS_ASSERT(InvalidOid != index_oid);
 	index_scan->indexid = index_oid;
@@ -862,7 +862,7 @@ CTranslatorDXLToPlStmt::TranslateIndexConditions
 		
 		OID cmp_operator_oid = CTranslatorUtils::OidCmpOperator(index_cond_expr);
 		GPOS_ASSERT(InvalidOid != cmp_operator_oid);
-		OID op_family_oid = CTranslatorUtils::GetOpFamilyForIndexQual(attno, CMDIdGPDB::CastMdid(index->MDId())->OidObjectId());
+		OID op_family_oid = CTranslatorUtils::GetOpFamilyForIndexQual(attno, CMDIdGPDB::CastMdid(index->MDId())->Oid());
 		GPOS_ASSERT(InvalidOid != op_family_oid);
 		gpdb::IndexOpProperties(cmp_operator_oid, op_family_oid, &strategy_num, &index_subtype_oid);
 		
@@ -1291,11 +1291,11 @@ CTranslatorDXLToPlStmt::TranslateDXLTvfToRangeTblEntry
 
 	FuncExpr *func_expr = MakeNode(FuncExpr);
 
-	func_expr->funcid = CMDIdGPDB::CastMdid(dxlop->FuncMdId())->OidObjectId();
+	func_expr->funcid = CMDIdGPDB::CastMdid(dxlop->FuncMdId())->Oid();
 	func_expr->funcretset = true;
 	// this is a function call, as opposed to a cast
 	func_expr->funcformat = COERCE_EXPLICIT_CALL;
-	func_expr->funcresulttype = CMDIdGPDB::CastMdid(dxlop->ReturnTypeMdId())->OidObjectId();
+	func_expr->funcresulttype = CMDIdGPDB::CastMdid(dxlop->ReturnTypeMdId())->Oid();
 
 	Alias *alias = MakeNode(Alias);
 	alias->colnames = NIL;
@@ -2780,7 +2780,7 @@ CTranslatorDXLToPlStmt::TranslateDXLPartSelector
 	const ULONG num_of_levels = partition_selector_dxlop->GetPartitioningLevel();
 	partition_selector->nLevels = num_of_levels;
 	partition_selector->scanId = partition_selector_dxlop->ScanId();
-	partition_selector->relid = CMDIdGPDB::CastMdid(partition_selector_dxlop->GetRelMdId())->OidObjectId();
+	partition_selector->relid = CMDIdGPDB::CastMdid(partition_selector_dxlop->GetRelMdId())->Oid();
 	partition_selector->selectorId = m_partition_selector_counter++;
 
 	// translate operator costs
@@ -2990,7 +2990,7 @@ CTranslatorDXLToPlStmt::TranslateDXLAppend
 							(
 							idxVarno,
 							attno,
-							CMDIdGPDB::CastMdid(sc_ident_dxlop->MDIdType())->OidObjectId(),
+							CMDIdGPDB::CastMdid(sc_ident_dxlop->MDIdType())->Oid(),
 							sc_ident_dxlop->TypeModifier(),
 							0	// varlevelsup
 							);
@@ -3386,7 +3386,7 @@ CTranslatorDXLToPlStmt::TranslateDXLCTEConsumerToSharedScan
 
 		CDXLNode *sc_ident_dxlnode = (*proj_elem_dxlnode)[0];
 		CDXLScalarIdent *sc_ident_dxlop = CDXLScalarIdent::Cast(sc_ident_dxlnode->GetOperator());
-		OID oid_type = CMDIdGPDB::CastMdid(sc_ident_dxlop->MDIdType())->OidObjectId();
+		OID oid_type = CMDIdGPDB::CastMdid(sc_ident_dxlop->MDIdType())->Oid();
 
 		Var *var = gpdb::MakeVar(OUTER, (AttrNumber) (ul + 1), oid_type, sc_ident_dxlop->TypeModifier(),  0	/* varlevelsup */);
 
@@ -3598,7 +3598,7 @@ CTranslatorDXLToPlStmt::TranslateDXLDynIdxScan
 
 	CMDIdGPDB *mdid_index = CMDIdGPDB::CastMdid(dyn_index_scan_dxlop->GetDXLIndexDescr()->MDId());
 	const IMDIndex *md_index = m_md_accessor->RetrieveIndex(mdid_index);
-	Oid index_oid = mdid_index->OidObjectId();
+	Oid index_oid = mdid_index->Oid();
 
 	GPOS_ASSERT(InvalidOid != index_oid);
 	dyn_idx_scan->indexscan.indexid = index_oid;
@@ -4127,7 +4127,7 @@ CTranslatorDXLToPlStmt::TranslateDXLRowTrigger
 		output_context
 		);
 
-	Oid relid_oid = CMDIdGPDB::CastMdid(phy_row_trigger_dxlop->GetRelMdId())->OidObjectId();
+	Oid relid_oid = CMDIdGPDB::CastMdid(phy_row_trigger_dxlop->GetRelMdId())->Oid();
 	GPOS_ASSERT(InvalidOid != relid_oid);
 	row_trigger->relid = relid_oid;
 	row_trigger->eventFlags = phy_row_trigger_dxlop->GetType();
@@ -4214,7 +4214,7 @@ CTranslatorDXLToPlStmt::TranslateDXLTblDescrToRangeTblEntry
 	}
 
 	// get oid for table
-	Oid oid = CMDIdGPDB::CastMdid(table_descr->MDId())->OidObjectId();
+	Oid oid = CMDIdGPDB::CastMdid(table_descr->MDId())->Oid();
 	GPOS_ASSERT(InvalidOid != oid);
 
 	rte->relid = oid;
@@ -4435,7 +4435,7 @@ CTranslatorDXLToPlStmt::CreateTargetListWithNullsForDroppedCols
 		if (md_col->IsDropped())
 		{
 			// add a NULL element
-			OID oid_type = CMDIdGPDB::CastMdid(m_md_accessor->PtMDType<IMDTypeInt4>()->MDId())->OidObjectId();
+			OID oid_type = CMDIdGPDB::CastMdid(m_md_accessor->PtMDType<IMDTypeInt4>()->MDId())->Oid();
 
 			expr = (Expr *) gpdb::MakeNULLConst(oid_type);
 		}
@@ -4717,7 +4717,7 @@ CTranslatorDXLToPlStmt::TranslateHashExprList
 		
 		const IMDId *mdid_hash_type = md_scalar_op->GetLeftMdid();
 		
-		hash_expr_types_list = gpdb::LAppendOid(hash_expr_types_list, CMDIdGPDB::CastMdid(mdid_hash_type)->OidObjectId());
+		hash_expr_types_list = gpdb::LAppendOid(hash_expr_types_list, CMDIdGPDB::CastMdid(mdid_hash_type)->Oid());
 
 		GPOS_ASSERT(1 == hash_expr_dxlnode->Arity());
 		CDXLNode *expr_dxlnode = (*hash_expr_dxlnode)[0];
@@ -4781,7 +4781,7 @@ CTranslatorDXLToPlStmt::TranslateSortCols
 		}	
 
 		att_no_sort_colids[ul] = te_sort_col->resno;
-		sort_op_oids[ul] = CMDIdGPDB::CastMdid(sc_sort_col_dxlop->GetMdIdSortOp())->OidObjectId();
+		sort_op_oids[ul] = CMDIdGPDB::CastMdid(sc_sort_col_dxlop->GetMdIdSortOp())->Oid();
 		if (sort_collations_oids)
 		{
 			sort_collations_oids[ul] = gpdb::ExprCollation((Node *) te_sort_col->expr);
@@ -5094,7 +5094,7 @@ CTranslatorDXLToPlStmt::TranslateDXLPhyCtasToIntoClause
 
 		// GDPB_91_MERGE_FIXME: collation
 		col_def->collClause = NULL;
-		col_def->collOid = gpdb::TypeCollation(CMDIdGPDB::CastMdid(dxl_col_descr->MDIdType())->OidObjectId());
+		col_def->collOid = gpdb::TypeCollation(CMDIdGPDB::CastMdid(dxl_col_descr->MDIdType())->Oid());
 		into_clause->colNames = gpdb::LAppend(into_clause->colNames, col_def);
 
 	}
@@ -5479,11 +5479,11 @@ CTranslatorDXLToPlStmt::TranslateDXLBitmapIndexProbe
 
 	CMDIdGPDB *mdid_index = CMDIdGPDB::CastMdid(sc_bitmap_idx_probe_dxlop->GetDXLIndexDescr()->MDId());
 	const IMDIndex *index = m_md_accessor->RetrieveIndex(mdid_index);
-	Oid index_oid = mdid_index->OidObjectId();
+	Oid index_oid = mdid_index->Oid();
 
 	GPOS_ASSERT(InvalidOid != index_oid);
 	bitmap_idx_scan->indexid = index_oid;
-	OID oidRel = CMDIdGPDB::CastMdid(table_descr->MDId())->OidObjectId();
+	OID oidRel = CMDIdGPDB::CastMdid(table_descr->MDId())->Oid();
 	Plan *plan = &(bitmap_idx_scan->scan.plan);
 	plan->plan_node_id = m_dxl_to_plstmt_context->GetNextPlanId();
 	plan->nMotionNodes = 0;

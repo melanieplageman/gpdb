@@ -2362,11 +2362,11 @@ CTranslatorScalarToDXL::GetDoubleValue
 	}
 	else if (CMDTypeGenericGPDB::IsTimeRelatedType(mdid))
 	{
-		d = gpdb::ConvertTimeValueToScalar(datum, CMDIdGPDB::CastMdid(mdid)->OidObjectId());
+		d = gpdb::ConvertTimeValueToScalar(datum, CMDIdGPDB::CastMdid(mdid)->Oid());
 	}
 	else if (CMDTypeGenericGPDB::IsNetworkRelatedType(mdid))
 	{
-		d = gpdb::ConvertNetworkToScalar(datum, CMDIdGPDB::CastMdid(mdid)->OidObjectId());
+		d = gpdb::ConvertNetworkToScalar(datum, CMDIdGPDB::CastMdid(mdid)->Oid());
 	}
 
 	return CDouble(d);

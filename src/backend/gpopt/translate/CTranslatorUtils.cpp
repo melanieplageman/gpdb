@@ -381,7 +381,7 @@ CTranslatorUtils::ResolvePolymorphicTypes
 	for (ULONG ul = 0; ul < num_return_args; ul++)
 	{
 		IMDId *mdid = (*mdid_array)[ul];
-		arg_types[arg_index] = CMDIdGPDB::CastMdid(mdid)->OidObjectId();
+		arg_types[arg_index] = CMDIdGPDB::CastMdid(mdid)->Oid();
 		arg_modes[arg_index++] = PROARGMODE_TABLE;
 	}
 
@@ -430,7 +430,7 @@ CTranslatorUtils::ContainsPolymorphicTypes
 	for (ULONG ul = 0; ul < len; ul++)
 	{
 		IMDId *mdid_type = (*mdid_array)[ul];
-		if (IsPolymorphicType(CMDIdGPDB::CastMdid(mdid_type)->OidObjectId()))
+		if (IsPolymorphicType(CMDIdGPDB::CastMdid(mdid_type)->Oid()))
 		{
 			return true;
 		}
@@ -1378,7 +1378,7 @@ CTranslatorUtils::GenerateColIds
 		{
 			ULONG colid = gpos::ulong_max;
 			IMDId *mdid = (*input_mdid_arr)[col_pos];
-			if (CMDIdGPDB::CastMdid(mdid)->OidObjectId() != expr_type_oid || 
+			if (CMDIdGPDB::CastMdid(mdid)->Oid() != expr_type_oid || 
 				is_outer_ref[col_pos])
 			{
 				// generate a new column when:
@@ -1659,7 +1659,7 @@ CTranslatorUtils::CreateDummyProjectElem
 	)
 {
 	CMDIdGPDB *original_mdid = CMDIdGPDB::CastMdid(dxl_col_descr->MDIdType());
-	CMDIdGPDB *copy_mdid = GPOS_NEW(mp) CMDIdGPDB(original_mdid->OidObjectId(), original_mdid->VersionMajor(), original_mdid->VersionMinor());
+	CMDIdGPDB *copy_mdid = GPOS_NEW(mp) CMDIdGPDB(original_mdid->Oid(), original_mdid->VersionMajor(), original_mdid->VersionMinor());
 
 	// create a column reference for the scalar identifier to be casted
 	CMDName *mdname = GPOS_NEW(mp) CMDName(mp, dxl_col_descr->MdName()->GetMDName());
@@ -1766,7 +1766,7 @@ CTranslatorUtils::GetColId
 	CMappingVarColId *var_colid_mapping
 	)
 {
-	OID oid = CMDIdGPDB::CastMdid(mdid)->OidObjectId();
+	OID oid = CMDIdGPDB::CastMdid(mdid)->Oid();
 	Var *var = gpdb::MakeVar(varno, var_attno, oid, -1, 0);
 	ULONG colid = var_colid_mapping->GetColId(query_level, var, EpspotNone);
 	gpdb::GPDBFree(var);
@@ -2664,7 +2664,7 @@ CTranslatorUtils::RelHasTriggers
 		type = TRIGGER_TYPE_UPDATE;
 	}
 
-	OID rel_oid = CMDIdGPDB::CastMdid(rel->MDId())->OidObjectId();
+	OID rel_oid = CMDIdGPDB::CastMdid(rel->MDId())->Oid();
 	return gpdb::ChildPartHasTriggers(rel_oid, type);
 }
 
