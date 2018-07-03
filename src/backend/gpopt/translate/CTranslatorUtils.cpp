@@ -1093,7 +1093,7 @@ CTranslatorUtils::GetGroupingColidArray
 	(
 	IMemoryPool *mp,
 	CBitSet *group_by_cols,
-	IntUlongHashMap *sort_group_cols_to_colid_map
+	IntToUlongMap *sort_group_cols_to_colid_map
 	)
 {
 	ULongPtrArray *colids = GPOS_NEW(mp) ULongPtrArray(mp);
@@ -1694,7 +1694,7 @@ CTranslatorUtils::GetOutputColIdsArray
 	(
 	IMemoryPool *mp,
 	List *target_list,
-	IntUlongHashMap *attno_to_colid_map
+	IntToUlongMap *attno_to_colid_map
 	)
 {
 	GPOS_ASSERT(NULL != target_list);
@@ -1733,7 +1733,7 @@ ULONG
 CTranslatorUtils::GetColId
 	(
 	INT index,
-	IntUlongHashMap *colid_map
+	IntToUlongMap *colid_map
 	)
 {
 	GPOS_ASSERT(0 < index);
