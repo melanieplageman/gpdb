@@ -543,7 +543,7 @@ namespace gpdb {
 	Relation GetRelation(Oid rel_oid);
 
 	// get external table entry with given oid
-	ExtTableEntry *GetExtTableEntry(Oid rel_oid);
+	ExtTableEntry *GetExternalTableEntry(Oid rel_oid);
 
 	// get external table entry with given oid
 	List *GetExternalScanUriList(ExtTableEntry *ext, bool *ismasteronlyp);

@@ -450,7 +450,7 @@ CTranslatorDXLToPlStmt::TranslateDXLTblScan
 	{
 		const IMDRelationExternal *md_rel_ext = dynamic_cast<const IMDRelationExternal*>(md_rel);
 		OID oidRel = CMDIdGPDB::CastMdid(md_rel->MDId())->Oid();
-		ExtTableEntry *ext_table_entry = gpdb::GetExtTableEntry(oidRel);
+		ExtTableEntry *ext_table_entry = gpdb::GetExternalTableEntry(oidRel);
 		bool isMasterOnly;
 		
 		// create external scan node

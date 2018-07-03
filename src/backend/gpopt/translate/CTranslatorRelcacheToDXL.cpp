@@ -665,7 +665,7 @@ CTranslatorRelcacheToDXL::RetrieveRel
 
 	if (IMDRelation::ErelstorageExternal == rel_storage_type)
 	{
-		ExtTableEntry *extentry = gpdb::GetExtTableEntry(oid);
+		ExtTableEntry *extentry = gpdb::GetExternalTableEntry(oid);
 
 		md_rel = GPOS_NEW(mp) CMDRelationExternalGPDB
 							(

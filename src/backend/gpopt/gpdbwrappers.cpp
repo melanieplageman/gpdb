@@ -2558,7 +2558,7 @@ gpdb::GetRelation
 }
 
 ExtTableEntry *
-gpdb::GetExtTableEntry
+gpdb::GetExternalTableEntry
 	(
 	Oid rel_oid
 	)
