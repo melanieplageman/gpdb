@@ -1804,11 +1804,11 @@ CTranslatorDXLToPlStmt::TranslateDXLMotion
 
 	ULONG child_index = motion_dxlop->GetRelationChildIdx();
 
-	CDXLNode *dxl_node_child = (*motion_dxlnode)[child_index];
+	CDXLNode *child_dxlnode = (*motion_dxlnode)[child_index];
 
 	CDXLTranslateContext child_context(m_mp, false, output_context->GetColIdToParamIdMap());
 
-	Plan *child_plan = TranslateDXLOperatorToPlan(dxl_node_child, &child_context, ctxt_translation_prev_siblings);
+	Plan *child_plan = TranslateDXLOperatorToPlan(child_dxlnode, &child_context, ctxt_translation_prev_siblings);
 
 	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
 	child_contexts->Append(const_cast<CDXLTranslateContext*>(&child_context));
@@ -2018,11 +2018,11 @@ CTranslatorDXLToPlStmt::TranslateDXLRedistributeMotionToResultHashFilters
 
 	CDXLNode *project_list_dxlnode = (*motion_dxlnode)[EdxlrmIndexProjList];
 	CDXLNode *filter_dxlnode = (*motion_dxlnode)[EdxlrmIndexFilter];
-	CDXLNode *dxl_node_child = (*motion_dxlnode)[motion_dxlop->GetRelationChildIdx()];
+	CDXLNode *child_dxlnode = (*motion_dxlnode)[motion_dxlop->GetRelationChildIdx()];
 
 	CDXLTranslateContext child_context(m_mp, false, output_context->GetColIdToParamIdMap());
 
-	Plan *child_plan = TranslateDXLOperatorToPlan(dxl_node_child, &child_context, ctxt_translation_prev_siblings);
+	Plan *child_plan = TranslateDXLOperatorToPlan(child_dxlnode, &child_context, ctxt_translation_prev_siblings);
 
 	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
 	child_contexts->Append(const_cast<CDXLTranslateContext*>(&child_context));
@@ -2142,14 +2142,14 @@ CTranslatorDXLToPlStmt::TranslateDXLAgg
 		);
 
 	// translate agg child
-	CDXLNode *dxl_node_child = (*agg_dxlnode)[EdxlaggIndexChild];
+	CDXLNode *child_dxlnode = (*agg_dxlnode)[EdxlaggIndexChild];
 
 	CDXLNode *project_list_dxlnode = (*agg_dxlnode)[EdxlaggIndexProjList];
 	CDXLNode *filter_dxlnode = (*agg_dxlnode)[EdxlaggIndexFilter];
 
 	CDXLTranslateContext child_context(m_mp, true, output_context->GetColIdToParamIdMap());
 
-	Plan *child_plan = TranslateDXLOperatorToPlan(dxl_node_child, &child_context, ctxt_translation_prev_siblings);
+	Plan *child_plan = TranslateDXLOperatorToPlan(child_dxlnode, &child_context, ctxt_translation_prev_siblings);
 
 	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
 	child_contexts->Append(const_cast<CDXLTranslateContext*>(&child_context));
@@ -2261,12 +2261,12 @@ CTranslatorDXLToPlStmt::TranslateDXLWindow
 		);
 
 	// translate children
-	CDXLNode *dxl_node_child = (*window_dxlnode)[EdxlwindowIndexChild];
+	CDXLNode *child_dxlnode = (*window_dxlnode)[EdxlwindowIndexChild];
 	CDXLNode *project_list_dxlnode = (*window_dxlnode)[EdxlwindowIndexProjList];
 	CDXLNode *filter_dxlnode = (*window_dxlnode)[EdxlwindowIndexFilter];
 
 	CDXLTranslateContext child_context(m_mp, true, output_context->GetColIdToParamIdMap());
-	Plan *child_plan = TranslateDXLOperatorToPlan(dxl_node_child, &child_context, ctxt_translation_prev_siblings);
+	Plan *child_plan = TranslateDXLOperatorToPlan(child_dxlnode, &child_context, ctxt_translation_prev_siblings);
 
 	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
 	child_contexts->Append(const_cast<CDXLTranslateContext*>(&child_context));
@@ -2505,13 +2505,13 @@ CTranslatorDXLToPlStmt::TranslateDXLSort
 		);
 
 	// translate sort child
-	CDXLNode *dxl_node_child = (*sort_dxlnode)[EdxlsortIndexChild];
+	CDXLNode *child_dxlnode = (*sort_dxlnode)[EdxlsortIndexChild];
 	CDXLNode *project_list_dxlnode = (*sort_dxlnode)[EdxlsortIndexProjList];
 	CDXLNode *filter_dxlnode = (*sort_dxlnode)[EdxlsortIndexFilter];
 
 	CDXLTranslateContext child_context(m_mp, false, output_context->GetColIdToParamIdMap());
 
-	Plan *child_plan = TranslateDXLOperatorToPlan(dxl_node_child, &child_context, ctxt_translation_prev_siblings);
+	Plan *child_plan = TranslateDXLOperatorToPlan(child_dxlnode, &child_context, ctxt_translation_prev_siblings);
 
 	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
 	child_contexts->Append(const_cast<CDXLTranslateContext*>(&child_context));
@@ -2590,13 +2590,13 @@ CTranslatorDXLToPlStmt::TranslateDXLSubQueryScan
 		);
 
 	// translate subplan
-	CDXLNode *dxl_node_child = (*subquery_scan_dxlnode)[EdxlsubqscanIndexChild];
+	CDXLNode *child_dxlnode = (*subquery_scan_dxlnode)[EdxlsubqscanIndexChild];
 	CDXLNode *project_list_dxlnode = (*subquery_scan_dxlnode)[EdxlsubqscanIndexProjList];
 	CDXLNode *filter_dxlnode = (*subquery_scan_dxlnode)[EdxlsubqscanIndexFilter];
 
 	CDXLTranslateContext child_context(m_mp, false, output_context->GetColIdToParamIdMap());
 
-	Plan *child_plan = TranslateDXLOperatorToPlan(dxl_node_child, &child_context, ctxt_translation_prev_siblings);
+	Plan *child_plan = TranslateDXLOperatorToPlan(child_dxlnode, &child_context, ctxt_translation_prev_siblings);
 
 	// create an rtable entry for the subquery scan
 	RangeTblEntry *rte = MakeNode(RangeTblEntry);
@@ -2617,7 +2617,7 @@ CTranslatorDXLToPlStmt::TranslateDXLSubQueryScan
 
 	ListCell *lc_tgtentry = NULL;
 
-	CDXLNode *child_proj_list_dxlnode = (*dxl_node_child)[0];
+	CDXLNode *child_proj_list_dxlnode = (*child_dxlnode)[0];
 
 	ULONG ul = 0;
 
@@ -2696,15 +2696,15 @@ CTranslatorDXLToPlStmt::TranslateDXLResult
 
 	plan->nMotionNodes = 0;
 
-	CDXLNode *dxl_node_child = NULL;
+	CDXLNode *child_dxlnode = NULL;
 	CDXLTranslateContext child_context(m_mp, false, output_context->GetColIdToParamIdMap());
 
 	if (result_dxlnode->Arity() - 1 == EdxlresultIndexChild)
 	{
 		// translate child plan
-		dxl_node_child = (*result_dxlnode)[EdxlresultIndexChild];
+		child_dxlnode = (*result_dxlnode)[EdxlresultIndexChild];
 
-		Plan *child_plan = TranslateDXLOperatorToPlan(dxl_node_child, &child_context, ctxt_translation_prev_siblings);
+		Plan *child_plan = TranslateDXLOperatorToPlan(child_dxlnode, &child_context, ctxt_translation_prev_siblings);
 
 		GPOS_ASSERT(NULL != child_plan && "child plan cannot be NULL");
 
@@ -2795,7 +2795,7 @@ CTranslatorDXLToPlStmt::TranslateDXLPartSelector
 
 	plan->nMotionNodes = 0;
 
-	CDXLNode *dxl_node_child = NULL;
+	CDXLNode *child_dxlnode = NULL;
 	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
 
 	CDXLTranslateContext child_context(m_mp, false, output_context->GetColIdToParamIdMap());
@@ -2804,9 +2804,9 @@ CTranslatorDXLToPlStmt::TranslateDXLPartSelector
 	if (has_childs)
 	{
 		// translate child plan
-		dxl_node_child = (*partition_selector_dxlnode)[EdxlpsIndexChild];
+		child_dxlnode = (*partition_selector_dxlnode)[EdxlpsIndexChild];
 
-		Plan *child_plan = TranslateDXLOperatorToPlan(dxl_node_child, &child_context, ctxt_translation_prev_siblings);
+		Plan *child_plan = TranslateDXLOperatorToPlan(child_dxlnode, &child_context, ctxt_translation_prev_siblings);
 		GPOS_ASSERT(NULL != child_plan && "child plan cannot be NULL");
 
 		partition_selector->plan.lefttree = child_plan;
@@ -2956,9 +2956,9 @@ CTranslatorDXLToPlStmt::TranslateDXLAppend
 	CDXLTranslateContext child_context(m_mp, false, output_context->GetColIdToParamIdMap());
 	for (ULONG ul = EdxlappendIndexFirstChild; ul < arity; ul++)
 	{
-		CDXLNode *dxl_node_child = (*append_dxlnode)[ul];
+		CDXLNode *child_dxlnode = (*append_dxlnode)[ul];
 
-		Plan *child_plan = TranslateDXLOperatorToPlan(dxl_node_child, &child_context, ctxt_translation_prev_siblings);
+		Plan *child_plan = TranslateDXLOperatorToPlan(child_dxlnode, &child_context, ctxt_translation_prev_siblings);
 
 		GPOS_ASSERT(NULL != child_plan && "child plan cannot be NULL");
 
@@ -3063,14 +3063,14 @@ CTranslatorDXLToPlStmt::TranslateDXLMaterialize
 		);
 
 	// translate materialize child
-	CDXLNode *dxl_node_child = (*materialize_dxlnode)[EdxlmatIndexChild];
+	CDXLNode *child_dxlnode = (*materialize_dxlnode)[EdxlmatIndexChild];
 
 	CDXLNode *project_list_dxlnode = (*materialize_dxlnode)[EdxlmatIndexProjList];
 	CDXLNode *filter_dxlnode = (*materialize_dxlnode)[EdxlmatIndexFilter];
 
 	CDXLTranslateContext child_context(m_mp, false, output_context->GetColIdToParamIdMap());
 
-	Plan *child_plan = TranslateDXLOperatorToPlan(dxl_node_child, &child_context, ctxt_translation_prev_siblings);
+	Plan *child_plan = TranslateDXLOperatorToPlan(child_dxlnode, &child_context, ctxt_translation_prev_siblings);
 
 	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
 	child_contexts->Append(const_cast<CDXLTranslateContext*>(&child_context));
@@ -3152,10 +3152,10 @@ CTranslatorDXLToPlStmt::TranslateDXLCTEProducerToSharedScan
 
 	// translate child plan
 	CDXLNode *project_list_dxlnode = (*cte_producer_dxlnode)[0];
-	CDXLNode *dxl_node_child = (*cte_producer_dxlnode)[1];
+	CDXLNode *child_dxlnode = (*cte_producer_dxlnode)[1];
 
 	CDXLTranslateContext child_context(m_mp, false, output_context->GetColIdToParamIdMap());
-	Plan *child_plan = TranslateDXLOperatorToPlan(dxl_node_child, &child_context, ctxt_translation_prev_siblings);
+	Plan *child_plan = TranslateDXLOperatorToPlan(child_dxlnode, &child_context, ctxt_translation_prev_siblings);
 	GPOS_ASSERT(NULL != child_plan && "child plan cannot be NULL");
 
 	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
@@ -3469,9 +3469,9 @@ CTranslatorDXLToPlStmt::TranslateDXLSequence
 	// translate the rest of the children
 	for (ULONG ul = 1; ul < arity - 1; ul++)
 	{
-		CDXLNode *dxl_node_child = (*sequence_dxlnode)[ul];
+		CDXLNode *child_dxlnode = (*sequence_dxlnode)[ul];
 
-		Plan *child_plan = TranslateDXLOperatorToPlan(dxl_node_child, &child_context, ctxt_translation_prev_siblings);
+		Plan *child_plan = TranslateDXLOperatorToPlan(child_dxlnode, &child_context, ctxt_translation_prev_siblings);
 
 		psequence->subplans = gpdb::LAppend(psequence->subplans, child_plan);
 		plan->nMotionNodes += child_plan->nMotionNodes;
@@ -3751,11 +3751,11 @@ CTranslatorDXLToPlStmt::TranslateDXLDml
 	m_dxl_to_plstmt_context->AddRTE(rte);
 	
 	CDXLNode *project_list_dxlnode = (*dml_dxlnode)[0];
-	CDXLNode *dxl_node_child = (*dml_dxlnode)[1];
+	CDXLNode *child_dxlnode = (*dml_dxlnode)[1];
 
 	CDXLTranslateContext child_context(m_mp, false, output_context->GetColIdToParamIdMap());
 
-	Plan *child_plan = TranslateDXLOperatorToPlan(dxl_node_child, &child_context, ctxt_translation_prev_siblings);
+	Plan *child_plan = TranslateDXLOperatorToPlan(child_dxlnode, &child_context, ctxt_translation_prev_siblings);
 
 	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
 	child_contexts->Append(&child_context);
@@ -3930,11 +3930,11 @@ CTranslatorDXLToPlStmt::TranslateDXLSplit
 	Plan *plan = &(split->plan);
 	
 	CDXLNode *project_list_dxlnode = (*split_dxlnode)[0];
-	CDXLNode *dxl_node_child = (*split_dxlnode)[1];
+	CDXLNode *child_dxlnode = (*split_dxlnode)[1];
 
 	CDXLTranslateContext child_context(m_mp, false, output_context->GetColIdToParamIdMap());
 
-	Plan *child_plan = TranslateDXLOperatorToPlan(dxl_node_child, &child_context, ctxt_translation_prev_siblings);
+	Plan *child_plan = TranslateDXLOperatorToPlan(child_dxlnode, &child_context, ctxt_translation_prev_siblings);
 
 	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
 	child_contexts->Append(&child_context);
@@ -4047,8 +4047,8 @@ CTranslatorDXLToPlStmt::TranslateDXLAssert
 	CDXLTranslateContext child_context(m_mp, false, output_context->GetColIdToParamIdMap());
 
 	// translate child plan
-	CDXLNode *dxl_node_child = (*assert_dxlnode)[CDXLPhysicalAssert::EdxlassertIndexChild];
-	Plan *child_plan = TranslateDXLOperatorToPlan(dxl_node_child, &child_context, ctxt_translation_prev_siblings);
+	CDXLNode *child_dxlnode = (*assert_dxlnode)[CDXLPhysicalAssert::EdxlassertIndexChild];
+	Plan *child_plan = TranslateDXLOperatorToPlan(child_dxlnode, &child_context, ctxt_translation_prev_siblings);
 
 	GPOS_ASSERT(NULL != child_plan && "child plan cannot be NULL");
 
@@ -4109,11 +4109,11 @@ CTranslatorDXLToPlStmt::TranslateDXLRowTrigger
 	Plan *plan = &(row_trigger->plan);
 
 	CDXLNode *project_list_dxlnode = (*row_trigger_dxlnode)[0];
-	CDXLNode *dxl_node_child = (*row_trigger_dxlnode)[1];
+	CDXLNode *child_dxlnode = (*row_trigger_dxlnode)[1];
 
 	CDXLTranslateContext child_context(m_mp, false, output_context->GetColIdToParamIdMap());
 
-	Plan *child_plan = TranslateDXLOperatorToPlan(dxl_node_child, &child_context, ctxt_translation_prev_siblings);
+	Plan *child_plan = TranslateDXLOperatorToPlan(child_dxlnode, &child_context, ctxt_translation_prev_siblings);
 
 	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
 	child_contexts->Append(&child_context);
@@ -4984,13 +4984,13 @@ CTranslatorDXLToPlStmt::TranslateDXLCtas
 {
 	CDXLPhysicalCTAS *phy_ctas_dxlop = CDXLPhysicalCTAS::Cast(ctas_dxlnode->GetOperator());
 	CDXLNode *project_list_dxlnode = (*ctas_dxlnode)[0];
-	CDXLNode *dxl_node_child = (*ctas_dxlnode)[1];
+	CDXLNode *child_dxlnode = (*ctas_dxlnode)[1];
 
 	GPOS_ASSERT(NULL == phy_ctas_dxlop->GetDxlCtasStorageOption()->GetDXLCtasOptionArray());
 	
 	CDXLTranslateContext child_context(m_mp, false, output_context->GetColIdToParamIdMap());
 
-	Plan *plan = TranslateDXLOperatorToPlan(dxl_node_child, &child_context, ctxt_translation_prev_siblings);
+	Plan *plan = TranslateDXLOperatorToPlan(child_dxlnode, &child_context, ctxt_translation_prev_siblings);
 	
 	// fix target list to match the required column names
 	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);

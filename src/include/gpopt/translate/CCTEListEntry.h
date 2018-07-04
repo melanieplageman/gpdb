@@ -96,7 +96,7 @@ namespace gpdxl
 			CCTEListEntry(IMemoryPool *mp, ULONG query_level, CommonTableExpr *cte, CDXLNode *cte_producer);
 			
 			// ctor: multiple CTEs
-			CCTEListEntry(IMemoryPool *mp, ULONG query_level, List *cte_list, DXLNodeArray *dxl_nodes);
+			CCTEListEntry(IMemoryPool *mp, ULONG query_level, List *cte_list, DXLNodeArray *dxlnodes);
 
 			// dtor
 			virtual

@@ -489,7 +489,7 @@ CTranslatorQueryToDXL::TranslateSelectQueryToDXL()
 	if (m_query->returningList)
 		GPOS_RAISE(gpdxl::ExmaDXL, gpdxl::ExmiQuery2DXLUnsupportedFeature, GPOS_WSZ_LIT("RETURNING clause"));
 
-	CDXLNode *dxl_node_child = NULL;
+	CDXLNode *child_dxlnode = NULL;
 	IntToUlongMap *sort_group_attno_to_colid_mapping =  GPOS_NEW(m_mp) IntToUlongMap(m_mp);
 	IntToUlongMap *output_attno_to_colid_mapping = GPOS_NEW(m_mp) IntToUlongMap(m_mp);
 
@@ -505,9 +505,9 @@ CTranslatorQueryToDXL::TranslateSelectQueryToDXL()
 	{
 		List *target_list = m_query->targetList;
 		// translate set operations
-		dxl_node_child = TranslateSetOpToDXL(m_query->setOperations, target_list, output_attno_to_colid_mapping);
+		child_dxlnode = TranslateSetOpToDXL(m_query->setOperations, target_list, output_attno_to_colid_mapping);
 
-		CDXLLogicalSetOp *dxlop = CDXLLogicalSetOp::Cast(dxl_node_child->GetOperator());
+		CDXLLogicalSetOp *dxlop = CDXLLogicalSetOp::Cast(child_dxlnode->GetOperator());
 		const DXLColumnDescrArray *dxl_col_descr_array = dxlop->GetDXLColumnDescrArray();
 		ListCell *lc = NULL;
 		ULONG resno = 1;
@@ -526,7 +526,7 @@ CTranslatorQueryToDXL::TranslateSelectQueryToDXL()
 	{
 		CDXLNode *dxlnode = TranslateFromExprToDXL(m_query->jointree);
 		GPOS_ASSERT(NULL == m_query->groupClause);
-		dxl_node_child = TranslateWindowToDXL
+		child_dxlnode = TranslateWindowToDXL
 						(
 						dxlnode,
 						m_query->targetList,
@@ -538,11 +538,11 @@ CTranslatorQueryToDXL::TranslateSelectQueryToDXL()
 	}
 	else
 	{
-		dxl_node_child = TranslateGroupingSets(m_query->jointree, m_query->targetList, m_query->groupClause, m_query->hasAggs, sort_group_attno_to_colid_mapping, output_attno_to_colid_mapping);
+		child_dxlnode = TranslateGroupingSets(m_query->jointree, m_query->targetList, m_query->groupClause, m_query->hasAggs, sort_group_attno_to_colid_mapping, output_attno_to_colid_mapping);
 	}
 
 	// translate limit clause
-	CDXLNode *limit_dxlnode = TranslateLimitToDXLGroupBy(m_query->sortClause, m_query->limitCount, m_query->limitOffset, dxl_node_child, sort_group_attno_to_colid_mapping);
+	CDXLNode *limit_dxlnode = TranslateLimitToDXLGroupBy(m_query->sortClause, m_query->limitCount, m_query->limitOffset, child_dxlnode, sort_group_attno_to_colid_mapping);
 
 
 	if (NULL == m_query->targetList)
@@ -1419,8 +1419,8 @@ CTranslatorQueryToDXL::UpdateLeadLagWinSpecPos
 	const ULONG arity = project_list_dxlnode->Arity();
 	for (ULONG ul = 0; ul < arity; ul++)
 	{
-		CDXLNode *dxl_node_child = (*(*project_list_dxlnode)[ul])[0];
-		CDXLOperator *dxlop = dxl_node_child->GetOperator();
+		CDXLNode *child_dxlnode = (*(*project_list_dxlnode)[ul])[0];
+		CDXLOperator *dxlop = child_dxlnode->GetOperator();
 		BOOL is_lead_func = IsLeadWindowFunc(dxlop);
 		BOOL is_lag = IsLagWindowFunc(dxlop);
 		if (is_lead_func || is_lag)
@@ -1435,9 +1435,9 @@ CTranslatorQueryToDXL::UpdateLeadLagWinSpecPos
 
 			// find if an offset is specified
 			CDXLNode *dxl_offset = NULL;
-			if (1 < dxl_node_child->Arity())
+			if (1 < child_dxlnode->Arity())
 			{
-				dxl_offset = (*dxl_node_child)[1];
+				dxl_offset = (*child_dxlnode)[1];
 			}
 
 			// create LEAD/LAG frame
@@ -1546,7 +1546,7 @@ CTranslatorQueryToDXL::TranslateWindowSpecToDXL
 CDXLNode *
 CTranslatorQueryToDXL::TranslateWindowToDXL
 	(
-	CDXLNode *dxl_node_child,
+	CDXLNode *child_dxlnode,
 	List *target_list,
 	List *window_clause,
 	List *sort_clause,
@@ -1556,7 +1556,7 @@ CTranslatorQueryToDXL::TranslateWindowToDXL
 {
 	if (0 == gpdb::ListLength(window_clause))
 	{
-		return dxl_node_child;
+		return child_dxlnode;
 	}
 
 	// translate target list entries
@@ -1699,8 +1699,8 @@ CTranslatorQueryToDXL::TranslateWindowToDXL
 		// create a project list for the computed columns used in the window specification
 		new_child_dxlnode = GPOS_NEW(m_mp) CDXLNode(m_mp, GPOS_NEW(m_mp) CDXLLogicalProject(m_mp));
 		new_child_dxlnode->AddChild(new_child_proj_list_dxlnode);
-		new_child_dxlnode->AddChild(dxl_node_child);
-		dxl_node_child = new_child_dxlnode;
+		new_child_dxlnode->AddChild(child_dxlnode);
+		child_dxlnode = new_child_dxlnode;
 	}
 	else
 	{
@@ -1713,7 +1713,7 @@ CTranslatorQueryToDXL::TranslateWindowToDXL
 		project_list_dxlnode->Release();
 		window_spec_array->Release();
 
-		return dxl_node_child;
+		return child_dxlnode;
 	}
 
 	// update window spec positions of LEAD/LAG functions
@@ -1723,7 +1723,7 @@ CTranslatorQueryToDXL::TranslateWindowToDXL
 	CDXLNode *dxlnode = GPOS_NEW(m_mp) CDXLNode(m_mp, window_dxlop);
 
 	dxlnode->AddChild(project_list_dxlnode);
-	dxlnode->AddChild(dxl_node_child);
+	dxlnode->AddChild(child_dxlnode);
 
 	return dxlnode;
 }
@@ -1780,7 +1780,7 @@ CTranslatorQueryToDXL::TranslateSortColumsToDXL
 	)
 	const
 {
-	DXLNodeArray *dxl_nodes = GPOS_NEW(m_mp) DXLNodeArray(m_mp);
+	DXLNodeArray *dxlnodes = GPOS_NEW(m_mp) DXLNodeArray(m_mp);
 
 	ListCell *lc = NULL;
 	ForEach (lc, sort_clause)
@@ -1816,10 +1816,10 @@ CTranslatorQueryToDXL::TranslateSortColumsToDXL
 		// create the DXL node holding the sorting col
 		CDXLNode *sort_col_dxlnode = GPOS_NEW(m_mp) CDXLNode(m_mp, sc_sort_col_dxlop);
 
-		dxl_nodes->Append(sort_col_dxlnode);
+		dxlnodes->Append(sort_col_dxlnode);
 	}
 
-	return dxl_nodes;
+	return dxlnodes;
 }
 
 //---------------------------------------------------------------------------
@@ -1837,13 +1837,13 @@ CTranslatorQueryToDXL::TranslateLimitToDXLGroupBy
 	List *sort_clause,
 	Node *limit_count,
 	Node *limit_offset_node,
-	CDXLNode *dxl_node_child,
+	CDXLNode *child_dxlnode,
 	IntToUlongMap *grpcols_to_colid_mapping
 	)
 {
 	if (0 == gpdb::ListLength(sort_clause) && NULL == limit_count && NULL == limit_offset_node)
 	{
-		return dxl_node_child;
+		return child_dxlnode;
 	}
 
 	// do not remove limit if it is immediately under a DML (JIRA: GPSQL-2669)
@@ -1892,7 +1892,7 @@ CTranslatorQueryToDXL::TranslateLimitToDXLGroupBy
 	limit_dxlnode->AddChild(sort_col_list_dxl);
 	limit_dxlnode->AddChild(limit_count_dxlnode);
 	limit_dxlnode->AddChild(limit_offset_dxlnode);
-	limit_dxlnode->AddChild(dxl_node_child);
+	limit_dxlnode->AddChild(child_dxlnode);
 
 	return limit_dxlnode;
 }
@@ -1945,7 +1945,7 @@ CTranslatorQueryToDXL::CreateSimpleGroupBy
 	CBitSet *grpby_cols_bitset,
 	BOOL has_aggs,
 	BOOL has_grouping_sets,
-	CDXLNode *dxl_node_child,
+	CDXLNode *child_dxlnode,
 	IntToUlongMap *sort_grpref_to_colid_mapping,
 	IntToUlongMap *child_attno_colid_mapping,
 	IntToUlongMap *output_attno_to_colid_mapping
@@ -1973,7 +1973,7 @@ CTranslatorQueryToDXL::CreateSimpleGroupBy
 		// in that case do not propagate the child columns to the output hash map, as later
 		// processing may introduce NULLs for those
 
-		return dxl_node_child;
+		return child_dxlnode;
 	}
 
 	List *dqa_list = NIL;
@@ -2044,7 +2044,7 @@ CTranslatorQueryToDXL::CreateSimpleGroupBy
 						m_mp,
 						GPOS_NEW(m_mp) CDXLLogicalGroupBy(m_mp, grouping_cols),
 						proj_list_grpby_dxlnode,
-						dxl_node_child
+						child_dxlnode
 						);
 }
 
@@ -2484,9 +2484,9 @@ CTranslatorQueryToDXL::TranslateSetOpToDXL
 
 	BOOL is_cast_across_input = SetOpNeedsCast(target_list, mdid_array_leftchild) || SetOpNeedsCast(target_list, mdid_array_rightchild);
 	
-	DXLNodeArray *children_dxl_nodes  = GPOS_NEW(m_mp) DXLNodeArray(m_mp);
-	children_dxl_nodes->Append(left_child_dxlnode);
-	children_dxl_nodes->Append(right_child_dxlnode);
+	DXLNodeArray *children_dxlnodes  = GPOS_NEW(m_mp) DXLNodeArray(m_mp);
+	children_dxlnodes->Append(left_child_dxlnode);
+	children_dxlnodes->Append(right_child_dxlnode);
 
 	CDXLNode *dxlnode = CreateDXLSetOpFromColumns
 						(
@@ -2494,7 +2494,7 @@ CTranslatorQueryToDXL::TranslateSetOpToDXL
 						target_list,
 						output_colids,
 						input_colids,
-						children_dxl_nodes,
+						children_dxlnodes,
 						is_cast_across_input,
 						false /* keep_res_junked */
 						);
@@ -2542,7 +2542,7 @@ CTranslatorQueryToDXL::CreateDXLSetOpFromColumns
 	List *output_target_list,
 	ULongPtrArray *output_colids,
 	ULongPtrArray2D *input_colids,
-	DXLNodeArray *children_dxl_nodes,
+	DXLNodeArray *children_dxlnodes,
 	BOOL is_cast_across_input,
 	BOOL keep_res_junked
 	)
@@ -2551,9 +2551,9 @@ CTranslatorQueryToDXL::CreateDXLSetOpFromColumns
 	GPOS_ASSERT(NULL != output_target_list);
 	GPOS_ASSERT(NULL != output_colids);
 	GPOS_ASSERT(NULL != input_colids);
-	GPOS_ASSERT(NULL != children_dxl_nodes);
+	GPOS_ASSERT(NULL != children_dxlnodes);
 	GPOS_ASSERT(1 < input_colids->Size());
-	GPOS_ASSERT(1 < children_dxl_nodes->Size());
+	GPOS_ASSERT(1 < children_dxlnodes->Size());
 
 	// positions of output columns in the target list
 	ULongPtrArray *output_col_pos = CTranslatorUtils::GetPosInTargetList(m_mp, output_target_list, keep_res_junked);
@@ -2617,13 +2617,13 @@ CTranslatorQueryToDXL::CreateDXLSetOpFromColumns
 	if (0 < new_child_proj_list_dxlnode->Arity())
 	{
 		// create a project node for the dummy casted columns
-		CDXLNode *first_child_dxlnode = (*children_dxl_nodes)[0];
+		CDXLNode *first_child_dxlnode = (*children_dxlnodes)[0];
 		first_child_dxlnode->AddRef();
 		CDXLNode *new_child_dxlnode = GPOS_NEW(m_mp) CDXLNode(m_mp, GPOS_NEW(m_mp) CDXLLogicalProject(m_mp));
 		new_child_dxlnode->AddChild(new_child_proj_list_dxlnode);
 		new_child_dxlnode->AddChild(first_child_dxlnode);
 
-		children_dxl_nodes->Replace(0, new_child_dxlnode);
+		children_dxlnodes->Replace(0, new_child_dxlnode);
 	}
 	else
 	{
@@ -2638,7 +2638,7 @@ CTranslatorQueryToDXL::CreateDXLSetOpFromColumns
 											input_colids,
 											is_cast_across_input
 											);
-	CDXLNode *dxlnode = GPOS_NEW(m_mp) CDXLNode(m_mp, dxlop, children_dxl_nodes);
+	CDXLNode *dxlnode = GPOS_NEW(m_mp) CDXLNode(m_mp, dxlop, children_dxlnodes);
 
 	bitset->Release();
 	output_col_pos->Release();
@@ -2740,12 +2740,12 @@ CTranslatorQueryToDXL::TranslateSetOpChild
 			m_has_distributed_tables = m_has_distributed_tables || query_to_dxl_translator.HasDistributedTables();
 
 			// get the output columns of the derived table
-			DXLNodeArray *dxl_nodes = query_to_dxl_translator.GetQueryOutputCols();
-			GPOS_ASSERT(dxl_nodes != NULL);
-			const ULONG length = dxl_nodes->Size();
+			DXLNodeArray *dxlnodes = query_to_dxl_translator.GetQueryOutputCols();
+			GPOS_ASSERT(dxlnodes != NULL);
+			const ULONG length = dxlnodes->Size();
 			for (ULONG ul = 0; ul < length; ul++)
 			{
-				CDXLNode *current_dxlnode = (*dxl_nodes)[ul];
+				CDXLNode *current_dxlnode = (*dxlnodes)[ul];
 				CDXLScalarIdent *dxl_sc_ident = CDXLScalarIdent::Cast(current_dxlnode->GetOperator());
 				ULONG *colid = GPOS_NEW(m_mp) ULONG(dxl_sc_ident->MakeDXLColRef()->Id());
 				pdrgpul->Append(colid);
@@ -2833,8 +2833,8 @@ CTranslatorQueryToDXL::TranslateFromExprToDXL
 			ForEach (lc, from_expr->fromlist)
 			{
 				Node *node = (Node*) lfirst(lc);
-				CDXLNode *dxl_node_child = TranslateFromClauseToDXL(node);
-				dxlnode->AddChild(dxl_node_child);
+				CDXLNode *child_dxlnode = TranslateFromClauseToDXL(node);
+				dxlnode->AddChild(child_dxlnode);
 			}
 		}
 	}
@@ -3055,7 +3055,7 @@ CTranslatorQueryToDXL::TranslateValueScanRTEToDXL
 	GPOS_ASSERT(0 < num_of_tuples);
 
 	// children of the UNION ALL
-	DXLNodeArray *dxl_nodes = GPOS_NEW(m_mp) DXLNodeArray(m_mp);
+	DXLNodeArray *dxlnodes = GPOS_NEW(m_mp) DXLNodeArray(m_mp);
 
 	// array of datum arrays for Values
 	DXLDatumArrays *dxl_values_datum_array = GPOS_NEW(m_mp) DXLDatumArrays(m_mp);
@@ -3168,7 +3168,7 @@ CTranslatorQueryToDXL::TranslateValueScanRTEToDXL
 			col_pos_idx++;
 		}
 
-		dxl_nodes->Append(TranslateColumnValuesToDXL(dxl_datum_array, dxl_column_descriptors, proj_elem_dxlnode_array));
+		dxlnodes->Append(TranslateColumnValuesToDXL(dxl_datum_array, dxl_column_descriptors, proj_elem_dxlnode_array));
 		if (fAllConstant)
 		{
 			dxl_datum_array->AddRef();
@@ -3196,7 +3196,7 @@ CTranslatorQueryToDXL::TranslateValueScanRTEToDXL
 		m_var_to_colid_map->LoadColumns(m_query_level, rti, dxlop->GetDXLColumnDescrArray());
 
 		// cleanup
-		dxl_nodes->Release();
+		dxlnodes->Release();
 		input_colids->Release();
 
 		return dxlnode;
@@ -3205,7 +3205,7 @@ CTranslatorQueryToDXL::TranslateValueScanRTEToDXL
 	{
 		// create a UNION ALL operator
 		CDXLLogicalSetOp *dxlop = GPOS_NEW(m_mp) CDXLLogicalSetOp(m_mp, EdxlsetopUnionAll, dxl_col_descr_array, input_colids, false);
-		CDXLNode *dxlnode = GPOS_NEW(m_mp) CDXLNode(m_mp, dxlop, dxl_nodes);
+		CDXLNode *dxlnode = GPOS_NEW(m_mp) CDXLNode(m_mp, dxlop, dxlnodes);
 
 		// make note of new columns from UNION ALL
 		m_var_to_colid_map->LoadColumns(m_query_level, rti, dxlop->GetDXLColumnDescrArray());
@@ -3214,9 +3214,9 @@ CTranslatorQueryToDXL::TranslateValueScanRTEToDXL
 		return dxlnode;
 	}
 
-	GPOS_ASSERT(1 == dxl_nodes->Size());
+	GPOS_ASSERT(1 == dxlnodes->Size());
 
-	CDXLNode *dxlnode = (*dxl_nodes)[0];
+	CDXLNode *dxlnode = (*dxlnodes)[0];
 	dxlnode->AddRef();
 
 	// make note of new columns
@@ -3224,7 +3224,7 @@ CTranslatorQueryToDXL::TranslateValueScanRTEToDXL
 
 	//cleanup
 	dxl_values_datum_array->Release();
-	dxl_nodes->Release();
+	dxlnodes->Release();
 	input_colids->Release();
 	dxl_col_descr_array->Release();
 
@@ -3598,7 +3598,7 @@ CDXLNode *
 CTranslatorQueryToDXL::TranslateTargetListToDXLProject
 	(
 	List *target_list,
-	CDXLNode *dxl_node_child,
+	CDXLNode *child_dxlnode,
 	IntToUlongMap *sort_grpref_to_colid_mapping,
 	IntToUlongMap *output_attno_to_colid_mapping,
 	List *plgrpcl,
@@ -3706,13 +3706,13 @@ CTranslatorQueryToDXL::TranslateTargetListToDXLProject
 		// the CDXLProjectList node and the node representing the input to the project node
 		CDXLNode *project_dxlnode = GPOS_NEW(m_mp) CDXLNode(m_mp, GPOS_NEW(m_mp) CDXLLogicalProject(m_mp));
 		project_dxlnode->AddChild(project_list_dxlnode);
-		project_dxlnode->AddChild(dxl_node_child);
+		project_dxlnode->AddChild(child_dxlnode);
 		GPOS_ASSERT(NULL != project_dxlnode);
 		return project_dxlnode;
 	}
 
 	project_list_dxlnode->Release();
-	return dxl_node_child;
+	return child_dxlnode;
 }
 
 //---------------------------------------------------------------------------
@@ -3728,7 +3728,7 @@ CDXLNode *
 CTranslatorQueryToDXL::CreateDXLProjectNullsForGroupingSets
 	(
 	List *target_list,
-	CDXLNode *dxl_node_child,
+	CDXLNode *child_dxlnode,
 	CBitSet *bitset,					// group by columns
 	IntToUlongMap *sort_grouping_col_mapping,	// mapping of sorting and grouping columns
 	IntToUlongMap *output_attno_to_colid_mapping,		// mapping of output columns
@@ -3800,10 +3800,10 @@ CTranslatorQueryToDXL::CreateDXLProjectNullsForGroupingSets
 	{
 		// no project necessary
 		project_list_dxlnode->Release();
-		return dxl_node_child;
+		return child_dxlnode;
 	}
 
-	return GPOS_NEW(m_mp) CDXLNode(m_mp, GPOS_NEW(m_mp) CDXLLogicalProject(m_mp), project_list_dxlnode, dxl_node_child);
+	return GPOS_NEW(m_mp) CDXLNode(m_mp, GPOS_NEW(m_mp) CDXLLogicalProject(m_mp), project_list_dxlnode, child_dxlnode);
 }
 
 //---------------------------------------------------------------------------
@@ -3819,7 +3819,7 @@ CDXLNode *
 CTranslatorQueryToDXL::CreateDXLProjectGroupingFuncs
 	(
 	List *target_list,
-	CDXLNode *dxl_node_child,
+	CDXLNode *child_dxlnode,
 	CBitSet *bitset,
 	IntToUlongMap *output_attno_to_colid_mapping,
 	UlongToUlongMap *grpcol_index_to_colid_mapping,
@@ -3867,10 +3867,10 @@ CTranslatorQueryToDXL::CreateDXLProjectGroupingFuncs
 	{
 		// no project necessary
 		project_list_dxlnode->Release();
-		return dxl_node_child;
+		return child_dxlnode;
 	}
 
-	return GPOS_NEW(m_mp) CDXLNode(m_mp, GPOS_NEW(m_mp) CDXLLogicalProject(m_mp), project_list_dxlnode, dxl_node_child);
+	return GPOS_NEW(m_mp) CDXLNode(m_mp, GPOS_NEW(m_mp) CDXLLogicalProject(m_mp), project_list_dxlnode, child_dxlnode);
 }
 
 //---------------------------------------------------------------------------
@@ -3922,7 +3922,7 @@ CTranslatorQueryToDXL::CreateDXLOutputCols
 	GPOS_ASSERT(NULL != target_list);
 	GPOS_ASSERT(NULL != attno_to_colid_mapping);
 
-	DXLNodeArray *dxl_nodes = GPOS_NEW(m_mp) DXLNodeArray(m_mp);
+	DXLNodeArray *dxlnodes = GPOS_NEW(m_mp) DXLNodeArray(m_mp);
 
 	ListCell *lc = NULL;
 	ForEach (lc, target_list)
@@ -3966,10 +3966,10 @@ CTranslatorQueryToDXL::CreateDXLOutputCols
 		// create the DXL node holding the scalar ident operator
 		CDXLNode *dxlnode = GPOS_NEW(m_mp) CDXLNode(m_mp, dxl_ident);
 
-		dxl_nodes->Append(dxlnode);
+		dxlnodes->Append(dxlnode);
 	}
 
-	return dxl_nodes;
+	return dxlnodes;
 }
 
 //---------------------------------------------------------------------------
@@ -3992,7 +3992,7 @@ CTranslatorQueryToDXL::TranslateExprToDXLProject
 	GPOS_ASSERT(NULL != expr);
 
 	// construct a scalar operator
-	CDXLNode *dxl_node_child = TranslateExprToDXL(expr);
+	CDXLNode *child_dxlnode = TranslateExprToDXL(expr);
 
 	// get the id and alias for the proj elem
 	ULONG proj_elem_id;
@@ -4013,8 +4013,8 @@ CTranslatorQueryToDXL::TranslateExprToDXLProject
 	if (IsA(expr, Var) && !insist_new_colids)
 	{
 		// project elem is a a reference to a column - use the colref id
-		GPOS_ASSERT(EdxlopScalarIdent == dxl_node_child->GetOperator()->GetDXLOperator());
-		CDXLScalarIdent *dxl_ident = (CDXLScalarIdent *) dxl_node_child->GetOperator();
+		GPOS_ASSERT(EdxlopScalarIdent == child_dxlnode->GetOperator()->GetDXLOperator());
+		CDXLScalarIdent *dxl_ident = (CDXLScalarIdent *) child_dxlnode->GetOperator();
 		proj_elem_id = dxl_ident->MakeDXLColRef()->Id();
 	}
 	else
@@ -4024,7 +4024,7 @@ CTranslatorQueryToDXL::TranslateExprToDXLProject
 	}
 
 	CDXLNode *proj_elem_dxlnode = GPOS_NEW(m_mp) CDXLNode(m_mp, GPOS_NEW(m_mp) CDXLScalarProjElem(m_mp, proj_elem_id, mdname_alias));
-	proj_elem_dxlnode->AddChild(dxl_node_child);
+	proj_elem_dxlnode->AddChild(child_dxlnode);
 
 	return proj_elem_dxlnode;
 }
@@ -4214,7 +4214,7 @@ CTranslatorQueryToDXL::ConstructCTEProducerList
 void
 CTranslatorQueryToDXL::ConstructCTEAnchors
 	(
-	DXLNodeArray *dxl_nodes,
+	DXLNodeArray *dxlnodes,
 	CDXLNode **dxl_cte_anchor_top,
 	CDXLNode **dxl_cte_anchor_bottom
 	)
@@ -4222,17 +4222,17 @@ CTranslatorQueryToDXL::ConstructCTEAnchors
 	GPOS_ASSERT(NULL == *dxl_cte_anchor_top);
 	GPOS_ASSERT(NULL == *dxl_cte_anchor_bottom);
 
-	if (NULL == dxl_nodes || 0 == dxl_nodes->Size())
+	if (NULL == dxlnodes || 0 == dxlnodes->Size())
 	{
 		return;
 	}
 	
-	const ULONG num_of_ctes = dxl_nodes->Size();
+	const ULONG num_of_ctes = dxlnodes->Size();
 	
 	for (ULONG ul = num_of_ctes; ul > 0; ul--)
 	{
 		// construct a new CTE anchor on top of the previous one
-		CDXLNode *cte_producer_dxlnode = (*dxl_nodes)[ul-1];
+		CDXLNode *cte_producer_dxlnode = (*dxlnodes)[ul-1];
 		CDXLLogicalCTEProducer *cte_prod_dxlop = CDXLLogicalCTEProducer::Cast(cte_producer_dxlnode->GetOperator());
 		ULONG cte_producer_id = cte_prod_dxlop->Id();
 		
