@@ -288,9 +288,9 @@ CTranslatorUtils::ConvertToCDXLLogicalTVF
 	// get function from MDcache
 	const IMDFunction *func = md_accessor->RetrieveFunc(mdid_func);
 
-	MdidPtrArray *out_arg_types = func->OutputArgTypesMdidArray();
+	IMdIdArray *out_arg_types = func->OutputArgTypesMdidArray();
 
-	DXLColumnDescrArray *column_descrs = NULL;
+	CDXLColDescrArray *column_descrs = NULL;
 
 	if (NULL != rte->funccoltypes)
 	{
@@ -311,7 +311,7 @@ CTranslatorUtils::ConvertToCDXLLogicalTVF
 			// resolve polymorphic types (anyelement/anyarray) using the
 			// argument types from the query
 			List *arg_types = gpdb::GetFuncArgTypes(funcexpr->funcid);
-			MdidPtrArray *resolved_types = ResolvePolymorphicTypes
+			IMdIdArray *resolved_types = ResolvePolymorphicTypes
 												(
 												mp,
 												out_arg_types,
@@ -349,11 +349,11 @@ CTranslatorUtils::ConvertToCDXLLogicalTVF
 //		them with the actual types obtained from the query
 //
 //---------------------------------------------------------------------------
-MdidPtrArray *
+IMdIdArray *
 CTranslatorUtils::ResolvePolymorphicTypes
 	(
 	IMemoryPool *mp,
-	MdidPtrArray *mdid_array,
+	IMdIdArray *mdid_array,
 	List *arg_types_list,
 	FuncExpr *funcexpr
 	)
@@ -396,7 +396,7 @@ CTranslatorUtils::ResolvePolymorphicTypes
 	}
 
 	// generate a new array of mdids based on the resolved types
-	MdidPtrArray *resolved_types = GPOS_NEW(mp) MdidPtrArray(mp);
+	IMdIdArray *resolved_types = GPOS_NEW(mp) IMdIdArray(mp);
 
 	// get the resolved return types
 	for (ULONG ul = num_args; ul < total_args ; ul++)
@@ -422,7 +422,7 @@ CTranslatorUtils::ResolvePolymorphicTypes
 BOOL
 CTranslatorUtils::ContainsPolymorphicTypes
 	(
-	MdidPtrArray *mdid_array
+	IMdIdArray *mdid_array
 	)
 {
 	GPOS_ASSERT(NULL != mdid_array);
@@ -447,7 +447,7 @@ CTranslatorUtils::ContainsPolymorphicTypes
 //		Get column descriptors from a record type
 //
 //---------------------------------------------------------------------------
-DXLColumnDescrArray *
+CDXLColDescrArray *
 CTranslatorUtils::GetColumnDescriptorsFromRecord
 	(
 	IMemoryPool *mp,
@@ -462,7 +462,7 @@ CTranslatorUtils::GetColumnDescriptorsFromRecord
 	ListCell *col_type_modifier = NULL;
 
 	ULONG ul = 0;
-	DXLColumnDescrArray *column_descrs = GPOS_NEW(mp) DXLColumnDescrArray(mp);
+	CDXLColDescrArray *column_descrs = GPOS_NEW(mp) CDXLColDescrArray(mp);
 
 	ForThree (col_name, col_names,
 			col_type, col_types,
@@ -504,20 +504,20 @@ CTranslatorUtils::GetColumnDescriptorsFromRecord
 //		Get column descriptors from a record type
 //
 //---------------------------------------------------------------------------
-DXLColumnDescrArray *
+CDXLColDescrArray *
 CTranslatorUtils::GetColumnDescriptorsFromRecord
 	(
 	IMemoryPool *mp,
 	CIdGenerator *id_generator,
 	List *col_names,
-	MdidPtrArray *out_arg_types
+	IMdIdArray *out_arg_types
 	)
 {
 	GPOS_ASSERT(out_arg_types->Size() == (ULONG) gpdb::ListLength(col_names));
 	ListCell *col_name = NULL;
 
 	ULONG ul = 0;
-	DXLColumnDescrArray *column_descrs = GPOS_NEW(mp) DXLColumnDescrArray(mp);
+	CDXLColDescrArray *column_descrs = GPOS_NEW(mp) CDXLColDescrArray(mp);
 
 	ForEach (col_name, col_names)
 	{
@@ -558,7 +558,7 @@ CTranslatorUtils::GetColumnDescriptorsFromRecord
 //		Get column descriptor from a base type
 //
 //---------------------------------------------------------------------------
-DXLColumnDescrArray *
+CDXLColDescrArray *
 CTranslatorUtils::GetColumnDescriptorsFromBase
 	(
 	IMemoryPool *mp,
@@ -568,7 +568,7 @@ CTranslatorUtils::GetColumnDescriptorsFromBase
 	CMDName *pmdName
 	)
 {
-	DXLColumnDescrArray *column_descrs = GPOS_NEW(mp) DXLColumnDescrArray(mp);
+	CDXLColDescrArray *column_descrs = GPOS_NEW(mp) CDXLColDescrArray(mp);
 
 	mdid_return_type->AddRef();
 	CMDName *col_mdname = GPOS_NEW(mp) CMDName(mp, pmdName->GetMDName());
@@ -597,7 +597,7 @@ CTranslatorUtils::GetColumnDescriptorsFromBase
 //		Get column descriptors from a composite type
 //
 //---------------------------------------------------------------------------
-DXLColumnDescrArray *
+CDXLColDescrArray *
 CTranslatorUtils::GetColumnDescriptorsFromComposite
 	(
 	IMemoryPool *mp,
@@ -606,9 +606,9 @@ CTranslatorUtils::GetColumnDescriptorsFromComposite
 	const IMDType *type
 	)
 {
-	MDColumnPtrArray *col_ptr_arr = ExpandCompositeType(mp, md_accessor, type);
+	CMDColumnArray *col_ptr_arr = ExpandCompositeType(mp, md_accessor, type);
 
-	DXLColumnDescrArray *column_descrs = GPOS_NEW(mp) DXLColumnDescrArray(mp);
+	CDXLColDescrArray *column_descrs = GPOS_NEW(mp) CDXLColDescrArray(mp);
 
 	for (ULONG ul = 0; ul < col_ptr_arr->Size(); ul++)
 	{
@@ -644,7 +644,7 @@ CTranslatorUtils::GetColumnDescriptorsFromComposite
 //		Expand a composite type into an array of IMDColumns
 //
 //---------------------------------------------------------------------------
-MDColumnPtrArray *
+CMDColumnArray *
 CTranslatorUtils::ExpandCompositeType
 	(
 	IMemoryPool *mp,
@@ -659,7 +659,7 @@ CTranslatorUtils::ExpandCompositeType
 	const IMDRelation *rel = md_accessor->RetrieveRel(rel_mdid);
 	GPOS_ASSERT(NULL != rel);
 
-	MDColumnPtrArray *pdrgPmdcol = GPOS_NEW(mp) MDColumnPtrArray(mp);
+	CMDColumnArray *pdrgPmdcol = GPOS_NEW(mp) CMDColumnArray(mp);
 
 	for(ULONG ul = 0; ul < rel->ColumnCount(); ul++)
 	{
@@ -1350,7 +1350,7 @@ CTranslatorUtils::GenerateColIds
 	(
 	IMemoryPool *mp,
 	List *target_list,
-	MdidPtrArray *input_mdid_arr,
+	IMdIdArray *input_mdid_arr,
 	ULongPtrArray *input_colids,
 	BOOL *is_outer_ref,  // array of flags indicating if input columns are outer references
 	CIdGenerator *colid_generator
@@ -1518,7 +1518,7 @@ CTranslatorUtils::GetTargetListReturnTypeOid
 // 		column ids in the given array
 //
 //---------------------------------------------------------------------------
-DXLColumnDescrArray *
+CDXLColDescrArray *
 CTranslatorUtils::GetDXLColumnDescrArray
 	(
 	IMemoryPool *mp,
@@ -1531,7 +1531,7 @@ CTranslatorUtils::GetDXLColumnDescrArray
 	GPOS_ASSERT(NULL != colids);
 
 	ListCell *target_entry_cell = NULL;
-	DXLColumnDescrArray *dxl_col_descrs = GPOS_NEW(mp) DXLColumnDescrArray(mp);
+	CDXLColDescrArray *dxl_col_descrs = GPOS_NEW(mp) CDXLColDescrArray(mp);
 	ULONG ul = 0;
 	ForEach (target_entry_cell, target_list)
 	{

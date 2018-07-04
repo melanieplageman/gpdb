@@ -68,7 +68,7 @@ CCTEListEntry::CCTEListEntry
 	IMemoryPool *mp,
 	ULONG query_level,
 	List *cte_list, 
-	DXLNodeArray *cte_dxl_arr
+	CDXLNodeArray *cte_dxl_arr
 	)
 	:
 	m_query_level(query_level),

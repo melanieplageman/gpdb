@@ -134,10 +134,10 @@ namespace gpdxl
 			HMUlCTEListEntry *m_query_level_to_cte_map;
 
 			// query output columns
-			DXLNodeArray *m_dxl_query_output_cols;
+			CDXLNodeArray *m_dxl_query_output_cols;
 			
 			// list of CTE producers
-			DXLNodeArray *m_dxl_cte_producers;
+			CDXLNodeArray *m_dxl_cte_producers;
 			
 			// CTE producer IDs defined at the current query level
 			UlongBoolHashMap *m_cteid_at_current_query_level_map;
@@ -184,14 +184,14 @@ namespace gpdxl
 				List *output_target_list,
 				ULongPtrArray *output_colids,
 				ULongPtrArray2D *input_colids,
-				DXLNodeArray *children_dxlnodes,
+				CDXLNodeArray *children_dxlnodes,
 				BOOL is_cast_across_input,
 				BOOL keep_res_junked
 				)
 				const;
 
 			// check if the set operation need to cast any of its input columns
-			BOOL SetOpNeedsCast(List *target_list, MdidPtrArray *input_col_mdids) const;
+			BOOL SetOpNeedsCast(List *target_list, IMdIdArray *input_col_mdids) const;
 			// translate a window operator
 			CDXLNode *TranslateWindowToDXL
 				(
@@ -204,16 +204,16 @@ namespace gpdxl
 				);
 
 			// translate window spec
-			DXLWindowSpecArray *TranslateWindowSpecToDXL(List *window_clause, IntToUlongMap *sort_col_attno_to_colid_mapping, CDXLNode *project_list_dxlnode_node);
+			CDXLWindowSpecArray *TranslateWindowSpecToDXL(List *window_clause, IntToUlongMap *sort_col_attno_to_colid_mapping, CDXLNode *project_list_dxlnode_node);
 
 			// update window spec positions of LEAD/LAG functions
-			void UpdateLeadLagWinSpecPos(CDXLNode *project_list_dxlnode, DXLWindowSpecArray *window_specs_dxlnode) const;
+			void UpdateLeadLagWinSpecPos(CDXLNode *project_list_dxlnode, CDXLWindowSpecArray *window_specs_dxlnode) const;
 
 			// manufucture window frame for lead/lag functions
 			CDXLWindowFrame *CreateWindowFramForLeadLag(BOOL is_lead_func, CDXLNode *dxl_offset) const;
 
 			// translate the child of a set operation
-			CDXLNode *TranslateSetOpChild(Node *child_node, ULongPtrArray *pdrgpul, MdidPtrArray *input_col_mdids, List *target_list);
+			CDXLNode *TranslateSetOpChild(Node *child_node, ULongPtrArray *pdrgpul, IMdIdArray *input_col_mdids, List *target_list);
 
 			// return a dummy const table get
 			CDXLNode *DXLDummyConstTableGet() const;
@@ -294,7 +294,7 @@ namespace gpdxl
 			void AddSortingGroupingColumn(TargetEntry *target_entry, IntToUlongMap *phmiulSortGrpColsColId, ULONG colid) const;
 
 			// translate the list of sorting columns
-			DXLNodeArray *TranslateSortColumsToDXL(List *sort_clause, IntToUlongMap *col_attno_colid_mapping) const;
+			CDXLNodeArray *TranslateSortColumsToDXL(List *sort_clause, IntToUlongMap *col_attno_colid_mapping) const;
 
 			// translate the list of partition-by column identifiers
 			ULongPtrArray *TranslatePartColumns(List *sort_clause, IntToUlongMap *col_attno_colid_mapping) const;
@@ -348,9 +348,9 @@ namespace gpdxl
 			// either a datum or scalar expression represented as a project element.
 			CDXLNode *TranslateColumnValuesToDXL
 			 	(
-			 	DXLDatumArray *dxl_datum_array,
-			 	DXLColumnDescrArray *dxl_column_descriptors,
-			 	DXLNodeArray *dxl_project_elements
+			 	CDXLDatumArray *dxl_datum_array,
+			 	CDXLColDescrArray *dxl_column_descriptors,
+			 	CDXLNodeArray *dxl_project_elements
 			    )
 			    const;
 
@@ -385,7 +385,7 @@ namespace gpdxl
 			void StoreAttnoColIdMapping(IntToUlongMap *attno_to_colid_mapping, INT attno, ULONG colid) const;
 
 			// construct an array of output columns
-			DXLNodeArray *CreateDXLOutputCols(List *target_list, IntToUlongMap *attno_to_colid_mapping) const;
+			CDXLNodeArray *CreateDXLOutputCols(List *target_list, IntToUlongMap *attno_to_colid_mapping) const;
 
 			// check for support command types, throws an exception when command type not yet supported
 			void CheckSupportedCmdType(Query *query);
@@ -422,7 +422,7 @@ namespace gpdxl
 			CDXLNode *TranslateCTASToDXL();
 			
 			// translate CTAS storage options
-			CDXLCtasStorageOptions::DXLCtasOptionArray *GetDXLCtasOptionArray(List *options, IMDRelation::Erelstoragetype *storage_type);
+			CDXLCtasStorageOptions::CDXLCtasOptionArray *GetDXLCtasOptionArray(List *options, IMDRelation::Erelstoragetype *storage_type);
 			
 			// extract storage option value from defelem
 			CWStringDynamic *ExtractStorageOptionStr(DefElem *def_elem);
@@ -445,7 +445,7 @@ namespace gpdxl
 			void ConstructCTEProducerList(List *cte_list, ULONG query_level);
 			
 			// construct a stack of CTE anchors for each CTE producer in the given array
-			void ConstructCTEAnchors(DXLNodeArray *dxlnodes, CDXLNode **dxl_cte_anchor_top, CDXLNode **dxl_cte_anchor_bottom);
+			void ConstructCTEAnchors(CDXLNodeArray *dxlnodes, CDXLNode **dxl_cte_anchor_top, CDXLNode **dxl_cte_anchor_bottom);
 			
 			// generate an array of new column ids of the given size
 			ULongPtrArray *GenerateColIds(IMemoryPool *mp, ULONG size) const;
@@ -483,10 +483,10 @@ namespace gpdxl
 			CDXLNode *TranslateQueryToDXL();
 
 			// return the list of output columns
-			DXLNodeArray *GetQueryOutputCols() const;
+			CDXLNodeArray *GetQueryOutputCols() const;
 
 			// return the list of CTEs
-			DXLNodeArray *GetCTEs() const;
+			CDXLNodeArray *GetCTEs() const;
 
 			// factory function
 			static

@@ -241,7 +241,7 @@ namespace gpdxl
         			(
         			SubPlan *sub_plan,
         			CDXLTranslateContext *dxl_translator_ctxt,
-        			const DXLColRefArray *outer_refs,
+        			const CDXLColRefArray *outer_refs,
 				CMappingColIdVar *colid_var
        	 			);
 

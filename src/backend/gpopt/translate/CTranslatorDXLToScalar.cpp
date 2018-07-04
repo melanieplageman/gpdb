@@ -662,7 +662,7 @@ CTranslatorDXLToScalar::TranslateScalarSubplanExprFromDXL
 	SubLinkType slink = CTranslatorUtils::MapDXLSubplanToSublinkType(dxlop->GetDxlSubplanType());
 	Expr *test_expr = TranslateSubplanTestExprFromDXL(dxlop->GetDxlTestExpr(), slink, colid_var, &param_ids);
 
-	const DXLColRefArray *outer_refs= dxlop->GetDxlOuterColRefsArray();
+	const CDXLColRefArray *outer_refs= dxlop->GetDxlOuterColRefsArray();
 
 	const ULONG len = outer_refs->Size();
 
@@ -706,7 +706,7 @@ CTranslatorDXLToScalar::TranslateScalarSubplanExprFromDXL
 							(dynamic_cast<CMappingColIdVarPlStmt*>(colid_var))->GetDXLToPlStmtContext(),
 							m_num_of_segments
 							);
-	DXLTranslationContextArray *prev_siblings_ctxt_arr = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
+	CDXLTranslationContextArray *prev_siblings_ctxt_arr = GPOS_NEW(m_mp) CDXLTranslationContextArray(m_mp);
 	Plan *plan_child = dxl_to_plstmt_translator.TranslateDXLOperatorToPlan(child_dxl, &sub_plan_translate_ctxt, prev_siblings_ctxt_arr);
 	prev_siblings_ctxt_arr->Release();
 
@@ -858,7 +858,7 @@ CTranslatorDXLToScalar::TranslateSubplanParams
 	(
 	SubPlan *sub_plan,
 	CDXLTranslateContext *dxl_translator_ctxt,
-	const DXLColRefArray *outer_refs,
+	const CDXLColRefArray *outer_refs,
 	CMappingColIdVar *colid_var
 	)
 {

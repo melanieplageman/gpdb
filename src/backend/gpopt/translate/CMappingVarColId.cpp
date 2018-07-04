@@ -303,7 +303,7 @@ CMappingVarColId::LoadColumns
 	(
 	ULONG query_level,
 	ULONG RTE_index,
-	const DXLColumnDescrArray *column_descrs
+	const CDXLColDescrArray *column_descrs
 	)
 {
 	GPOS_ASSERT(NULL != column_descrs);
@@ -338,7 +338,7 @@ CMappingVarColId::LoadDerivedTblColumns
 	(
 	ULONG query_level,
 	ULONG RTE_index,
-	const DXLNodeArray *derived_columns_dxl,
+	const CDXLNodeArray *derived_columns_dxl,
 	List *target_list
 	)
 {

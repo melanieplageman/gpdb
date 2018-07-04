@@ -77,7 +77,7 @@ CTranslatorScalarToDXL::CTranslatorScalarToDXL
 	ULONG query_level,
 	BOOL is_query_mode,
 	HMUlCTEListEntry *cte_entries,
-	DXLNodeArray *cte_dxlnode_array
+	CDXLNodeArray *cte_dxlnode_array
 	)
 	:
 	m_mp(mp),
@@ -1764,8 +1764,8 @@ CTranslatorScalarToDXL::CreateQuantifiedSubqueryFromSublink
 
 	CDXLNode *inner_dxlnode = query_to_dxl_translator->TranslateSelectQueryToDXL();
 
-	DXLNodeArray *query_output_dxlnode_array = query_to_dxl_translator->GetQueryOutputCols();
-	DXLNodeArray *cte_dxlnode_array = query_to_dxl_translator->GetCTEs();
+	CDXLNodeArray *query_output_dxlnode_array = query_to_dxl_translator->GetQueryOutputCols();
+	CDXLNodeArray *cte_dxlnode_array = query_to_dxl_translator->GetCTEs();
 	CUtils::AddRefAppend(m_cte_producers, cte_dxlnode_array);
 
 	if (1 != query_output_dxlnode_array->Size())
@@ -1869,11 +1869,11 @@ CTranslatorScalarToDXL::CreateScalarSubqueryFromSublink
 							);
 	CDXLNode *subquery_dxlnode = query_to_dxl_translator->TranslateSelectQueryToDXL();
 
-	DXLNodeArray *query_output_dxlnode_array = query_to_dxl_translator->GetQueryOutputCols();
+	CDXLNodeArray *query_output_dxlnode_array = query_to_dxl_translator->GetQueryOutputCols();
 
 	GPOS_ASSERT(1 == query_output_dxlnode_array->Size());
 
-	DXLNodeArray *cte_dxlnode_array = query_to_dxl_translator->GetCTEs();
+	CDXLNodeArray *cte_dxlnode_array = query_to_dxl_translator->GetCTEs();
 	CUtils::AddRefAppend(m_cte_producers, cte_dxlnode_array);
 	m_has_distributed_tables = m_has_distributed_tables || query_to_dxl_translator->HasDistributedTables();
 
@@ -2069,7 +2069,7 @@ CTranslatorScalarToDXL::CreateExistSubqueryFromSublink
 							);
 	CDXLNode *root_dxlnode = query_to_dxl_translator->TranslateSelectQueryToDXL();
 	
-	DXLNodeArray *cte_dxlnode_array = query_to_dxl_translator->GetCTEs();
+	CDXLNodeArray *cte_dxlnode_array = query_to_dxl_translator->GetCTEs();
 	CUtils::AddRefAppend(m_cte_producers, cte_dxlnode_array);
 	m_has_distributed_tables = m_has_distributed_tables || query_to_dxl_translator->HasDistributedTables();
 	
