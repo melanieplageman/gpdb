@@ -76,15 +76,15 @@ namespace gpdxl
 			// check if the given mdid array contains any of the polymorphic
 			// types (ANYELEMENT, ANYARRAY)
 			static
-			BOOL ContainsPolymorphicTypes(MdidPtrArray *mdid_array);
+			BOOL ContainsPolymorphicTypes(IMdIdArray *mdid_array);
 
 			// resolve polymorphic types in the given array of type ids, replacing
 			// them with the actual types obtained from the query
 			static
-			MdidPtrArray *ResolvePolymorphicTypes
+			IMdIdArray *ResolvePolymorphicTypes
 						(
 						IMemoryPool *mp,
-						MdidPtrArray *mdid_array,
+						IMdIdArray *mdid_array,
 						List *arg_types,
 						FuncExpr *func_expr
 						);
@@ -165,7 +165,7 @@ namespace gpdxl
 
 			// get column descriptors from a record type
 			static
-			DXLColumnDescrArray *GetColumnDescriptorsFromRecord
+			CDXLColDescrArray *GetColumnDescriptorsFromRecord
 						(
 						IMemoryPool *mp,
 						CIdGenerator *id_generator,
@@ -176,17 +176,17 @@ namespace gpdxl
 
 			// get column descriptors from a record type
 			static
-			DXLColumnDescrArray *GetColumnDescriptorsFromRecord
+			CDXLColDescrArray *GetColumnDescriptorsFromRecord
 						(
 						IMemoryPool *mp,
 						CIdGenerator *id_generator,
 						List *col_names,
-						MdidPtrArray *out_arg_types
+						IMdIdArray *out_arg_types
 						);
 
 			// get column descriptor from a base type
 			static
-			DXLColumnDescrArray *GetColumnDescriptorsFromBase
+			CDXLColDescrArray *GetColumnDescriptorsFromBase
 						(
 						IMemoryPool *mp,
 						CIdGenerator *id_generator,
@@ -197,7 +197,7 @@ namespace gpdxl
 
 			// get column descriptors from a composite type
 			static
-			DXLColumnDescrArray *GetColumnDescriptorsFromComposite
+			CDXLColDescrArray *GetColumnDescriptorsFromComposite
 						(
 						IMemoryPool *mp,
 						CMDAccessor *md_accessor,
@@ -207,7 +207,7 @@ namespace gpdxl
 
 			// expand a composite type into an array of IMDColumns
 			static
-			MDColumnPtrArray *ExpandCompositeType
+			CMDColumnArray *ExpandCompositeType
 						(
 						IMemoryPool *mp,
 						CMDAccessor *md_accessor,
@@ -237,7 +237,7 @@ namespace gpdxl
 					(
 					IMemoryPool *mp,
 					List *target_list,
-					MdidPtrArray *input_mdids,
+					IMdIdArray *input_mdids,
 					ULongPtrArray *input_nums,
 					BOOL *is_outer_ref,
 					CIdGenerator *colid_generator
@@ -246,7 +246,7 @@ namespace gpdxl
 			// construct an array of DXL column descriptors for a target list
 			// using the column ids in the given array
 			static
-			DXLColumnDescrArray *GetDXLColumnDescrArray(IMemoryPool *mp, List *target_list, ULongPtrArray *colids, BOOL keep_res_junked);
+			CDXLColDescrArray *GetDXLColumnDescrArray(IMemoryPool *mp, List *target_list, ULongPtrArray *colids, BOOL keep_res_junked);
 
 			// return the positions of the target list entries included in the output
 			static

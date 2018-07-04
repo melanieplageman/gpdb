@@ -219,7 +219,7 @@ class COptTasks
 
 		// load search strategy from given path
 		static
-		SearchStageArray *LoadSearchStrategy(IMemoryPool *mp, char *path);
+		CSearchStageArray *LoadSearchStrategy(IMemoryPool *mp, char *path);
 
 		// helper for converting wide character string to regular string
 		static
@@ -247,7 +247,7 @@ class COptTasks
 
 		// print warning messages for columns with missing statistics
 		static
-		void PrintMissingStatsWarning(IMemoryPool *mp, CMDAccessor *md_accessor, MdidPtrArray *col_stats, MdidHashSet *phsmdidRel);
+		void PrintMissingStatsWarning(IMemoryPool *mp, CMDAccessor *md_accessor, IMdIdArray *col_stats, MdidHashSet *phsmdidRel);
 
 	public:
 

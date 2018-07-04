@@ -234,7 +234,7 @@ namespace gpdxl
 
 			// histogram to array of dxl buckets
 			static
-			DXLBucketPtrArray *TransformHistogramToDXLBucketArray
+			CDXLBucketArray *TransformHistogramToDXLBucketArray
 								(
 								IMemoryPool *mp,
 								const IMDType *md_type,
@@ -243,7 +243,7 @@ namespace gpdxl
 
 			// transform stats from pg_stats form to optimizer's preferred form
 			static
-			DXLBucketPtrArray *TransformStatsToDXLBucketArray
+			CDXLBucketArray *TransformStatsToDXLBucketArray
 								(
 								IMemoryPool *mp,
 								OID att_type,
@@ -274,7 +274,7 @@ namespace gpdxl
 
 			// get the relation columns
 			static
-			MDColumnPtrArray *RetrieveRelColumns(IMemoryPool *mp, CMDAccessor *md_accessor, Relation rel, IMDRelation::Erelstoragetype rel_storage_type);
+			CMDColumnArray *RetrieveRelColumns(IMemoryPool *mp, CMDAccessor *md_accessor, Relation rel, IMDRelation::Erelstoragetype rel_storage_type);
 
 			// return the dxl representation of the column's default value
 			static
@@ -283,11 +283,11 @@ namespace gpdxl
 
 			// get the distribution columns
 			static
-			ULongPtrArray *RetrieveRelDistrbutionCols(IMemoryPool *mp, GpPolicy *gp_policy, MDColumnPtrArray *mdcol_array, ULONG size);
+			ULongPtrArray *RetrieveRelDistrbutionCols(IMemoryPool *mp, GpPolicy *gp_policy, CMDColumnArray *mdcol_array, ULONG size);
 
 			// construct a mapping GPDB attnos -> position in the column array
 			static
-			ULONG *ConstructAttnoMapping(IMemoryPool *mp, MDColumnPtrArray *mdcol_array, ULONG max_cols);
+			ULONG *ConstructAttnoMapping(IMemoryPool *mp, CMDColumnArray *mdcol_array, ULONG max_cols);
 
 			// check if index is supported
 			static
@@ -319,7 +319,7 @@ namespace gpdxl
 
 			// retrieve part constraint for relation
 			static
-			CMDPartConstraintGPDB *RetrievePartConstraintForRel(IMemoryPool *mp, CMDAccessor *md_accessor, OID rel_oid, MDColumnPtrArray *mdcol_array, BOOL has_index);
+			CMDPartConstraintGPDB *RetrievePartConstraintForRel(IMemoryPool *mp, CMDAccessor *md_accessor, OID rel_oid, CMDColumnArray *mdcol_array, BOOL has_index);
 
 			// retrieve part constraint from a GPDB node
 			static
@@ -327,7 +327,7 @@ namespace gpdxl
 				(
 				IMemoryPool *mp, 
 				CMDAccessor *md_accessor,
-				DXLColumnDescrArray *dxl_col_descr_array, 
+				CDXLColDescrArray *dxl_col_descr_array, 
 				Node *part_constraint,
 				ULongPtrArray *level_with_default_part_array,
 				BOOL is_unbounded
@@ -339,15 +339,15 @@ namespace gpdxl
 
 			// return the index info list defined on the given relation
 			static
-			MDIndexInfoPtrArray *RetrieveRelIndexInfo(IMemoryPool *mp, Relation rel);
+			CMDIndexInfoArray *RetrieveRelIndexInfo(IMemoryPool *mp, Relation rel);
 
 			// return index info list of indexes defined on a partitoned table
 			static
-			MDIndexInfoPtrArray *RetrieveRelIndexInfoForPartTable(IMemoryPool *mp, Relation root_rel);
+			CMDIndexInfoArray *RetrieveRelIndexInfoForPartTable(IMemoryPool *mp, Relation root_rel);
 
 			// return index info list of indexes defined on regular, external tables or leaf partitions
 			static
-			MDIndexInfoPtrArray *RetrieveRelIndexInfoForNonPartTable(IMemoryPool *mp, Relation rel);
+			CMDIndexInfoArray *RetrieveRelIndexInfoForNonPartTable(IMemoryPool *mp, Relation rel);
 
 			// retrieve an index over a partitioned table from the relcache
 			static
@@ -363,11 +363,11 @@ namespace gpdxl
 
 			// return the triggers defined on the given relation
 			static
-			MdidPtrArray *RetrieveRelTriggers(IMemoryPool *mp, Relation rel);
+			IMdIdArray *RetrieveRelTriggers(IMemoryPool *mp, Relation rel);
 
 			// return the check constraints defined on the relation with the given oid
 			static
-			MdidPtrArray *RetrieveRelCheckConstraints(IMemoryPool *mp, OID oid);
+			IMdIdArray *RetrieveRelCheckConstraints(IMemoryPool *mp, OID oid);
 
 			// does attribute number correspond to a transaction visibility attribute
 			static 
@@ -383,11 +383,11 @@ namespace gpdxl
 			
 			// retrieve the opfamilies mdids for the given scalar op
 			static
-			MdidPtrArray *RetrieveScOpOpFamilies(IMemoryPool *mp, IMDId *mdid_scalar_op);
+			IMdIdArray *RetrieveScOpOpFamilies(IMemoryPool *mp, IMDId *mdid_scalar_op);
 			
 			// retrieve the opfamilies mdids for the given index
 			static
-			MdidPtrArray *RetrieveIndexOpFamilies(IMemoryPool *mp, IMDId *mdid_index);
+			IMdIdArray *RetrieveIndexOpFamilies(IMemoryPool *mp, IMDId *mdid_index);
 
             // for non-leaf partition tables return the number of child partitions
             // else return 1
@@ -404,7 +404,7 @@ namespace gpdxl
                               CMDName *md_colname,
                               OID att_type,
                               AttrNumber attrnum,
-                              DXLBucketPtrArray *dxl_stats_bucket_array,
+                              CDXLBucketArray *dxl_stats_bucket_array,
                               CDouble rows
                               );
 		public:
@@ -418,7 +418,7 @@ namespace gpdxl
 
 			// add system columns (oid, tid, xmin, etc) in table descriptors
 			static
-			void AddSystemColumns(IMemoryPool *mp, MDColumnPtrArray *mdcol_array, Relation rel, BOOL is_ao_table);
+			void AddSystemColumns(IMemoryPool *mp, CMDColumnArray *mdcol_array, Relation rel, BOOL is_ao_table);
 
 			// retrieve an index from the relcache
 			static

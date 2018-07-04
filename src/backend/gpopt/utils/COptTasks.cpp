@@ -387,7 +387,7 @@ COptTasks::ConvertToDXLFromMDCast
 	CAutoMemoryPool amp(CAutoMemoryPool::ElcExc);
 	IMemoryPool *mp = amp.Pmp();
 
-	IMDCachePtrArray *mdcache_obj_array = GPOS_NEW(mp) IMDCachePtrArray(mp);
+	IMDCacheObjectArray *mdcache_obj_array = GPOS_NEW(mp) IMDCacheObjectArray(mp);
 
 	IMDId *cast = GPOS_NEW(mp) CMDIdCast(GPOS_NEW(mp) CMDIdGPDB(src_oid), GPOS_NEW(mp) CMDIdGPDB(dest_oid));
 
@@ -447,7 +447,7 @@ COptTasks::ConvertToDXLFromMDScalarCmp
 	CAutoMemoryPool amp(CAutoMemoryPool::ElcExc);
 	IMemoryPool *mp = amp.Pmp();
 
-	IMDCachePtrArray *mdcache_obj_array = GPOS_NEW(mp) IMDCachePtrArray(mp);
+	IMDCacheObjectArray *mdcache_obj_array = GPOS_NEW(mp) IMDCacheObjectArray(mp);
 
 	IMDId *scalar_cmp = GPOS_NEW(mp) CMDIdScCmp(GPOS_NEW(mp) CMDIdGPDB(left_oid), GPOS_NEW(mp) CMDIdGPDB(right_oid), CTranslatorRelcacheToDXL::ParseCmpType(cmpt));
 
@@ -598,8 +598,8 @@ COptTasks::ConvertToDXLFromQueryTask
 						0 /* query_level */
 						);
 		CDXLNode *query_dxl = query_to_dxl_translator->TranslateQueryToDXL();
-		DXLNodeArray *query_output_dxlnode_array = query_to_dxl_translator->GetQueryOutputCols();
-		DXLNodeArray *cte_dxlnode_array = query_to_dxl_translator->GetCTEs();
+		CDXLNodeArray *query_output_dxlnode_array = query_to_dxl_translator->GetQueryOutputCols();
+		CDXLNodeArray *cte_dxlnode_array = query_to_dxl_translator->GetCTEs();
 		GPOS_ASSERT(NULL != query_output_dxlnode_array);
 
 		GPOS_DELETE(colid_generator);
@@ -680,14 +680,14 @@ COptTasks::ConvertToPlanStmtFromDXL
 //		Load search strategy from given file
 //
 //---------------------------------------------------------------------------
-SearchStageArray *
+CSearchStageArray *
 COptTasks::LoadSearchStrategy
 	(
 	IMemoryPool *mp,
 	char *path
 	)
 {
-	SearchStageArray *search_strategy_arr = NULL;
+	CSearchStageArray *search_strategy_arr = NULL;
 	CParseHandlerDXL *dxl_parse_handler = NULL;
 
 	GPOS_TRY
@@ -976,14 +976,14 @@ COptTasks::OptimizeTask
 
 
 	// load search strategy
-	SearchStageArray *search_strategy_arr = LoadSearchStrategy(mp, optimizer_search_strategy_path);
+	CSearchStageArray *search_strategy_arr = LoadSearchStrategy(mp, optimizer_search_strategy_path);
 
 	CBitSet *trace_flags = NULL;
 	CBitSet *enabled_trace_flags = NULL;
 	CBitSet *disabled_trace_flags = NULL;
 	CDXLNode *plan_dxl = NULL;
 
-	MdidPtrArray *col_stats = NULL;
+	IMdIdArray *col_stats = NULL;
 	MdidHashSet *rel_stats = NULL;
 
 	GPOS_TRY
@@ -1032,8 +1032,8 @@ COptTasks::OptimizeTask
 					GPOS_NEW(mp) CConstExprEvaluatorDXL(mp, &mda, &expr_eval_proxy);
 
 			CDXLNode *query_dxl = query_to_dxl_translator->TranslateQueryToDXL();
-			DXLNodeArray *query_output_dxlnode_array = query_to_dxl_translator->GetQueryOutputCols();
-			DXLNodeArray *cte_dxlnode_array = query_to_dxl_translator->GetCTEs();
+			CDXLNodeArray *query_output_dxlnode_array = query_to_dxl_translator->GetQueryOutputCols();
+			CDXLNodeArray *cte_dxlnode_array = query_to_dxl_translator->GetCTEs();
 			GPOS_ASSERT(NULL != query_output_dxlnode_array);
 
 			BOOL is_master_only = !optimizer_enable_motions ||
@@ -1073,7 +1073,7 @@ COptTasks::OptimizeTask
 			}
 
 			CStatisticsConfig *stats_conf = optimizer_config->GetStatsConf();
-			col_stats = GPOS_NEW(mp) MdidPtrArray(mp);
+			col_stats = GPOS_NEW(mp) IMdIdArray(mp);
 			stats_conf->CollectMissingStatsColumns(col_stats);
 
 			rel_stats = GPOS_NEW(mp) MdidHashSet(mp);
@@ -1143,7 +1143,7 @@ COptTasks::PrintMissingStatsWarning
 	(
 	IMemoryPool *mp,
 	CMDAccessor *md_accessor,
-	MdidPtrArray *col_stats,
+	IMdIdArray *col_stats,
 	MdidHashSet *rel_stats
 	)
 {
@@ -1367,7 +1367,7 @@ COptTasks::ConvertToDXLFromMDObjsTask
 	AUTO_MEM_POOL(amp);
 	IMemoryPool *mp = amp.Pmp();
 
-	IMDCachePtrArray *mdcache_obj_array = GPOS_NEW(mp) IMDCachePtrArray(mp, 1024, 1024);
+	IMDCacheObjectArray *mdcache_obj_array = GPOS_NEW(mp) IMDCacheObjectArray(mp, 1024, 1024);
 
 	// relcache MD provider
 	CMDProviderRelcache *md_provider = GPOS_NEW(mp) CMDProviderRelcache(mp);
@@ -1442,7 +1442,7 @@ COptTasks::ConvertToDXLFromRelStatsTask
 	ICostModel *cost_model = GetCostModel(mp, gpdb::GetGPSegmentCount());
 	CAutoOptCtxt aoc(mp, md_accessor.Pmda(), NULL /*expr_evaluator*/, cost_model);
 
-	IMDCachePtrArray *mdcache_obj_array = GPOS_NEW(mp) IMDCachePtrArray(mp);
+	IMDCacheObjectArray *mdcache_obj_array = GPOS_NEW(mp) IMDCacheObjectArray(mp);
 
 	ListCell *lc = NULL;
 	ForEach (lc, relcache_ctxt->m_oid_list)

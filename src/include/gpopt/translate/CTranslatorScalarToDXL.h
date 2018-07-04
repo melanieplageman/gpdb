@@ -103,7 +103,7 @@ namespace gpdxl
 			HMUlCTEListEntry *m_cte_entries;
 
 			// list of CTE producers shared among the logical and scalar translators
-			DXLNodeArray *m_cte_producers;
+			CDXLNodeArray *m_cte_producers;
 
 			EdxlBoolExprType EdxlbooltypeFromGPDBBoolType(BoolExprType) const;
 
@@ -370,7 +370,7 @@ namespace gpdxl
 				ULONG query_level,
 				BOOL is_query_mode,
 				HMUlCTEListEntry *cte_entries,
-				DXLNodeArray *cte_dxlnode_array
+				CDXLNodeArray *cte_dxlnode_array
 				);
 
 			// set the caller type

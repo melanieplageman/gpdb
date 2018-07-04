@@ -185,7 +185,7 @@ CTranslatorDXLToPlStmt::GetPlannedStmtFromDXL
 
 	CDXLTranslateContext dxl_translate_ctxt(m_mp, false);
 
-	DXLTranslationContextArray *ctxt_translation_prev_siblings = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings = GPOS_NEW(m_mp) CDXLTranslationContextArray(m_mp);
 	Plan *plan = TranslateDXLOperatorToPlan(dxlnode, &dxl_translate_ctxt, ctxt_translation_prev_siblings);
 	ctxt_translation_prev_siblings->Release();
 
@@ -279,7 +279,7 @@ CTranslatorDXLToPlStmt::TranslateDXLOperatorToPlan
 	(
 	const CDXLNode *dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	GPOS_ASSERT(NULL != dxlnode);
@@ -425,7 +425,7 @@ CTranslatorDXLToPlStmt::TranslateDXLTblScan
 	(
 	const CDXLNode *tbl_scan_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	// translate table descriptor into a range table entry
@@ -587,7 +587,7 @@ CTranslatorDXLToPlStmt::TranslateDXLIndexScan
 	(
 	const CDXLNode *index_scan_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	// translate table descriptor into a range table entry
@@ -611,7 +611,7 @@ CTranslatorDXLToPlStmt::TranslateDXLIndexScan
 	CDXLPhysicalIndexScan *physical_idx_scan_dxlop,
 	CDXLTranslateContext *output_context,
 	BOOL is_index_only_scan,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	// translation context for column mappings in the base relation
@@ -727,7 +727,7 @@ CTranslatorDXLToPlStmt::TranslateDXLIndexFilter
 	CDXLNode *filter_dxlnode,
 	CDXLTranslateContext *output_context,
 	CDXLTranslateContextBaseTable *base_table_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	List *quals_list = NIL;
@@ -765,7 +765,7 @@ CTranslatorDXLToPlStmt::TranslateIndexConditions
 	const IMDRelation *md_rel,
 	CDXLTranslateContext *output_context,
 	CDXLTranslateContextBaseTable *base_table_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings,
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings,
 	List **index_cond,
 	List **index_orig_cond,
 	List **index_strategy_list,
@@ -900,7 +900,7 @@ CTranslatorDXLToPlStmt::TranslateDXLAssertConstraints
 	(
 	CDXLNode *assert_contraint_list_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *child_contexts
+	CDXLTranslationContextArray *child_contexts
 	)
 {
 	List *quals_list = NIL;
@@ -932,7 +932,7 @@ CTranslatorDXLToPlStmt::TranslateDXLLimit
 	(
 	const CDXLNode *limit_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	// create limit node
@@ -964,7 +964,7 @@ CTranslatorDXLToPlStmt::TranslateDXLLimit
 	// NOTE: Limit node has only the left plan while the right plan is left empty
 	Plan *left_plan = TranslateDXLOperatorToPlan(child_plan_dxlnode, &left_dxl_translate_ctxt, ctxt_translation_prev_siblings);
 
-	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
+	CDXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) CDXLTranslationContextArray(m_mp);
 	child_contexts->Append(&left_dxl_translate_ctxt);
 
 	plan->targetlist = TranslateDXLProjList
@@ -1013,7 +1013,7 @@ CTranslatorDXLToPlStmt::TranslateDXLHashJoin
 	(
 	const CDXLNode *hj_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	GPOS_ASSERT(hj_dxlnode->GetOperator()->GetDXLOperator() == EdxlopPhysicalHashJoin);
@@ -1056,12 +1056,12 @@ CTranslatorDXLToPlStmt::TranslateDXLHashJoin
 	Plan *left_plan = TranslateDXLOperatorToPlan(left_tree_dxlnode, &left_dxl_translate_ctxt, ctxt_translation_prev_siblings);
 
 	// the right side of the join is the one where the hash phase is done
-	DXLTranslationContextArray *translation_context_arr_with_siblings = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
+	CDXLTranslationContextArray *translation_context_arr_with_siblings = GPOS_NEW(m_mp) CDXLTranslationContextArray(m_mp);
 	translation_context_arr_with_siblings->Append(&left_dxl_translate_ctxt);
 	translation_context_arr_with_siblings->AppendArray(ctxt_translation_prev_siblings);
 	Plan *right_plan = (Plan*) TranslateDXLHash(right_tree_dxlnode, &right_dxl_translate_ctxt, translation_context_arr_with_siblings);
 
-	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
+	CDXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) CDXLTranslationContextArray(m_mp);
 	child_contexts->Append(const_cast<CDXLTranslateContext*>(&left_dxl_translate_ctxt));
 	child_contexts->Append(const_cast<CDXLTranslateContext*>(&right_dxl_translate_ctxt));
 	// translate proj list and filter
@@ -1194,7 +1194,7 @@ CTranslatorDXLToPlStmt::TranslateDXLTvf
 	(
 	const CDXLNode *tvf_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	// translation context for column mappings
@@ -1451,7 +1451,7 @@ CTranslatorDXLToPlStmt::TranslateDXLNLJoin
 	(
 	const CDXLNode *nl_join_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	GPOS_ASSERT(nl_join_dxlnode->GetOperator()->GetDXLOperator() == EdxlopPhysicalNLJoin);
@@ -1494,7 +1494,7 @@ CTranslatorDXLToPlStmt::TranslateDXLNLJoin
 	// because inner child depends on variables coming from outer child
 	join->prefetch_inner = !dxl_nlj->IsIndexNLJ();
 
-	DXLTranslationContextArray *translation_context_arr_with_siblings = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
+	CDXLTranslationContextArray *translation_context_arr_with_siblings = GPOS_NEW(m_mp) CDXLTranslationContextArray(m_mp);
 	Plan *left_plan = NULL;
 	Plan *right_plan = NULL;
 	if (dxl_nlj->IsIndexNLJ())
@@ -1521,7 +1521,7 @@ CTranslatorDXLToPlStmt::TranslateDXLNLJoin
 		// translate left child after right child translation is complete
 		left_plan = TranslateDXLOperatorToPlan(left_tree_dxlnode, &left_dxl_translate_ctxt, translation_context_arr_with_siblings);
 	}
-	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
+	CDXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) CDXLTranslationContextArray(m_mp);
 	child_contexts->Append(&left_dxl_translate_ctxt);
 	child_contexts->Append(&right_dxl_translate_ctxt);
 
@@ -1571,7 +1571,7 @@ CTranslatorDXLToPlStmt::TranslateDXLMergeJoin
 	(
 	const CDXLNode *merge_join_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	GPOS_ASSERT(merge_join_dxlnode->GetOperator()->GetDXLOperator() == EdxlopPhysicalMergeJoin);
@@ -1613,13 +1613,13 @@ CTranslatorDXLToPlStmt::TranslateDXLMergeJoin
 
 	Plan *left_plan = TranslateDXLOperatorToPlan(left_tree_dxlnode, &left_dxl_translate_ctxt, ctxt_translation_prev_siblings);
 
-	DXLTranslationContextArray *translation_context_arr_with_siblings = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
+	CDXLTranslationContextArray *translation_context_arr_with_siblings = GPOS_NEW(m_mp) CDXLTranslationContextArray(m_mp);
 	translation_context_arr_with_siblings->Append(&left_dxl_translate_ctxt);
 	translation_context_arr_with_siblings->AppendArray(ctxt_translation_prev_siblings);
 
 	Plan *right_plan = TranslateDXLOperatorToPlan(right_tree_dxlnode, &right_dxl_translate_ctxt, translation_context_arr_with_siblings);
 
-	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
+	CDXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) CDXLTranslationContextArray(m_mp);
 	child_contexts->Append(const_cast<CDXLTranslateContext*>(&left_dxl_translate_ctxt));
 	child_contexts->Append(const_cast<CDXLTranslateContext*>(&right_dxl_translate_ctxt));
 
@@ -1696,7 +1696,7 @@ CTranslatorDXLToPlStmt::TranslateDXLHash
 	(
 	const CDXLNode *dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	Hash *hash = MakeNode(Hash);
@@ -1748,7 +1748,7 @@ CTranslatorDXLToPlStmt::TranslateDXLDuplicateSensitiveMotion
 	(
 	const CDXLNode *motion_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	CDXLPhysicalMotion *motion_dxlop = CDXLPhysicalMotion::Cast(motion_dxlnode->GetOperator());
@@ -1773,7 +1773,7 @@ CTranslatorDXLToPlStmt::TranslateDXLMotion
 	(
 	const CDXLNode *motion_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	CDXLPhysicalMotion *motion_dxlop = CDXLPhysicalMotion::Cast(motion_dxlnode->GetOperator());
@@ -1810,7 +1810,7 @@ CTranslatorDXLToPlStmt::TranslateDXLMotion
 
 	Plan *child_plan = TranslateDXLOperatorToPlan(child_dxlnode, &child_context, ctxt_translation_prev_siblings);
 
-	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
+	CDXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) CDXLTranslationContextArray(m_mp);
 	child_contexts->Append(const_cast<CDXLTranslateContext*>(&child_context));
 
 	// translate proj list and filter
@@ -1995,7 +1995,7 @@ CTranslatorDXLToPlStmt::TranslateDXLRedistributeMotionToResultHashFilters
 	(
 	const CDXLNode *motion_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	// create motion node
@@ -2024,7 +2024,7 @@ CTranslatorDXLToPlStmt::TranslateDXLRedistributeMotionToResultHashFilters
 
 	Plan *child_plan = TranslateDXLOperatorToPlan(child_dxlnode, &child_context, ctxt_translation_prev_siblings);
 
-	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
+	CDXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) CDXLTranslationContextArray(m_mp);
 	child_contexts->Append(const_cast<CDXLTranslateContext*>(&child_context));
 
 	// translate proj list and filter
@@ -2120,7 +2120,7 @@ CTranslatorDXLToPlStmt::TranslateDXLAgg
 	(
 	const CDXLNode *agg_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	// create aggregate plan node
@@ -2151,7 +2151,7 @@ CTranslatorDXLToPlStmt::TranslateDXLAgg
 
 	Plan *child_plan = TranslateDXLOperatorToPlan(child_dxlnode, &child_context, ctxt_translation_prev_siblings);
 
-	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
+	CDXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) CDXLTranslationContextArray(m_mp);
 	child_contexts->Append(const_cast<CDXLTranslateContext*>(&child_context));
 
 	// translate proj list and filter
@@ -2239,7 +2239,7 @@ CTranslatorDXLToPlStmt::TranslateDXLWindow
 	(
 	const CDXLNode *window_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	// create a WindowAgg plan node
@@ -2268,7 +2268,7 @@ CTranslatorDXLToPlStmt::TranslateDXLWindow
 	CDXLTranslateContext child_context(m_mp, true, output_context->GetColIdToParamIdMap());
 	Plan *child_plan = TranslateDXLOperatorToPlan(child_dxlnode, &child_context, ctxt_translation_prev_siblings);
 
-	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
+	CDXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) CDXLTranslationContextArray(m_mp);
 	child_contexts->Append(const_cast<CDXLTranslateContext*>(&child_context));
 
 	// translate proj list and filter
@@ -2394,7 +2394,7 @@ CTranslatorDXLToPlStmt::TranslateDXLWindow
 			}
 
 			// translate the CDXLNodes representing the leading and trailing edge
-			DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
+			CDXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) CDXLTranslationContextArray(m_mp);
 			child_contexts->Append(&child_context);
 
 			CMappingColIdVarPlStmt colid_var_mapping = CMappingColIdVarPlStmt
@@ -2483,7 +2483,7 @@ CTranslatorDXLToPlStmt::TranslateDXLSort
 	(
 	const CDXLNode *sort_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	// create sort plan node
@@ -2513,7 +2513,7 @@ CTranslatorDXLToPlStmt::TranslateDXLSort
 
 	Plan *child_plan = TranslateDXLOperatorToPlan(child_dxlnode, &child_context, ctxt_translation_prev_siblings);
 
-	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
+	CDXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) CDXLTranslationContextArray(m_mp);
 	child_contexts->Append(const_cast<CDXLTranslateContext*>(&child_context));
 
 	// translate proj list and filter
@@ -2568,7 +2568,7 @@ CTranslatorDXLToPlStmt::TranslateDXLSubQueryScan
 	(
 	const CDXLNode *subquery_scan_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	// create sort plan node
@@ -2675,7 +2675,7 @@ CTranslatorDXLToPlStmt::TranslateDXLResult
 	(
 	const CDXLNode *result_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	// create result plan node
@@ -2719,7 +2719,7 @@ CTranslatorDXLToPlStmt::TranslateDXLResult
 
 	List *quals_list = NULL;
 
-	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
+	CDXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) CDXLTranslationContextArray(m_mp);
 	child_contexts->Append(const_cast<CDXLTranslateContext*>(&child_context));
 
 	// translate proj list and filter
@@ -2768,7 +2768,7 @@ CTranslatorDXLToPlStmt::TranslateDXLPartSelector
 	(
 	const CDXLNode *partition_selector_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	PartitionSelector *partition_selector = MakeNode(PartitionSelector);
@@ -2796,7 +2796,7 @@ CTranslatorDXLToPlStmt::TranslateDXLPartSelector
 	plan->nMotionNodes = 0;
 
 	CDXLNode *child_dxlnode = NULL;
-	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
+	CDXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) CDXLTranslationContextArray(m_mp);
 
 	CDXLTranslateContext child_context(m_mp, false, output_context->GetColIdToParamIdMap());
 
@@ -2888,7 +2888,7 @@ CTranslatorDXLToPlStmt::TranslateDXLFilterList
 	(
 	const CDXLNode *filter_list_dxlnode,
 	const CDXLTranslateContextBaseTable *base_table_context,
-	DXLTranslationContextArray *child_contexts,
+	CDXLTranslationContextArray *child_contexts,
 	CDXLTranslateContext *output_context
 	)
 {
@@ -2928,7 +2928,7 @@ CTranslatorDXLToPlStmt::TranslateDXLAppend
 	(
 	const CDXLNode *append_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	// create append plan node
@@ -3006,7 +3006,7 @@ CTranslatorDXLToPlStmt::TranslateDXLAppend
 		plan->targetlist = gpdb::LAppend(plan->targetlist, target_entry);
 	}
 
-	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
+	CDXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) CDXLTranslationContextArray(m_mp);
 	child_contexts->Append(const_cast<CDXLTranslateContext*>(output_context));
 
 	// translate filter
@@ -3039,7 +3039,7 @@ CTranslatorDXLToPlStmt::TranslateDXLMaterialize
 	(
 	const CDXLNode *materialize_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	// create materialize plan node
@@ -3072,7 +3072,7 @@ CTranslatorDXLToPlStmt::TranslateDXLMaterialize
 
 	Plan *child_plan = TranslateDXLOperatorToPlan(child_dxlnode, &child_context, ctxt_translation_prev_siblings);
 
-	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
+	CDXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) CDXLTranslationContextArray(m_mp);
 	child_contexts->Append(const_cast<CDXLTranslateContext*>(&child_context));
 
 	// translate proj list and filter
@@ -3125,7 +3125,7 @@ CTranslatorDXLToPlStmt::TranslateDXLCTEProducerToSharedScan
 	(
 	const CDXLNode *cte_producer_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	CDXLPhysicalCTEProducer *cte_prod_dxlop = CDXLPhysicalCTEProducer::Cast(cte_producer_dxlnode->GetOperator());
@@ -3158,7 +3158,7 @@ CTranslatorDXLToPlStmt::TranslateDXLCTEProducerToSharedScan
 	Plan *child_plan = TranslateDXLOperatorToPlan(child_dxlnode, &child_context, ctxt_translation_prev_siblings);
 	GPOS_ASSERT(NULL != child_plan && "child plan cannot be NULL");
 
-	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
+	CDXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) CDXLTranslationContextArray(m_mp);
 	child_contexts->Append(&child_context);
 	// translate proj list
 	plan->targetlist = TranslateDXLProjList
@@ -3346,7 +3346,7 @@ CTranslatorDXLToPlStmt::TranslateDXLCTEConsumerToSharedScan
 	(
 	const CDXLNode *cte_consumer_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	CDXLPhysicalCTEConsumer *cte_consumer_dxlop = CDXLPhysicalCTEConsumer::Cast(cte_consumer_dxlnode->GetOperator());
@@ -3420,7 +3420,7 @@ CTranslatorDXLToPlStmt::TranslateDXLSequence
 	(
 	const CDXLNode *sequence_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	// create append plan node
@@ -3454,7 +3454,7 @@ CTranslatorDXLToPlStmt::TranslateDXLSequence
 
 	CDXLNode *project_list_dxlnode = (*sequence_dxlnode)[0];
 
-	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
+	CDXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) CDXLTranslationContextArray(m_mp);
 	child_contexts->Append(const_cast<CDXLTranslateContext*>(&child_context));
 
 	// translate proj list
@@ -3500,7 +3500,7 @@ CTranslatorDXLToPlStmt::TranslateDXLDynTblScan
 	(
 	const CDXLNode *dyn_tbl_scan_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	// translate table descriptor into a range table entry
@@ -3574,7 +3574,7 @@ CTranslatorDXLToPlStmt::TranslateDXLDynIdxScan
 	(
 	const CDXLNode *dyn_idx_scan_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	CDXLPhysicalDynamicIndexScan *dyn_index_scan_dxlop = CDXLPhysicalDynamicIndexScan::Cast(dyn_idx_scan_dxlnode->GetOperator());
@@ -3687,7 +3687,7 @@ CTranslatorDXLToPlStmt::TranslateDXLDml
 	(
 	const CDXLNode *dml_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	// translate table descriptor into a range table entry
@@ -3757,7 +3757,7 @@ CTranslatorDXLToPlStmt::TranslateDXLDml
 
 	Plan *child_plan = TranslateDXLOperatorToPlan(child_dxlnode, &child_context, ctxt_translation_prev_siblings);
 
-	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
+	CDXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) CDXLTranslationContextArray(m_mp);
 	child_contexts->Append(&child_context);
 
 	// translate proj list
@@ -3852,14 +3852,14 @@ CTranslatorDXLToPlStmt::TranslateDXLDirectDispatchInfo
 		return NIL;
 	}
 	
-	DXLDatumArray *dxl_datum_array = (*dispatch_identifier_datum_arrays)[0];
+	CDXLDatumArray *dxl_datum_array = (*dispatch_identifier_datum_arrays)[0];
 	GPOS_ASSERT(0 < dxl_datum_array->Size());
 		
 	ULONG hash_code = GetDXLDatumGPDBHash(dxl_datum_array);
 	const ULONG length = dispatch_identifier_datum_arrays->Size();
 	for (ULONG ul = 0; ul < length; ul++)
 	{
-		DXLDatumArray *dispatch_identifier_datum_array = (*dispatch_identifier_datum_arrays)[ul];
+		CDXLDatumArray *dispatch_identifier_datum_array = (*dispatch_identifier_datum_arrays)[ul];
 		GPOS_ASSERT(0 < dispatch_identifier_datum_array->Size());
 		ULONG hash_code_new = GetDXLDatumGPDBHash(dispatch_identifier_datum_array);
 		
@@ -3885,7 +3885,7 @@ CTranslatorDXLToPlStmt::TranslateDXLDirectDispatchInfo
 ULONG
 CTranslatorDXLToPlStmt::GetDXLDatumGPDBHash
 	(
-	DXLDatumArray *dxl_datum_array
+	CDXLDatumArray *dxl_datum_array
 	)
 {
 	List *consts_list = NIL;
@@ -3920,7 +3920,7 @@ CTranslatorDXLToPlStmt::TranslateDXLSplit
 	(
 	const CDXLNode *split_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	CDXLPhysicalSplit *phy_split_dxlop = CDXLPhysicalSplit::Cast(split_dxlnode->GetOperator());
@@ -3936,7 +3936,7 @@ CTranslatorDXLToPlStmt::TranslateDXLSplit
 
 	Plan *child_plan = TranslateDXLOperatorToPlan(child_dxlnode, &child_context, ctxt_translation_prev_siblings);
 
-	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
+	CDXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) CDXLTranslationContextArray(m_mp);
 	child_contexts->Append(&child_context);
 
 	// translate proj list and filter
@@ -4014,7 +4014,7 @@ CTranslatorDXLToPlStmt::TranslateDXLAssert
 	(
 	const CDXLNode *assert_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	// create assert plan node
@@ -4057,7 +4057,7 @@ CTranslatorDXLToPlStmt::TranslateDXLAssert
 
 	CDXLNode *project_list_dxlnode = (*assert_dxlnode)[CDXLPhysicalAssert::EdxlassertIndexProjList];
 
-	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
+	CDXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) CDXLTranslationContextArray(m_mp);
 	child_contexts->Append(const_cast<CDXLTranslateContext*>(&child_context));
 
 	// translate proj list
@@ -4099,7 +4099,7 @@ CTranslatorDXLToPlStmt::TranslateDXLRowTrigger
 	(
 	const CDXLNode *row_trigger_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	CDXLPhysicalRowTrigger *phy_row_trigger_dxlop = CDXLPhysicalRowTrigger::Cast(row_trigger_dxlnode->GetOperator());
@@ -4115,7 +4115,7 @@ CTranslatorDXLToPlStmt::TranslateDXLRowTrigger
 
 	Plan *child_plan = TranslateDXLOperatorToPlan(child_dxlnode, &child_context, ctxt_translation_prev_siblings);
 
-	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
+	CDXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) CDXLTranslationContextArray(m_mp);
 	child_contexts->Append(&child_context);
 
 	// translate proj list and filter
@@ -4303,7 +4303,7 @@ CTranslatorDXLToPlStmt::TranslateDXLProjList
 	(
 	const CDXLNode *project_list_dxlnode,
 	const CDXLTranslateContextBaseTable *base_table_context,
-	DXLTranslationContextArray *child_contexts,
+	CDXLTranslationContextArray *child_contexts,
 	CDXLTranslateContext *output_context
 	)
 {
@@ -4552,7 +4552,7 @@ CTranslatorDXLToPlStmt::TranslateDXLFilterToQual
 	(
 	const CDXLNode * filter_dxlnode,
 	const CDXLTranslateContextBaseTable *base_table_context,
-	DXLTranslationContextArray *child_contexts,
+	CDXLTranslationContextArray *child_contexts,
 	CDXLTranslateContext *output_context
 	)
 {
@@ -4583,7 +4583,7 @@ CTranslatorDXLToPlStmt::TranslateDXLScCondToQual
 	(
 	const CDXLNode *condition_dxlnode,
 	const CDXLTranslateContextBaseTable *base_table_context,
-	DXLTranslationContextArray *child_contexts,
+	CDXLTranslationContextArray *child_contexts,
 	CDXLTranslateContext *output_context
 	)
 {
@@ -4650,7 +4650,7 @@ CTranslatorDXLToPlStmt::TranslateProjListAndFilter
 	const CDXLNode *project_list_dxlnode,
 	const CDXLNode *filter_dxlnode,
 	const CDXLTranslateContextBaseTable *base_table_context,
-	DXLTranslationContextArray *child_contexts,
+	CDXLTranslationContextArray *child_contexts,
 	List **targetlist_out,
 	List **qual_out,
 	CDXLTranslateContext *output_context
@@ -4701,7 +4701,7 @@ CTranslatorDXLToPlStmt::TranslateHashExprList
 	List *hash_expr_list = NIL;
 	List *hash_expr_types_list = NIL;
 
-	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
+	CDXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) CDXLTranslationContextArray(m_mp);
 	child_contexts->Append(child_context);
 
 	const ULONG arity = hash_expr_list_dxlnode->Arity();
@@ -4979,7 +4979,7 @@ CTranslatorDXLToPlStmt::TranslateDXLCtas
 	(
 	const CDXLNode *ctas_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	CDXLPhysicalCTAS *phy_ctas_dxlop = CDXLPhysicalCTAS::Cast(ctas_dxlnode->GetOperator());
@@ -4993,7 +4993,7 @@ CTranslatorDXLToPlStmt::TranslateDXLCtas
 	Plan *plan = TranslateDXLOperatorToPlan(child_dxlnode, &child_context, ctxt_translation_prev_siblings);
 	
 	// fix target list to match the required column names
-	DXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) DXLTranslationContextArray(m_mp);
+	CDXLTranslationContextArray *child_contexts = GPOS_NEW(m_mp) CDXLTranslationContextArray(m_mp);
 	child_contexts->Append(&child_context);
 	
 	List *target_list = TranslateDXLProjList
@@ -5079,7 +5079,7 @@ CTranslatorDXLToPlStmt::TranslateDXLPhyCtasToIntoClause
 	into_clause->options = TranslateDXLCtasStorageOptions(dxl_ctas_storage_option->GetDXLCtasOptionArray());
 	
 	// get column names
-	DXLColumnDescrArray *dxl_col_descr_array = phy_ctas_dxlop->GetDXLColumnDescrArray();
+	CDXLColDescrArray *dxl_col_descr_array = phy_ctas_dxlop->GetDXLColumnDescrArray();
 	const ULONG num_of_cols = dxl_col_descr_array->Size();
 	into_clause->colNames = NIL;
 	for (ULONG ul = 0; ul < num_of_cols; ++ul)
@@ -5159,7 +5159,7 @@ CTranslatorDXLToPlStmt::TranslateDXLPhyCtasToDistrPolicy
 List *
 CTranslatorDXLToPlStmt::TranslateDXLCtasStorageOptions
 	(
-	CDXLCtasStorageOptions::DXLCtasOptionArray *ctas_storage_options
+	CDXLCtasStorageOptions::CDXLCtasOptionArray *ctas_storage_options
 	)
 {
 	if (NULL == ctas_storage_options)
@@ -5212,7 +5212,7 @@ CTranslatorDXLToPlStmt::TranslateDXLBitmapTblScan
 	(
 	const CDXLNode *bitmapscan_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	ULONG part_index_id = INVALID_PART_INDEX;
@@ -5331,7 +5331,7 @@ CTranslatorDXLToPlStmt::TranslateDXLBitmapAccessPath
 	const IMDRelation *md_rel,
 	const CDXLTableDescr *table_descr,
 	CDXLTranslateContextBaseTable *base_table_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings,
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings,
 	BitmapTableScan *bitmap_tbl_scan
 	)
 {
@@ -5379,7 +5379,7 @@ CTranslatorDXLToPlStmt::TranslateDXLBitmapBoolOp
 	const IMDRelation *md_rel,
 	const CDXLTableDescr *table_descr,
 	CDXLTranslateContextBaseTable *base_table_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings,
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings,
 	BitmapTableScan *bitmap_tbl_scan
 	)
 {
@@ -5453,7 +5453,7 @@ CTranslatorDXLToPlStmt::TranslateDXLBitmapIndexProbe
 	const IMDRelation *md_rel,
 	const CDXLTableDescr *table_descr,
 	CDXLTranslateContextBaseTable *base_table_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings,
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings,
 	BitmapTableScan *bitmap_tbl_scan
 	)
 {
@@ -5537,7 +5537,7 @@ CTranslatorDXLToPlStmt::TranslateDXLValueScan
 	(
 	const CDXLNode *value_scan_dxlnode,
 	CDXLTranslateContext *output_context,
-	DXLTranslationContextArray *ctxt_translation_prev_siblings
+	CDXLTranslationContextArray *ctxt_translation_prev_siblings
 	)
 {
 	// translation context for column mappings
