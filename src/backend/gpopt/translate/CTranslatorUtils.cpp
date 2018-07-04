@@ -2509,14 +2509,14 @@ CTranslatorUtils::MarkOuterRefs
 	ULONG *colids,  // array of column ids to be checked
 	BOOL *is_outer_ref,  // array of outer ref indicators, initially all set to true by caller 
 	ULONG num_columns,  // number of columns
-	CDXLNode *dxl_node
+	CDXLNode *dxlnode
 	)
 {
 	GPOS_ASSERT(NULL != colids);
 	GPOS_ASSERT(NULL != is_outer_ref);
-	GPOS_ASSERT(NULL != dxl_node);
+	GPOS_ASSERT(NULL != dxlnode);
 	
-	const CDXLOperator *dxl_op = dxl_node->GetOperator();
+	const CDXLOperator *dxl_op = dxlnode->GetOperator();
 	for (ULONG ulCol = 0; ulCol < num_columns; ulCol++)
 	{
 		ULONG colid = colids[ulCol];
@@ -2528,10 +2528,10 @@ CTranslatorUtils::MarkOuterRefs
 	}
 
 	// recursively process children
-	const ULONG arity = dxl_node->Arity();
+	const ULONG arity = dxlnode->Arity();
 	for (ULONG ul = 0; ul < arity; ul++)
 	{
-		MarkOuterRefs(colids, is_outer_ref, num_columns, (*dxl_node)[ul]);
+		MarkOuterRefs(colids, is_outer_ref, num_columns, (*dxlnode)[ul]);
 	}
 }
 

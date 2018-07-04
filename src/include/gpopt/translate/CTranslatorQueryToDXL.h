@@ -184,7 +184,7 @@ namespace gpdxl
 				List *output_target_list,
 				ULongPtrArray *output_colids,
 				ULongPtrArray2D *input_colids,
-				DXLNodeArray *children_dxl_nodes,
+				DXLNodeArray *children_dxlnodes,
 				BOOL is_cast_across_input,
 				BOOL keep_res_junked
 				)
@@ -195,7 +195,7 @@ namespace gpdxl
 			// translate a window operator
 			CDXLNode *TranslateWindowToDXL
 				(
-				CDXLNode *dxl_node_child,
+				CDXLNode *child_dxlnode,
 				List *target_list,
 				List *window_clause,
 				List *sort_clause,
@@ -207,7 +207,7 @@ namespace gpdxl
 			DXLWindowSpecArray *TranslateWindowSpecToDXL(List *window_clause, IntToUlongMap *sort_col_attno_to_colid_mapping, CDXLNode *project_list_dxlnode_node);
 
 			// update window spec positions of LEAD/LAG functions
-			void UpdateLeadLagWinSpecPos(CDXLNode *project_list_dxlnode, DXLWindowSpecArray *window_specs_dxl_node) const;
+			void UpdateLeadLagWinSpecPos(CDXLNode *project_list_dxlnode, DXLWindowSpecArray *window_specs_dxlnode) const;
 
 			// manufucture window frame for lead/lag functions
 			CDXLWindowFrame *CreateWindowFramForLeadLag(BOOL is_lead_func, CDXLNode *dxl_offset) const;
@@ -232,7 +232,7 @@ namespace gpdxl
 				CBitSet *bitset,
 				BOOL has_aggs,
 				BOOL has_grouping_sets,				// is this GB part of a GS query
-				CDXLNode *dxl_node_child,
+				CDXLNode *child_dxlnode,
 				IntToUlongMap *phmiulSortGrpColsColId,  // mapping sortgroupref -> ColId
 				IntToUlongMap *child_attno_colid_mapping,				// mapping attno->colid in child node
 				IntToUlongMap *output_attno_to_colid_mapping			// mapping attno -> ColId for output columns
@@ -270,7 +270,7 @@ namespace gpdxl
 			CDXLNode *CreateDXLProjectNullsForGroupingSets
 				(
 				List *target_list, 
-				CDXLNode *dxl_node_child, 
+				CDXLNode *child_dxlnode, 
 				CBitSet *bitset, 
 				IntToUlongMap *sort_grouping_col_mapping, 
 				IntToUlongMap *output_attno_to_colid_mapping, 
@@ -282,7 +282,7 @@ namespace gpdxl
 			CDXLNode *CreateDXLProjectGroupingFuncs
 				(
 				List *target_list,
-				CDXLNode *dxl_node_child,
+				CDXLNode *child_dxlnode,
 				CBitSet *bitset,
 				IntToUlongMap *output_attno_to_colid_mapping,
 				UlongToUlongMap *grpcol_index_to_colid_mapping,
@@ -318,7 +318,7 @@ namespace gpdxl
 			CDXLNode *TranslateTargetListToDXLProject
 				(
 				List *target_list,
-				CDXLNode *dxl_node_child,
+				CDXLNode *child_dxlnode,
 				IntToUlongMap *	group_col_to_colid_mapping,
 				IntToUlongMap *output_attno_to_colid_mapping,
 				List *group_clause,
@@ -445,7 +445,7 @@ namespace gpdxl
 			void ConstructCTEProducerList(List *cte_list, ULONG query_level);
 			
 			// construct a stack of CTE anchors for each CTE producer in the given array
-			void ConstructCTEAnchors(DXLNodeArray *dxl_nodes, CDXLNode **dxl_cte_anchor_top, CDXLNode **dxl_cte_anchor_bottom);
+			void ConstructCTEAnchors(DXLNodeArray *dxlnodes, CDXLNode **dxl_cte_anchor_top, CDXLNode **dxl_cte_anchor_bottom);
 			
 			// generate an array of new column ids of the given size
 			ULongPtrArray *GenerateColIds(IMemoryPool *mp, ULONG size) const;

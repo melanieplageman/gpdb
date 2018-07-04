@@ -2067,14 +2067,14 @@ CTranslatorScalarToDXL::CreateExistSubqueryFromSublink
 							m_query_level + 1,
 							m_cte_entries
 							);
-	CDXLNode *root_dxl_node = query_to_dxl_translator->TranslateSelectQueryToDXL();
+	CDXLNode *root_dxlnode = query_to_dxl_translator->TranslateSelectQueryToDXL();
 	
 	DXLNodeArray *cte_dxlnode_array = query_to_dxl_translator->GetCTEs();
 	CUtils::AddRefAppend(m_cte_producers, cte_dxlnode_array);
 	m_has_distributed_tables = m_has_distributed_tables || query_to_dxl_translator->HasDistributedTables();
 	
 	CDXLNode *dxlnode = GPOS_NEW(m_mp) CDXLNode(m_mp, GPOS_NEW(m_mp) CDXLScalarSubqueryExists(m_mp));
-	dxlnode->AddChild(root_dxl_node);
+	dxlnode->AddChild(root_dxlnode);
 
 	return dxlnode;
 }
