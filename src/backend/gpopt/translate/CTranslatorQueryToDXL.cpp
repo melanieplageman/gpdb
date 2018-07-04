@@ -2142,7 +2142,7 @@ CTranslatorQueryToDXL::TranslateGroupingSets
 	// while processing the grouping clause
 	UlongToUlongMap *grpcol_index_to_colid_mapping = GPOS_NEW(m_mp) UlongToUlongMap(m_mp);
 	CBitSet *unique_grp_cols_bitset = GPOS_NEW(m_mp) CBitSet(m_mp, num_of_cols);
-	BitSetArray *bitset_array = CTranslatorUtils::GetColumnAttnosForGroupBy(m_mp, group_clause, num_of_cols, grpcol_index_to_colid_mapping, unique_grp_cols_bitset);
+	CBitSetArray *bitset_array = CTranslatorUtils::GetColumnAttnosForGroupBy(m_mp, group_clause, num_of_cols, grpcol_index_to_colid_mapping, unique_grp_cols_bitset);
 
 	const ULONG num_of_grouping_sets = bitset_array->Size();
 
@@ -2220,7 +2220,7 @@ CTranslatorQueryToDXL::CreateDXLUnionAllForGroupingSets
 	List *target_list,
 	List *group_clause,
 	BOOL has_aggs,
-	BitSetArray *bitset_array,
+	CBitSetArray *bitset_array,
 	IntToUlongMap *sort_grpref_to_colid_mapping,
 	IntToUlongMap *output_attno_to_colid_mapping,
 	UlongToUlongMap *grpcol_index_to_colid_mapping		// mapping pos->unique grouping columns for grouping func arguments

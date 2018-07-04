@@ -40,7 +40,7 @@ namespace gpopt
 	class CMDAccessor;
 
 	// dynamic array of bitsets
-	typedef CDynamicPtrArray<CBitSet, CleanupRelease> BitSetArray;
+	typedef CDynamicPtrArray<CBitSet, CleanupRelease> CBitSetArray;
 }
 
 namespace gpdxl
@@ -71,7 +71,7 @@ namespace gpdxl
 
 			// create a set of grouping sets for a rollup
 			static
-			BitSetArray *CreateGroupingSetsForRollup(IMemoryPool *mp, GroupingClause *grouping_clause, ULONG num_cols, UlongToUlongMap *grouping_col_to_pos_map, CBitSet *group_cols);
+			CBitSetArray *CreateGroupingSetsForRollup(IMemoryPool *mp, GroupingClause *grouping_clause, ULONG num_cols, UlongToUlongMap *grouping_col_to_pos_map, CBitSet *group_cols);
 
 			// check if the given mdid array contains any of the polymorphic
 			// types (ANYELEMENT, ANYARRAY)
@@ -221,7 +221,7 @@ namespace gpdxl
 			// construct a dynamic array of sets of column attnos corresponding
 			// to the group by clause
 			static
-			BitSetArray *GetColumnAttnosForGroupBy(IMemoryPool *mp, List *group_clause, ULONG num_cols, UlongToUlongMap *group_col_pos, CBitSet *group_cold);
+			CBitSetArray *GetColumnAttnosForGroupBy(IMemoryPool *mp, List *group_clause, ULONG num_cols, UlongToUlongMap *group_col_pos, CBitSet *group_cold);
 
 			// return a copy of the query with constant of unknown type being coerced
 			// to the common data type of the output target list

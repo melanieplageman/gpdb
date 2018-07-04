@@ -773,7 +773,7 @@ CTranslatorDXLToPlStmt::TranslateIndexConditions
 	)
 {
 	// array of index qual info
-	IndexQualInfoArray *index_qual_info_array = GPOS_NEW(m_mp) IndexQualInfoArray(m_mp);
+	CIndexQualInfoArray *index_qual_info_array = GPOS_NEW(m_mp) CIndexQualInfoArray(m_mp);
 
 	// build colid->var mapping
 	CMappingColIdVarPlStmt colid_var_mapping(m_mp, base_table_context, ctxt_translation_prev_siblings, output_context, m_dxl_to_plstmt_context);

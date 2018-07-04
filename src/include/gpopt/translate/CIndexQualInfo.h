@@ -93,7 +93,7 @@ namespace gpdxl
 				}
 	};
 	// array of index qual info
-	typedef CDynamicPtrArray<CIndexQualInfo, CleanupDelete> IndexQualInfoArray;
+	typedef CDynamicPtrArray<CIndexQualInfo, CleanupDelete> CIndexQualInfoArray;
 }
 
 #endif // !GPDXL_CIndexQualInfo_H
