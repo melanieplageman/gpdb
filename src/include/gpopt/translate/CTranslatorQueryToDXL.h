@@ -260,7 +260,7 @@ namespace gpdxl
 				List *target_list,
 				List *group_clause,
 				BOOL has_aggs,
-				BitSetArray *pdrgpbsGroupingSets,
+				CBitSetArray *pdrgpbsGroupingSets,
 				IntToUlongMap *phmiulSortGrpColsColId,
 				IntToUlongMap *output_attno_to_colid_mapping,
 				UlongToUlongMap *grpcol_index_to_colid_mapping		// mapping pos->unique grouping columns for grouping func arguments

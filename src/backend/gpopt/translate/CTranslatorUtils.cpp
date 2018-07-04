@@ -1121,7 +1121,7 @@ CTranslatorUtils::GetGroupingColidArray
 // 		group by clause
 //
 //---------------------------------------------------------------------------
-BitSetArray *
+CBitSetArray *
 CTranslatorUtils::GetColumnAttnosForGroupBy
 	(
 	IMemoryPool *mp,
@@ -1141,7 +1141,7 @@ CTranslatorUtils::GetColumnAttnosForGroupBy
 	{
 		// simple group by
 		CBitSet *col_attnos = CreateAttnoSetForGroupingSet(mp, group_clause_list, num_cols, group_col_pos, group_cols);
-		BitSetArray *col_attnos_arr = GPOS_NEW(mp) BitSetArray(mp);
+		CBitSetArray *col_attnos_arr = GPOS_NEW(mp) CBitSetArray(mp);
 		col_attnos_arr->Append(col_attnos);
 		return col_attnos_arr;
 	}
@@ -1171,7 +1171,7 @@ CTranslatorUtils::GetColumnAttnosForGroupBy
 		GPOS_RAISE(gpdxl::ExmaDXL, gpdxl::ExmiQuery2DXLUnsupportedFeature, GPOS_WSZ_LIT("Cube"));
 	}
 
-	BitSetArray *col_attnos_arr = GPOS_NEW(mp) BitSetArray(mp);
+	CBitSetArray *col_attnos_arr = GPOS_NEW(mp) CBitSetArray(mp);
 
 	ListCell *grouping_set = NULL;
 	ForEach (grouping_set, grouping_clause->groupsets)
@@ -1213,7 +1213,7 @@ CTranslatorUtils::GetColumnAttnosForGroupBy
 //		Construct a dynamic array of sets of column attnos for a rollup
 //
 //---------------------------------------------------------------------------
-BitSetArray *
+CBitSetArray *
 CTranslatorUtils::CreateGroupingSetsForRollup
 	(
 	IMemoryPool *mp,
@@ -1225,7 +1225,7 @@ CTranslatorUtils::CreateGroupingSetsForRollup
 {
 	GPOS_ASSERT(NULL != grouping_clause);
 
-	BitSetArray *grouping_sets = GPOS_NEW(mp) BitSetArray(mp);
+	CBitSetArray *grouping_sets = GPOS_NEW(mp) CBitSetArray(mp);
 	ListCell *grouping_set = NULL;
 	ForEach (grouping_set, grouping_clause->groupsets)
 	{
@@ -1271,7 +1271,7 @@ CTranslatorUtils::CreateGroupingSetsForRollup
 	}
 
 	const ULONG num_grouping_sets = grouping_sets->Size();
-	BitSetArray * col_attnos_arr = GPOS_NEW(mp) BitSetArray(mp);
+	CBitSetArray * col_attnos_arr = GPOS_NEW(mp) CBitSetArray(mp);
 
 	// compute prefixes of grouping sets array
 	for (ULONG ulPrefix = 0; ulPrefix <= num_grouping_sets; ulPrefix++)
