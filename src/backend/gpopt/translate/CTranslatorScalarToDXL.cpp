@@ -1796,17 +1796,17 @@ CTranslatorScalarToDXL::CreateQuantifiedSubqueryFromSublink
 
 	// translate left hand side of the expression
 	GPOS_ASSERT(NULL != op_expr->args);
-	Expr* pexprLHS = (Expr*) gpdb::ListNth(op_expr->args, 0);
+	Expr* LHS_expr = (Expr*) gpdb::ListNth(op_expr->args, 0);
 
-	CDXLNode *outer_dxlnode = CreateScalarOpFromExpr(pexprLHS, var_colid_mapping);
+	CDXLNode *outer_dxlnode = CreateScalarOpFromExpr(LHS_expr, var_colid_mapping);
 
 	CDXLNode *dxlnode = NULL;
-	CDXLScalar *pdxlopSubquery = NULL;
+	CDXLScalar *subquery = NULL;
 
 	GPOS_ASSERT(ALL_SUBLINK == sublink->subLinkType || ANY_SUBLINK == sublink->subLinkType);
 	if (ALL_SUBLINK == sublink->subLinkType)
 	{
-		pdxlopSubquery = GPOS_NEW(m_mp) CDXLScalarSubqueryAll
+		subquery = GPOS_NEW(m_mp) CDXLScalarSubqueryAll
 								(
 								m_mp,
 								mdid,
@@ -1817,7 +1817,7 @@ CTranslatorScalarToDXL::CreateQuantifiedSubqueryFromSublink
 	}
 	else
 	{
-		pdxlopSubquery = GPOS_NEW(m_mp) CDXLScalarSubqueryAny
+		subquery = GPOS_NEW(m_mp) CDXLScalarSubqueryAny
 								(
 								m_mp,
 								mdid,
@@ -1826,7 +1826,7 @@ CTranslatorScalarToDXL::CreateQuantifiedSubqueryFromSublink
 								);
 	}
 
-	dxlnode = GPOS_NEW(m_mp) CDXLNode(m_mp, pdxlopSubquery);
+	dxlnode = GPOS_NEW(m_mp) CDXLNode(m_mp, subquery);
 
 	dxlnode->AddChild(outer_dxlnode);
 	dxlnode->AddChild(inner_dxlnode);
@@ -1854,7 +1854,7 @@ CTranslatorScalarToDXL::CreateScalarSubqueryFromSublink
 {
 	CMappingVarColId *var_colid_map_copy = var_colid_mapping->CopyMapColId(m_mp);
 
-	Query *pquerySublink = (Query *) sublink->subselect;
+	Query *subselect = (Query *) sublink->subselect;
 	CAutoP<CTranslatorQueryToDXL> query_to_dxl_translator;
 	query_to_dxl_translator = CTranslatorQueryToDXL::QueryToDXLInstance
 							(
@@ -1863,7 +1863,7 @@ CTranslatorScalarToDXL::CreateScalarSubqueryFromSublink
 							m_colid_generator,
 							m_cte_id_generator,
 							var_colid_map_copy,
-							pquerySublink,
+							subselect,
 							m_query_level + 1,
 							m_cte_entries
 							);

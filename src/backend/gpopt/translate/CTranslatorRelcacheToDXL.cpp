@@ -569,7 +569,7 @@ CTranslatorRelcacheToDXL::RetrieveRel
 	CMDName *mdname = NULL;
 	IMDRelation::Erelstoragetype rel_storage_type = IMDRelation::ErelstorageSentinel;
 	CMDColumnArray *mdcol_array = NULL;
-	IMDRelation::Ereldistrpolicy ereldistribution = IMDRelation::EreldistrSentinel;
+	IMDRelation::Ereldistrpolicy dist = IMDRelation::EreldistrSentinel;
 	ULongPtrArray *distr_cols = NULL;
 	CMDIndexInfoArray *md_index_info_array = NULL;
 	IMdIdArray *mdid_triggers_array = NULL;
@@ -600,10 +600,10 @@ CTranslatorRelcacheToDXL::RetrieveRel
 
 		// get distribution policy
 		GpPolicy *gp_policy = gpdb::GetDistributionPolicy(rel);
-		ereldistribution = GetRelDistribution(gp_policy);
+		dist = GetRelDistribution(gp_policy);
 
 		// get distribution columns
-		if (IMDRelation::EreldistrHash == ereldistribution)
+		if (IMDRelation::EreldistrHash == dist)
 		{
 			distr_cols = RetrieveRelDistrbutionCols(mp, gp_policy, mdcol_array, max_cols);
 		}
@@ -659,7 +659,7 @@ CTranslatorRelcacheToDXL::RetrieveRel
 	GPOS_CATCH_END;
 
 	GPOS_ASSERT(IMDRelation::ErelstorageSentinel != rel_storage_type);
-	GPOS_ASSERT(IMDRelation::EreldistrSentinel != ereldistribution);
+	GPOS_ASSERT(IMDRelation::EreldistrSentinel != dist);
 
 	mdid->AddRef();
 
@@ -672,7 +672,7 @@ CTranslatorRelcacheToDXL::RetrieveRel
 							mp,
 							mdid,
 							mdname,
-							ereldistribution,
+							dist,
 							mdcol_array,
 							distr_cols,
 							convert_hash_to_random,
@@ -704,7 +704,7 @@ CTranslatorRelcacheToDXL::RetrieveRel
 							mdname,
 							is_temporary,
 							rel_storage_type,
-							ereldistribution,
+							dist,
 							mdcol_array,
 							distr_cols,
 							part_keys,
@@ -757,7 +757,7 @@ CTranslatorRelcacheToDXL::RetrieveRelColumns
 
 		ULONG col_len = gpos::ulong_max;
 		CMDIdGPDB *mdid_col = GPOS_NEW(mp) CMDIdGPDB(att->atttypid);
-		HeapTuple statstup = gpdb::GetAttStats(rel->rd_id, ul+1);
+		HeapTuple stats_tup = gpdb::GetAttStats(rel->rd_id, ul+1);
 
 		// Column width priority:
 		// 1. If there is average width kept in the stats for that column, pick that value.
@@ -766,13 +766,13 @@ CTranslatorRelcacheToDXL::RetrieveRelColumns
 		// 3. Else if it not dropped and a fixed length type such as int4, assign the fixed
 		//    length.
 		// 4. Otherwise, assign it to default column width which is 8.
-		if(HeapTupleIsValid(statstup))
+		if(HeapTupleIsValid(stats_tup))
 		{
-			Form_pg_statistic form_pg_stats = (Form_pg_statistic) GETSTRUCT(statstup);
+			Form_pg_statistic form_pg_stats = (Form_pg_statistic) GETSTRUCT(stats_tup);
 
 			// column width
 			col_len = form_pg_stats->stawidth;
-			gpdb::FreeHeapTuple(statstup);
+			gpdb::FreeHeapTuple(stats_tup);
 		}
 		else if ((mdid_col->Equals(&CMDIdGPDB::m_mdid_bpchar) || mdid_col->Equals(&CMDIdGPDB::m_mdid_varchar)) && (VARHDRSZ < att->atttypmod))
 		{
@@ -872,7 +872,7 @@ CTranslatorRelcacheToDXL::GetDefaultColumnValue
 	}
 
 	// translate the default value expression
-	CTranslatorScalarToDXL sctranslator
+	CTranslatorScalarToDXL scalar_translator
 							(
 							mp,
 							md_accessor,
@@ -884,7 +884,7 @@ CTranslatorRelcacheToDXL::GetDefaultColumnValue
 							NULL /* cte_dxlnode_array */
 							);
 
-	return sctranslator.CreateScalarOpFromExpr
+	return scalar_translator.CreateScalarOpFromExpr
 							(
 							(Expr *) node,
 							NULL /* var_colid_mapping --- subquery or external variable are not supported in default expression */
@@ -1040,11 +1040,11 @@ CTranslatorRelcacheToDXL::AddSystemColumns
 BOOL
 CTranslatorRelcacheToDXL::IsTransactionVisibilityAttribute
 	(
-	INT attrnum
+	INT attno
 	)
 {
-	return attrnum == MinTransactionIdAttributeNumber || attrnum == MaxTransactionIdAttributeNumber || 
-			attrnum == MinCommandIdAttributeNumber || attrnum == MaxCommandIdAttributeNumber;
+	return attno == MinTransactionIdAttributeNumber || attno == MaxTransactionIdAttributeNumber || 
+			attno == MinCommandIdAttributeNumber || attno == MaxCommandIdAttributeNumber;
 }
 
 //---------------------------------------------------------------------------
@@ -2053,7 +2053,7 @@ CTranslatorRelcacheToDXL::RetrieveCheckConstraints
 	Node *node = gpdb::PnodeCheckConstraint(check_constraint_oid);
 	GPOS_ASSERT(NULL != node);
 
-	CTranslatorScalarToDXL sctranslator
+	CTranslatorScalarToDXL scalar_translator
 							(
 							mp,
 							md_accessor,
@@ -2093,7 +2093,7 @@ CTranslatorRelcacheToDXL::RetrieveCheckConstraints
 	var_colid_mapping->LoadColumns(0 /*query_level */, 1 /* rteIndex */, dxl_col_descr_array);
 
 	// translate the check constraint expression
-	CDXLNode *scalar_dxlnode = sctranslator.CreateScalarOpFromExpr((Expr *) node, var_colid_mapping);
+	CDXLNode *scalar_dxlnode = scalar_translator.CreateScalarOpFromExpr((Expr *) node, var_colid_mapping);
 
 	// cleanup
 	dxl_col_descr_array->Release();
@@ -2299,7 +2299,7 @@ CTranslatorRelcacheToDXL::RetrieveRelStats
 		stats_empty = true;
 	}
 		
-	CDXLRelStats *dxl_relstats = GPOS_NEW(mp) CDXLRelStats
+	CDXLRelStats *dxl_rel_stats = GPOS_NEW(mp) CDXLRelStats
 												(
 												mp,
 												m_rel_stats_mdid,
@@ -2309,7 +2309,7 @@ CTranslatorRelcacheToDXL::RetrieveRelStats
 												);
 
 
-	return dxl_relstats;
+	return dxl_rel_stats;
 }
 
 // Retrieve column statistics from relcache
@@ -2338,7 +2338,7 @@ CTranslatorRelcacheToDXL::RetrieveColStats
 
 	const IMDRelation *md_rel = md_accessor->RetrieveRel(mdid_rel);
 	const IMDColumn *md_col = md_rel->GetMdCol(pos);
-	AttrNumber attrnum = (AttrNumber) md_col->AttrNum();
+	AttrNumber attno = (AttrNumber) md_col->AttrNum();
 
 	// number of rows from pg_class
 	CDouble num_rows(rel->rd_rel->reltuples);
@@ -2350,7 +2350,7 @@ CTranslatorRelcacheToDXL::RetrieveColStats
 
 	CDXLBucketArray *dxl_stats_bucket_array = GPOS_NEW(mp) CDXLBucketArray(mp);
 
-	if (0 > attrnum)
+	if (0 > attno)
 	{
 		mdid_col_stats->AddRef();
 		return GenerateStatsForSystemCols
@@ -2360,17 +2360,17 @@ CTranslatorRelcacheToDXL::RetrieveColStats
 				mdid_col_stats,
 				md_colname,
 				att_type,
-				attrnum,
+				attno,
 				dxl_stats_bucket_array,
 				num_rows
 				);
 	}
 
 	// extract out histogram and mcv information from pg_statistic
-	HeapTuple statstup = gpdb::GetAttStats(rel_oid, attrnum);
+	HeapTuple stats_tup = gpdb::GetAttStats(rel_oid, attno);
 
 	// if there is no colstats
-	if (!HeapTupleIsValid(statstup))
+	if (!HeapTupleIsValid(stats_tup))
 	{
 		dxl_stats_bucket_array->Release();
 		mdid_col_stats->AddRef();
@@ -2389,7 +2389,7 @@ CTranslatorRelcacheToDXL::RetrieveColStats
 		return CDXLColStats::CreateDXLDummyColStats(mp, mdid_col_stats, md_colname, width);
 	}
 
-	Form_pg_statistic form_pg_stats = (Form_pg_statistic) GETSTRUCT(statstup);
+	Form_pg_statistic form_pg_stats = (Form_pg_statistic) GETSTRUCT(stats_tup);
 
 	// null frequency and NDV
 	CDouble null_freq(0.0);
@@ -2424,7 +2424,7 @@ CTranslatorRelcacheToDXL::RetrieveColStats
 	(void)	gpdb::GetAttrStatsSlot
 			(
 					&mcv_slot,
-					statstup,
+					stats_tup,
 					STATISTIC_KIND_MCV,
 					InvalidOid,
 					ATTSTATSSLOT_VALUES | ATTSTATSSLOT_NUMBERS
@@ -2477,7 +2477,7 @@ CTranslatorRelcacheToDXL::RetrieveColStats
 	(void) gpdb::GetAttrStatsSlot
 			(
 					&hist_slot,
-					statstup,
+					stats_tup,
 					STATISTIC_KIND_HISTOGRAM,
 					InvalidOid,
 					ATTSTATSSLOT_VALUES
@@ -2503,7 +2503,7 @@ CTranslatorRelcacheToDXL::RetrieveColStats
 		mdid_col_stats->AddRef();
 
 		CDouble col_width = CStatistics::DefaultColumnWidth;
-		gpdb::FreeHeapTuple(statstup);
+		gpdb::FreeHeapTuple(stats_tup);
 		return CDXLColStats::CreateDXLDummyColStats(mp, mdid_col_stats, md_colname, col_width);
 	}
 
@@ -2567,7 +2567,7 @@ CTranslatorRelcacheToDXL::RetrieveColStats
 	gpdb::FreeAttrStatsSlot(&mcv_slot);
 	gpdb::FreeAttrStatsSlot(&hist_slot);
 
-	gpdb::FreeHeapTuple(statstup);
+	gpdb::FreeHeapTuple(stats_tup);
 
 	// create col stats object
 	mdid_col_stats->AddRef();
@@ -2604,7 +2604,7 @@ CTranslatorRelcacheToDXL::GenerateStatsForSystemCols
        CMDIdColStats *mdid_col_stats,
        CMDName *md_colname,
        OID att_type,
-       AttrNumber attrnum,
+       AttrNumber attno,
        CDXLBucketArray *dxl_stats_bucket_array,
        CDouble num_rows
        )
@@ -2612,7 +2612,7 @@ CTranslatorRelcacheToDXL::GenerateStatsForSystemCols
        GPOS_ASSERT(NULL != mdid_col_stats);
        GPOS_ASSERT(NULL != md_colname);
        GPOS_ASSERT(InvalidOid != att_type);
-       GPOS_ASSERT(0 > attrnum);
+       GPOS_ASSERT(0 > attno);
        GPOS_ASSERT(NULL != dxl_stats_bucket_array);
 
        CMDIdGPDB *mdid_atttype = GPOS_NEW(mp) CMDIdGPDB(att_type);
@@ -2627,7 +2627,7 @@ CTranslatorRelcacheToDXL::GenerateStatsForSystemCols
 
        if (CStatistics::MinRows <= num_rows)
 	   {
-		   switch(attrnum)
+		   switch(attno)
 			{
 				case GpSegmentIdAttributeNumber: // gp_segment_id
 					{
@@ -2917,9 +2917,9 @@ CTranslatorRelcacheToDXL::TransformStatsToDXLBucketArray
 	else if (has_hist && has_mcv)
 	{
 		// both histogram and MCVs exist and have significant info, merge MCV and histogram buckets
-		CHistogram *phistMerged = CStatisticsUtils::MergeMCVHist(mp, gpdb_mcv_hist, histogram);
-		dxl_stats_bucket_array = TransformHistogramToDXLBucketArray(mp, md_type, phistMerged);
-		GPOS_DELETE(phistMerged);
+		CHistogram *merged_hist = CStatisticsUtils::MergeMCVHist(mp, gpdb_mcv_hist, histogram);
+		dxl_stats_bucket_array = TransformHistogramToDXLBucketArray(mp, md_type, merged_hist);
+		GPOS_DELETE(merged_hist);
 	}
 	else
 	{
@@ -3570,7 +3570,7 @@ CTranslatorRelcacheToDXL::RetrievePartConstraintFromNode
 		return NULL;
 	}
 
-	CTranslatorScalarToDXL sctranslator
+	CTranslatorScalarToDXL scalar_translator
 							(
 							mp,
 							md_accessor,
@@ -3588,7 +3588,7 @@ CTranslatorRelcacheToDXL::RetrievePartConstraintFromNode
 	var_colid_mapping->LoadColumns(0 /*query_level */, 1 /* rteIndex */, dxl_col_descr_array);
 
 	// translate the check constraint expression
-	CDXLNode *scalar_dxlnode = sctranslator.CreateScalarOpFromExpr((Expr *) part_constraints, var_colid_mapping);
+	CDXLNode *scalar_dxlnode = scalar_translator.CreateScalarOpFromExpr((Expr *) part_constraints, var_colid_mapping);
 
 	// cleanup
 	GPOS_DELETE(var_colid_mapping);

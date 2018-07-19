@@ -45,7 +45,7 @@ namespace gpdxl
 	{
 		// hash maps mapping ULONG -> INT
 		typedef CHashMap<ULONG, INT, gpos::HashValue<ULONG>, gpos::Equals<ULONG>,
-			CleanupDelete<ULONG>, CleanupDelete<INT> > HMUlI;
+			CleanupDelete<ULONG>, CleanupDelete<INT> > UlongToIntMap;
 
 
 		private:
@@ -58,7 +58,7 @@ namespace gpdxl
 			Index m_rel_index;
 
 			// maps a colid of a column to the attribute number of that column in the schema of the underlying relation
-			HMUlI *m_colid_to_attno_map;
+			UlongToIntMap *m_colid_to_attno_map;
 
 			// private copy ctor
 			CDXLTranslateContextBaseTable(const CDXLTranslateContextBaseTable&);

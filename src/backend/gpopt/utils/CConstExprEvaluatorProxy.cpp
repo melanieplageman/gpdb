@@ -53,7 +53,7 @@ CConstExprEvaluatorProxy::CEmptyMappingColIdVar::VarFromDXLNodeScId
 
 //---------------------------------------------------------------------------
 //	@function:
-//		CConstExprEvaluatorProxy::PdxlnEvaluateExpr
+//		CConstExprEvaluatorProxy::EvaluateExpr
 //
 //	@doc:
 //		Evaluate 'expr', assumed to be a constant expression, and return the DXL representation
@@ -61,7 +61,7 @@ CConstExprEvaluatorProxy::CEmptyMappingColIdVar::VarFromDXLNodeScId
 //
 //---------------------------------------------------------------------------
 CDXLNode *
-CConstExprEvaluatorProxy::PdxlnEvaluateExpr
+CConstExprEvaluatorProxy::EvaluateExpr
 	(
 	const CDXLNode *dxl_expr
 	)

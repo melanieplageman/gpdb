@@ -37,7 +37,7 @@ CDXLTranslateContextBaseTable::CDXLTranslateContextBaseTable
 	m_rel_index(0)
 {
 	// initialize hash table
-	m_colid_to_attno_map = GPOS_NEW(m_mp) HMUlI(m_mp);
+	m_colid_to_attno_map = GPOS_NEW(m_mp) UlongToIntMap(m_mp);
 }
 
 //---------------------------------------------------------------------------

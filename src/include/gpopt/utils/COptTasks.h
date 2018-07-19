@@ -134,7 +134,7 @@ class COptTasks
 
 			// casting function
 			static
-			SContextRelcacheToDXL *PctxrelcacheConvert(void *ptr);
+			SContextRelcacheToDXL *RelcacheConvert(void *ptr);
 		};
 
 		// Structure containing the input and output string for a task that evaluates expressions.
