@@ -1178,13 +1178,13 @@ CTranslatorUtils::GetColumnAttnosForGroupBy
 	{
 		Node *grouping_set_node = (Node *) lfirst(grouping_set);
 
-		CBitSet *bs = NULL;
+		CBitSet *bset = NULL;
 		if (IsA(grouping_set_node, SortGroupClause))
 		{
 			// grouping set contains a single grouping column
-			bs = GPOS_NEW(mp) CBitSet(mp, num_cols);
+			bset = GPOS_NEW(mp) CBitSet(mp, num_cols);
 			ULONG sort_group_ref = ((SortGroupClause *) grouping_set_node)->tleSortGroupRef;
-			bs->ExchangeSet(sort_group_ref);
+			bset->ExchangeSet(sort_group_ref);
 			UpdateGrpColMapping(mp, group_col_pos, group_cols, sort_group_ref);
 		}
 		else if (IsA(grouping_set_node, GroupingClause))
@@ -1197,9 +1197,9 @@ CTranslatorUtils::GetColumnAttnosForGroupBy
 			GPOS_ASSERT(IsA(grouping_set_node, List));
 
 			List *grouping_set_list = (List *) grouping_set_node;
-			bs = CreateAttnoSetForGroupingSet(mp, grouping_set_list, num_cols, group_col_pos, group_cols);
+			bset = CreateAttnoSetForGroupingSet(mp, grouping_set_list, num_cols, group_col_pos, group_cols);
 		}
-		col_attnos_arr->Append(bs);
+		col_attnos_arr->Append(bset);
 	}
 
 	return col_attnos_arr;
@@ -2561,7 +2561,7 @@ CTranslatorUtils::MapDXLSubplanToSublinkType
 
         const ULONG arity = GPOS_ARRAY_SIZE(mapping);
         SubLinkType slink = EXPR_SUBLINK;
-	BOOL found = false;
+		BOOL found = false;
         for (ULONG ul = 0; ul < arity; ul++)
         {
                 ULONG *elem = mapping[ul];
@@ -2604,7 +2604,7 @@ CTranslatorUtils::MapSublinkTypeToDXLSubplan
 
         const ULONG arity = GPOS_ARRAY_SIZE(mapping);
         EdxlSubPlanType dxl_subplan_type = EdxlSubPlanTypeScalar;
-	BOOL found = false;
+		BOOL found = false;
         for (ULONG ul = 0; ul < arity; ul++)
         {
                 ULONG *elem = mapping[ul];
