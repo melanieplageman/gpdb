@@ -111,7 +111,7 @@ namespace gpdxl
 			// if the expression has variables, an error is thrown.
 			// caller keeps ownership of 'expr_dxlnode' and takes ownership of the returned pointer
 			virtual
-			CDXLNode *PdxlnEvaluateExpr(const CDXLNode *expr);
+			CDXLNode *EvaluateExpr(const CDXLNode *expr);
 
 			// returns true iff the evaluator can evaluate constant expressions without subqueries
 			virtual

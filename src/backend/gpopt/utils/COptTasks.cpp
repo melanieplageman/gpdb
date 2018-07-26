@@ -276,14 +276,14 @@ COptTasks::SContextRelcacheToDXL::SContextRelcacheToDXL
 
 //---------------------------------------------------------------------------
 //	@function:
-//		COptTasks::SContextRelcacheToDXL::PctxrelcacheConvert
+//		COptTasks::SContextRelcacheToDXL::RelcacheConvert
 //
 //	@doc:
 //		Casting function
 //
 //---------------------------------------------------------------------------
 COptTasks::SContextRelcacheToDXL *
-COptTasks::SContextRelcacheToDXL::PctxrelcacheConvert
+COptTasks::SContextRelcacheToDXL::RelcacheConvert
 	(
 	void *ptr
 	)
@@ -377,7 +377,7 @@ COptTasks::ConvertToDXLFromMDCast
 {
 	GPOS_ASSERT(NULL != ptr);
 
-	SContextRelcacheToDXL *relcache_ctxt = SContextRelcacheToDXL::PctxrelcacheConvert(ptr);
+	SContextRelcacheToDXL *relcache_ctxt = SContextRelcacheToDXL::RelcacheConvert(ptr);
 	GPOS_ASSERT(NULL != relcache_ctxt);
 
 	GPOS_ASSERT(2 == gpdb::ListLength(relcache_ctxt->m_oid_list));
@@ -435,7 +435,7 @@ COptTasks::ConvertToDXLFromMDScalarCmp
 {
 	GPOS_ASSERT(NULL != ptr);
 
-	SContextRelcacheToDXL *relcache_ctxt = SContextRelcacheToDXL::PctxrelcacheConvert(ptr);
+	SContextRelcacheToDXL *relcache_ctxt = SContextRelcacheToDXL::RelcacheConvert(ptr);
 	GPOS_ASSERT(NULL != relcache_ctxt);
 	GPOS_ASSERT(CmptOther > relcache_ctxt->m_cmp_type && "Incorrect comparison type specified");
 
@@ -1361,7 +1361,7 @@ COptTasks::ConvertToDXLFromMDObjsTask
 {
 	GPOS_ASSERT(NULL != ptr);
 
-	SContextRelcacheToDXL *relcache_ctxt = SContextRelcacheToDXL::PctxrelcacheConvert(ptr);
+	SContextRelcacheToDXL *relcache_ctxt = SContextRelcacheToDXL::RelcacheConvert(ptr);
 	GPOS_ASSERT(NULL != relcache_ctxt);
 
 	AUTO_MEM_POOL(amp);
@@ -1430,7 +1430,7 @@ COptTasks::ConvertToDXLFromRelStatsTask
 {
 	GPOS_ASSERT(NULL != ptr);
 
-	SContextRelcacheToDXL *relcache_ctxt = SContextRelcacheToDXL::PctxrelcacheConvert(ptr);
+	SContextRelcacheToDXL *relcache_ctxt = SContextRelcacheToDXL::RelcacheConvert(ptr);
 	GPOS_ASSERT(NULL != relcache_ctxt);
 
 	AUTO_MEM_POOL(amp);
@@ -1567,7 +1567,7 @@ COptTasks::EvalExprFromDXLTask
 			CMDAccessor mda(mp, CMDCache::Pcache(), default_sysid, relcache_provider);
 
 			CConstExprEvaluatorProxy expr_eval_proxy(mp, &mda);
-			result_dxl = expr_eval_proxy.PdxlnEvaluateExpr(input_dxl);
+			result_dxl = expr_eval_proxy.EvaluateExpr(input_dxl);
 		}
 	}
 	GPOS_CATCH_EX(ex)
