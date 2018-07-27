@@ -2281,6 +2281,15 @@ CTranslatorRelcacheToDXL::RetrieveRelStats
 		else
 		{
 			num_rows = rel->rd_rel->reltuples;
+			
+			if (num_rows == 0 && gp_enable_relsize_collection)
+			{
+				RelOptInfo *relOptInfo = makeNode(RelOptInfo);
+				relOptInfo->cdbpolicy = gpdb::GetDistributionPolicy(rel);
+
+				gpdb::CdbEstimateRelationSize(relOptInfo, rel, NULL, &pages, &num_rows);
+				pfree(relOptInfo);
+			}
 		}
 
 		m_rel_stats_mdid->AddRef();
