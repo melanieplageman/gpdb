@@ -2,7 +2,11 @@
 #include "funcapi.h"
 #include "orafunc.h"
 
+#if PG_VERSION_NUM >= 80400
+
 #include "utils/builtins.h"
+
+#endif
 
 #include "builtins.h"
 #include "lib/stringinfo.h"
@@ -122,24 +126,12 @@ orafce_listagg1_transfn(PG_FUNCTION_ARGS)
 	 */
 	PG_RETURN_POINTER(state);
 #else
-	if (!PG_ARGISNULL(1))
-	{
-		if (PG_ARGISNULL(0))
-		{
-			/* 
-			 * Just return the input. No need to copy, our caller is responsible
-			 * for this.
-			 */
-			PG_RETURN_DATUM(PG_GETARG_DATUM(1));
-		}
-		else
-			return DirectFunctionCall2(textcat, PG_GETARG_DATUM(0), PG_GETARG_DATUM(1));
-	}
+	ereport(ERROR,
+			(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+			 errmsg("feature not suppported"),
+			 errdetail("This functions is blocked on PostgreSQL 8.3 and older (from security reasons).")));
 
-	if (PG_ARGISNULL(0))
-		PG_RETURN_NULL();
-	else
-		PG_RETURN_DATUM(PG_GETARG_DATUM(0));
+	PG_RETURN_NULL();
 #endif
 }
 
@@ -171,41 +163,39 @@ orafce_listagg2_transfn(PG_FUNCTION_ARGS)
 	 */
 	PG_RETURN_POINTER(state);
 #else
-	
-	/* ignore if null */
-	if (!PG_ARGISNULL(1))
-	{
-		if (PG_ARGISNULL(0))
-			return PointerGetDatum(DatumGetTextPCopy(PG_GETARG_DATUM(1)));
-		else
-		{
-			/* delimiter is NULL, so a normal append */
-			if (PG_ARGISNULL(2))
-				return DirectFunctionCall2(textcat, PG_GETARG_DATUM(0),
-													PG_GETARG_DATUM(1));
-			else
-			{
-				/* 
-				 * Convoluted, yes, but we might be operating on large amounts
-				 * of memory here. So, be careful to free the intermediate
-				 * memory.
-				 */
-				Datum d1 = DirectFunctionCall2(textcat, PG_GETARG_DATUM(2),
-													   PG_GETARG_DATUM(1));
-				Pointer p = DatumGetPointer(d1);
-				Datum d2;
-		
-				d2 = DirectFunctionCall2(textcat, PG_GETARG_DATUM(0), d1);
-				pfree(p);
-				PG_RETURN_DATUM(d2);
-			}
-		}
-	}
+	ereport(ERROR,
+			(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+			 errmsg("feature not suppported"),
+			 errdetail("This functions is blocked on PostgreSQL 8.3 and older (from security reasons).")));
 
-	if (PG_ARGISNULL(0))
-		PG_RETURN_NULL();
+	PG_RETURN_NULL();
+#endif
+}
+
+Datum
+orafce_listagg_finalfn(PG_FUNCTION_ARGS)
+{
+#if PG_VERSION_NUM >= 90000
+	return string_agg_finalfn(fcinfo);
+#elif PG_VERSION_NUM >= 80400
+	StringInfo	state;
+
+	/* cannot be called directly because of internal-type argument */
+	Assert(AggCheckCallContext(fcinfo, NULL));
+
+	state = PG_ARGISNULL(0) ? NULL : (StringInfo) PG_GETARG_POINTER(0);
+
+	if (state != NULL)
+		PG_RETURN_TEXT_P(cstring_to_text(state->data));
 	else
-		PG_RETURN_DATUM(PG_GETARG_DATUM(0));
+		PG_RETURN_NULL();
+#else
+	ereport(ERROR,
+			(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+			 errmsg("feature not suppported"),
+			 errdetail("This functions is blocked on PostgreSQL 8.3 and older (from security reasons).")));
+
+	PG_RETURN_NULL();
 #endif
 }
 
@@ -325,7 +315,7 @@ orafce_median4_transfn(PG_FUNCTION_ARGS)
 int 
 orafce_float4_cmp(const void *a, const void *b)
 {
-	return *((float4 *) a) - *((float4*) b);
+	return (int) (*((float4 *) a) - *((float4*) b));
 }
 
 Datum
@@ -349,7 +339,7 @@ orafce_median4_finalfn(PG_FUNCTION_ARGS)
 	if (lidx == hidx)
 		result = state->d.float4_values[lidx];
 	else
-		result = (state->d.float4_values[lidx] + state->d.float4_values[hidx]) / 2.0;
+		result = (state->d.float4_values[lidx] + state->d.float4_values[hidx]) / 2.0f;
 
 	PG_RETURN_FLOAT4(result);
 
@@ -400,7 +390,7 @@ orafce_median8_transfn(PG_FUNCTION_ARGS)
 int 
 orafce_float8_cmp(const void *a, const void *b)
 {
-	return *((float8 *) a) - *((float8*) b);
+	return (int) (*((float8 *) a) - *((float8*) b));
 }
 
 

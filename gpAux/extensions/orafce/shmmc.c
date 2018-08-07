@@ -170,7 +170,7 @@ ora_sinit(void *ptr, size_t size, bool create)
 		if (create)
 		{
 			list[0].size = size - sizeof(list_item)*LIST_ITEMS - sizeof(mem_desc);
-			list[0].first_byte_ptr = &m->data + sizeof(list_item)*LIST_ITEMS;
+			list[0].first_byte_ptr = ((char *) &m->data) + sizeof(list_item)*LIST_ITEMS;
 			list[0].dispossible = true;
 			*list_c = 1;
 		}

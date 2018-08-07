@@ -37,7 +37,7 @@ typedef struct {
 PG_FUNCTION_INFO_V1(plvlex_tokens);
 
 extern int      orafce_sql_yyparse();
-extern void orafce_sql_yyerror(List **result, const char *message);
+extern void orafce_sql_yyerror(const char *message);
 extern void orafce_sql_scanner_init(const char *str);
 extern void orafce_sql_scanner_finish(void);
 
@@ -181,8 +181,15 @@ filterList(List *list, bool skip_spaces, bool qnames)
 	return result;
 }
 
-Datum plvlex_tokens(PG_FUNCTION_ARGS)
+Datum
+plvlex_tokens(PG_FUNCTION_ARGS)
 {
+#ifdef _MSC_VER
+	ereport(ERROR,
+			(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+			 errmsg("plvlex.tokens is not available in the built")));
+	PG_RETURN_VOID();
+#else
 	FuncCallContext	   *funcctx;
 	TupleDesc			tupdesc;
 	TupleTableSlot	   *slot;
@@ -200,7 +207,7 @@ Datum plvlex_tokens(PG_FUNCTION_ARGS)
 
 		orafce_sql_scanner_init(CSTRING(src));
 		if (orafce_sql_yyparse(&lexems) != 0)
-			orafce_sql_yyerror(NULL, "bogus input");
+			orafce_sql_yyerror("bogus input");
 
 		orafce_sql_scanner_finish();
 
@@ -286,5 +293,6 @@ Datum plvlex_tokens(PG_FUNCTION_ARGS)
 	}
 
 	SRF_RETURN_DONE (funcctx);
+#endif
 }
 

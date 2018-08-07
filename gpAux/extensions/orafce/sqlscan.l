@@ -51,6 +51,9 @@ extern PGDLLIMPORT const int	NumScanKeywords;
 #define ScanKeywordLookupArgs
 #endif
 
+#undef fprintf
+#define fprintf(file, fmt, msg)  ereport(ERROR, (errmsg_internal("%s", msg)))
+
 static int		xcdepth = 0;	/* depth of nesting in slash-star comments */
 static char    *dolqstart;      /* current $foo$ quote start string */
 static bool extended_string = false;
@@ -60,15 +63,7 @@ static bool extended_string = false;
 #define YY_READ_BUF_SIZE 16777216
 
 /* Avoid exit() on fatal scanner errors (a bit ugly -- see yy_fatal_error) */
-#undef fprintf
-#define fprintf(file, fmt, msg)  fprintf_to_ereport(fmt, msg)
-
-static void
-fprintf_to_ereport(const char *fmt, const char *msg)
-{
-	ereport(ERROR, (errmsg_internal("%s", msg)));
-}
-
+#define fprintf(file, fmt, msg)  ereport(ERROR, (errmsg_internal("%s", msg)))
 
 /* Handles to the buffer that the lexer uses internally */
 
@@ -643,7 +638,7 @@ other			.
 
 					BEGIN(INITIAL);
 					if (literallen == 0)
-						yyerror(NULL, "zero-length delimited identifier");
+						yyerror("zero-length delimited identifier");
 					ident = litbufdup();
 					if (literallen >= NAMEDATALEN)
 						truncate_identifier(ident, literallen, true);
@@ -759,7 +754,7 @@ other			.
 					 * a syntactic mistake anyway.
 					 */
 					if (nchars >= NAMEDATALEN)
-						yyerror(NULL, "operator too long");
+						yyerror("operator too long");
 
 					/* Convert "!=" operator to "<>" for compatibility */
 					yylval.val.modificator = NULL;
@@ -928,7 +923,7 @@ lexer_errposition(void)
  * be misleading!
  */
 void
-yyerror(List **result, const char *message)
+yyerror(const char *message)
 {
 	const char *loc = scanbuf + yylloc;
 

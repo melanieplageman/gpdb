@@ -1,63 +1,152 @@
--- Adjust the following if this is not the schema you installed into
-\set ORA_SCHEMA oracompat
-set search_path = :ORA_SCHEMA, pg_catalog;
+DROP FUNCTION pg_catalog.trunc(value date, fmt text);
+DROP FUNCTION pg_catalog.round(value date, fmt text);
+DROP FUNCTION pg_catalog.next_day(value date, weekday text);
+DROP FUNCTION pg_catalog.last_day(value date);
+DROP FUNCTION pg_catalog.months_between(date1 date, date2 date);
+DROP FUNCTION pg_catalog.add_months(day date, value int);
+DROP FUNCTION pg_catalog.trunc(value timestamp with time zone, fmt text);
+DROP FUNCTION pg_catalog.round(value timestamp with time zone, fmt text);
+DROP FUNCTION pg_catalog.round(value timestamp with time zone);
+DROP FUNCTION pg_catalog.round(value date);
+DROP FUNCTION pg_catalog.trunc(value timestamp with time zone);
+DROP FUNCTION pg_catalog.trunc(value date);
+DROP FUNCTION pg_catalog.nlssort(text, text);
+DROP FUNCTION pg_catalog.nlssort(text);
+DROP FUNCTION pg_catalog.set_nls_sort(text);
+DROP FUNCTION pg_catalog.instr(str text, patt text, start int, nth int);
+DROP FUNCTION pg_catalog.instr(str text, patt text, start int);
+DROP FUNCTION pg_catalog.instr(str text, patt text);
+DROP FUNCTION pg_catalog.to_char(num int);
+DROP FUNCTION pg_catalog.to_char(num bigint);
+DROP FUNCTION pg_catalog.to_char(num real);
+DROP FUNCTION pg_catalog.to_char(num double precision);
+DROP FUNCTION pg_catalog.to_char(num numeric);
+DROP FUNCTION pg_catalog.to_number(str text);
+DROP FUNCTION pg_catalog.to_date(str text);
+DROP FUNCTION pg_catalog.reverse(str text);
+DROP FUNCTION pg_catalog.lnnvl(bool);
 
-BEGIN;
-DROP FUNCTION IF EXISTS nvl(anyelement, anyelement);
+DROP AGGREGATE pg_catalog.listagg(text);
+DROP AGGREGATE pg_catalog.listagg(text, text);
 
-DROP FUNCTION IF EXISTS add_months(day date, value int);
+DROP FUNCTION pg_catalog.listagg1_transfn(internal, text);
+DROP FUNCTION pg_catalog.listagg2_transfn(internal, text, text);
+DROP FUNCTION pg_catalog.listagg_finalfn(internal);
 
-DROP FUNCTION IF EXISTS last_day(value date);
+DROP AGGREGATE pg_catalog.median(real);
+DROP AGGREGATE pg_catalog.median(double precision);
 
-DROP FUNCTION IF EXISTS next_day(value date, weekday text);
-DROP FUNCTION IF EXISTS next_day(value date, weekday integer);
+DROP FUNCTION pg_catalog.median4_transfn(internal, real);
+DROP FUNCTION pg_catalog.median8_transfn(internal, double precision);
+DROP FUNCTION pg_catalog.median4_finalfn(internal);
+DROP FUNCTION pg_catalog.median8_finalfn(internal);
 
-DROP FUNCTION IF EXISTS months_between(date1 date, date2 date);
+DROP FUNCTION dump("any");
+DROP FUNCTION dump(text);
+DROP FUNCTION dump("any", integer);
+DROP FUNCTION dump(text, integer);
 
-DROP FUNCTION IF EXISTS trunc(value date, fmt text);
-DROP FUNCTION IF EXISTS trunc(value timestamp with time zone, fmt text);
-DROP FUNCTION IF EXISTS trunc(value timestamp with time zone);
-DROP FUNCTION IF EXISTS trunc(value date);
+DROP VIEW public.dual CASCADE;
 
-DROP FUNCTION IF EXISTS round(value timestamp with time zone, fmt text);
-DROP FUNCTION IF EXISTS round(value timestamp with time zone);
-DROP FUNCTION IF EXISTS round(value date);
-DROP FUNCTION IF EXISTS round(value date, fmt text);
+DROP FUNCTION nvl(anyelement, anyelement);
+DROP FUNCTION nvl2(anyelement, anyelement, anyelement);
 
-DROP FUNCTION IF EXISTS instr(str text, patt text, start int, nth int);
-DROP FUNCTION IF EXISTS instr(str text, patt text, start int);
-DROP FUNCTION IF EXISTS instr(str text, patt text);
+DROP FUNCTION concat(text, text);
+DROP FUNCTION concat(text, anyarray);
+DROP FUNCTION concat(anyarray, text);
+DROP FUNCTION concat(anyarray, anyarray);
+DROP FUNCTION concat(text, anynonarray);
+DROP FUNCTION concat(anynonarray, text);
+DROP FUNCTION concat(anynonarray, anynonarray);
+DROP FUNCTION concat(text, anyelement);
+DROP FUNCTION concat(anyelement, text);
+DROP FUNCTION concat(anyelement, anyelement);
 
-DROP FUNCTION IF EXISTS reverse(text, int, int);
-DROP FUNCTION IF EXISTS reverse(text, int);
-DROP FUNCTION IF EXISTS reverse(text);
+DROP FUNCTION bitand(bigint, bigint);
+DROP FUNCTION sinh(float8);
+DROP FUNCTION cosh(float8);
+DROP FUNCTION tanh(float8);
+DROP FUNCTION nanvl(float4, float4);
+DROP FUNCTION nanvl(float8, float8);
+DROP FUNCTION nanvl(numeric, numeric);
+DROP FUNCTION to_multi_byte(text);
 
-DROP FUNCTION IF EXISTS concat(text, text);
-DROP FUNCTION IF EXISTS concat(anyarray, text);
-DROP FUNCTION IF EXISTS concat(text, anyarray);
-DROP FUNCTION IF EXISTS concat(anyarray, anyarray);
+DROP FUNCTION decode(anyelement, anyelement, text);
+DROP FUNCTION decode(anyelement, anyelement, text, text);
+DROP FUNCTION decode(anyelement, anyelement, text, anyelement, text);
+DROP FUNCTION decode(anyelement, anyelement, text, anyelement, text, text);
+DROP FUNCTION decode(anyelement, anyelement, text, anyelement, text, anyelement, text);
+DROP FUNCTION decode(anyelement, anyelement, text, anyelement, text, anyelement, text, text);
+DROP FUNCTION decode(anyelement, anyelement, bpchar);
+DROP FUNCTION decode(anyelement, anyelement, bpchar, bpchar);
+DROP FUNCTION decode(anyelement, anyelement, bpchar, anyelement, bpchar);
+DROP FUNCTION decode(anyelement, anyelement, bpchar, anyelement, bpchar, bpchar);
+DROP FUNCTION decode(anyelement, anyelement, bpchar, anyelement, bpchar, anyelement, bpchar);
+DROP FUNCTION decode(anyelement, anyelement, bpchar, anyelement, bpchar, anyelement, bpchar, bpchar);
+DROP FUNCTION decode(anyelement, anyelement, integer);
+DROP FUNCTION decode(anyelement, anyelement, integer, integer);
+DROP FUNCTION decode(anyelement, anyelement, integer, anyelement, integer);
+DROP FUNCTION decode(anyelement, anyelement, integer, anyelement, integer, integer);
+DROP FUNCTION decode(anyelement, anyelement, integer, anyelement, integer, anyelement, integer);
+DROP FUNCTION decode(anyelement, anyelement, integer, anyelement, integer, anyelement, integer, integer);
+DROP FUNCTION decode(anyelement, anyelement, bigint);
+DROP FUNCTION decode(anyelement, anyelement, bigint, bigint);
+DROP FUNCTION decode(anyelement, anyelement, bigint, anyelement, bigint);
+DROP FUNCTION decode(anyelement, anyelement, bigint, anyelement, bigint, bigint);
+DROP FUNCTION decode(anyelement, anyelement, bigint, anyelement, bigint, anyelement, bigint);
+DROP FUNCTION decode(anyelement, anyelement, bigint, anyelement, bigint, anyelement, bigint, bigint);
+DROP FUNCTION decode(anyelement, anyelement, numeric);
+DROP FUNCTION decode(anyelement, anyelement, numeric, numeric);
+DROP FUNCTION decode(anyelement, anyelement, numeric, anyelement, numeric);
+DROP FUNCTION decode(anyelement, anyelement, numeric, anyelement, numeric, numeric);
+DROP FUNCTION decode(anyelement, anyelement, numeric, anyelement, numeric, anyelement, numeric);
+DROP FUNCTION decode(anyelement, anyelement, numeric, anyelement, numeric, anyelement, numeric, numeric);
+DROP FUNCTION decode(anyelement, anyelement, date);
+DROP FUNCTION decode(anyelement, anyelement, date, date);
+DROP FUNCTION decode(anyelement, anyelement, date, anyelement, date);
+DROP FUNCTION decode(anyelement, anyelement, date, anyelement, date, date);
+DROP FUNCTION decode(anyelement, anyelement, date, anyelement, date, anyelement, date);
+DROP FUNCTION decode(anyelement, anyelement, date, anyelement, date, anyelement, date, date);
+DROP FUNCTION decode(anyelement, anyelement, time);
+DROP FUNCTION decode(anyelement, anyelement, time, time);
+DROP FUNCTION decode(anyelement, anyelement, time, anyelement, time);
+DROP FUNCTION decode(anyelement, anyelement, time, anyelement, time, time);
+DROP FUNCTION decode(anyelement, anyelement, time, anyelement, time, anyelement, time);
+DROP FUNCTION decode(anyelement, anyelement, time, anyelement, time, anyelement, time, time);
+DROP FUNCTION decode(anyelement, anyelement, timestamp);
+DROP FUNCTION decode(anyelement, anyelement, timestamp, timestamp);
+DROP FUNCTION decode(anyelement, anyelement, timestamp, anyelement, timestamp);
+DROP FUNCTION decode(anyelement, anyelement, timestamp, anyelement, timestamp, timestamp);
+DROP FUNCTION decode(anyelement, anyelement, timestamp, anyelement, timestamp, anyelement, timestamp);
+DROP FUNCTION decode(anyelement, anyelement, timestamp, anyelement, timestamp, anyelement, timestamp, timestamp);
+DROP FUNCTION decode(anyelement, anyelement, timestamptz);
+DROP FUNCTION decode(anyelement, anyelement, timestamptz, timestamptz);
+DROP FUNCTION decode(anyelement, anyelement, timestamptz, anyelement, timestamptz);
+DROP FUNCTION decode(anyelement, anyelement, timestamptz, anyelement, timestamptz, timestamptz);
+DROP FUNCTION decode(anyelement, anyelement, timestamptz, anyelement, timestamptz, anyelement, timestamptz);
+DROP FUNCTION decode(anyelement, anyelement, timestamptz, anyelement, timestamptz, anyelement, timestamptz, timestamptz);
 
-DROP FUNCTION IF EXISTS nanvl(float4, float4);
-DROP FUNCTION IF EXISTS nanvl(float8, float8);
-DROP FUNCTION IF EXISTS nanvl(numeric, numeric);
+DROP FUNCTION dbms_random.initialize();
+DROP FUNCTION dbms_random.normal();
+DROP FUNCTION dbms_random.random();
+DROP FUNCTION dbms_random.seed(integer);
+DROP FUNCTION dbms_random.seed(text);
+DROP FUNCTION dbms_random.string(opt text, len int);
+DROP FUNCTION dbms_random.terminate();
+DROP FUNCTION dbms_random.value(low double precision, high double precision);
+DROP FUNCTION dbms_random.value();
 
-DROP FUNCTION IF EXISTS bitand(bigint, bigint);
-
-DROP AGGREGATE IF EXISTS listagg(text);
-DROP AGGREGATE IF EXISTS listagg(text, text);
-DROP FUNCTION IF EXISTS listagg1_transfn(text, text);
-DROP FUNCTION IF EXISTS listagg2_transfn(text, text, text);
-
-DROP FUNCTION IF EXISTS nvl2(anyelement, anyelement, anyelement);
-
-DROP FUNCTION IF EXISTS lnnvl(bool);
-
-DROP FUNCTION IF EXISTS dump("any");
-DROP FUNCTION IF EXISTS dump("any", integer);
-
-DROP FUNCTION IF EXISTS nlssort(text, text);
-
-DROP FUNCTION IF EXISTS substr(text, int, int);
-DROP FUNCTION IF EXISTS substr(text, int);
-
-COMMIT;
+DROP SCHEMA dbms_alert CASCADE;
+DROP SCHEMA dbms_assert CASCADE;
+DROP SCHEMA dbms_output CASCADE;
+DROP SCHEMA dbms_pipe CASCADE;
+DROP SCHEMA dbms_random CASCADE;
+DROP SCHEMA dbms_utility CASCADE;
+DROP SCHEMA oracle CASCADE;
+DROP SCHEMA plunit CASCADE;
+DROP SCHEMA plvchr CASCADE;
+DROP SCHEMA plvdate CASCADE;
+DROP SCHEMA plvlex CASCADE;
+DROP SCHEMA plvstr CASCADE;
+DROP SCHEMA plvsubst CASCADE;
+DROP SCHEMA utl_file CASCADE;

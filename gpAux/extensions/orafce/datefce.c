@@ -8,6 +8,8 @@
 #include "orafunc.h"
 #include "builtins.h"
 
+#define ENABLE_INTERNATIONALIZED_WEEKDAY
+
 #ifdef ENABLE_INTERNATIONALIZED_WEEKDAY
 
 typedef struct WeekDays
@@ -16,7 +18,6 @@ typedef struct WeekDays
 	const char *names[7];
 } WeekDays;
 
-static const WeekDays *mru_weekdays = NULL;
 /*
  * { encoding, { "sun", "mon", "tue", "wed", "thu", "fri", "sat" } },
  */
@@ -32,6 +33,7 @@ static const WeekDays WEEKDAYS[] =
 #endif
 };
 
+static const WeekDays *mru_weekdays = NULL;
 
 static int
 weekday_search(const WeekDays *weekdays, const char *str, int len)
@@ -177,7 +179,7 @@ do { \
 	if ((_l) < 0) { \
 		ereport(ERROR, \
 				(errcode(ERRCODE_INVALID_DATETIME_FORMAT), \
-				 errmsg("invalid %s", (_s)))); \
+				 errmsg("invalid value for %s", (_s)))); \
 	} \
 } while (0)
 
@@ -227,6 +229,8 @@ ora_seq_search(const char *name, /*const*/ char **array, int max)
  * Returns the first weekday that is greater than a date value.
  *
  ********************************************************************/
+
+
 Datum
 next_day(PG_FUNCTION_ARGS)
 {
@@ -291,10 +295,7 @@ next_day_by_index(PG_FUNCTION_ARGS)
 	 * TODO: It should be affected by NLS_TERRITORY. For example,
 	 * 1..7 should be interpreted as Mon..Sun in GERMAN.
 	 */
-	if (idx < 1 || idx > 7)
-		ereport(ERROR,
-				(errcode(ERRCODE_INVALID_DATETIME_FORMAT),
-				 errmsg("invalid day offset \"%i\"", idx)));
+	CHECK_SEQ_SEARCH((idx < 1 || 7 < idx) ? -1 : 0, "DAY/Day/day");
 
 	/* j2day returns 0..6 as Sun..Sat */
 	off = (idx - 1) - j2day(day+POSTGRES_EPOCH_JDATE);
@@ -315,6 +316,8 @@ next_day_by_index(PG_FUNCTION_ARGS)
  * Returns last day of the month based on a date value
  *
  ********************************************************************/
+
+
 Datum
 last_day(PG_FUNCTION_ARGS)
 {
@@ -382,9 +385,9 @@ months_between(PG_FUNCTION_ARGS)
 		result = (y1 - y2) * 12 + (m1 - m2);
 	else
 		result = (y1 - y2) * 12 + (m1 - m2) + (d1 - d2) / 31.0;
-	
-	PG_RETURN_DATUM(
-			DirectFunctionCall1(float8_numeric, Float8GetDatumFast(result))); 
+
+	PG_RETURN_NUMERIC(
+		DirectFunctionCall1(float8_numeric, Float8GetDatumFast(result)));
 }
 
 /********************************************************************
@@ -640,8 +643,7 @@ _ora_date_round(DateADT day, int f)
  *
  ********************************************************************/
 
-Datum
-ora_date_trunc(PG_FUNCTION_ARGS)
+Datum ora_date_trunc(PG_FUNCTION_ARGS)
 {
 	DateADT day = PG_GETARG_DATEADT(0);
 	text *fmt = PG_GETARG_TEXT_PP(1);
@@ -649,7 +651,7 @@ ora_date_trunc(PG_FUNCTION_ARGS)
 	DateADT result;
 
 	int f = ora_seq_search(VARDATA_ANY(fmt), date_fmt, VARSIZE_ANY_EXHDR(fmt));
-	CHECK_SEQ_SEARCH(f, "trunc format string");
+	CHECK_SEQ_SEARCH(f, "round/trunc format string");
 
 	result = _ora_date_trunc(day, f);
 	PG_RETURN_DATEADT(result);
@@ -672,7 +674,7 @@ ora_timestamptz_trunc(PG_FUNCTION_ARGS)
 		PG_RETURN_TIMESTAMPTZ(timestamp);
 
 	f = ora_seq_search(VARDATA_ANY(fmt), date_fmt, VARSIZE_ANY_EXHDR(fmt));
-	CHECK_SEQ_SEARCH(f, "trunc format string");
+	CHECK_SEQ_SEARCH(f, "round/trunc format string");
 
 	if (timestamp2tm(timestamp, &tz, tm, &fsec, &tzn, NULL) != 0)
 	ereport(ERROR,
@@ -737,8 +739,7 @@ ora_timestamptz_trunc(PG_FUNCTION_ARGS)
  ********************************************************************/
 
 
-Datum
-ora_date_round(PG_FUNCTION_ARGS)
+Datum ora_date_round(PG_FUNCTION_ARGS)
 {
 	DateADT day = PG_GETARG_DATEADT(0);
 	text *fmt = PG_GETARG_TEXT_PP(1);
@@ -746,7 +747,7 @@ ora_date_round(PG_FUNCTION_ARGS)
 	DateADT result;
 
 	int f = ora_seq_search(VARDATA_ANY(fmt), date_fmt, VARSIZE_ANY_EXHDR(fmt));
-	CHECK_SEQ_SEARCH(f, "round format string");
+	CHECK_SEQ_SEARCH(f, "round/trunc format string");
 
 	result = _ora_date_round(day, f);
 	PG_RETURN_DATEADT(result);
@@ -776,7 +777,7 @@ ora_timestamptz_round(PG_FUNCTION_ARGS)
 		PG_RETURN_TIMESTAMPTZ(timestamp);
 
 	f = ora_seq_search(VARDATA_ANY(fmt), date_fmt, VARSIZE_ANY_EXHDR(fmt));
-	CHECK_SEQ_SEARCH(f, "round format string");
+	CHECK_SEQ_SEARCH(f, "round/trunc format string");
 
 	if (timestamp2tm(timestamp, &tz, tm, &fsec, &tzn, NULL) != 0)
 	ereport(ERROR,

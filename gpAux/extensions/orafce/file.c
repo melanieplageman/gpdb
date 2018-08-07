@@ -50,8 +50,8 @@ PG_FUNCTION_INFO_V1(utl_file_tmpdir);
 #define CUSTOM_EXCEPTION(msg, detail) \
 	ereport(ERROR, \
 		(errcode(ERRCODE_RAISE_EXCEPTION), \
-		 errmsg("%s",msg), \
-		 errdetail("%s",detail)))
+		 errmsg("%s", msg), \
+		 errdetail("%s", detail)))
 
 #define INVALID_FILEHANDLE_EXCEPTION()	CUSTOM_EXCEPTION(INVALID_FILEHANDLE, "Used file handle isn't valid.")
 
@@ -1072,7 +1072,7 @@ utl_file_tmpdir(PG_FUNCTION_ARGS)
 	char		tmpdir[MAXPGPATH];
 	int			ret;
 
-	ret = GetTempPath(MAXPGPATH, tmpdir);
+	ret = GetTempPathA(MAXPGPATH, tmpdir);
 	if (ret == 0 || ret > MAXPGPATH)
 		CUSTOM_EXCEPTION(INVALID_PATH, strerror(errno));
 

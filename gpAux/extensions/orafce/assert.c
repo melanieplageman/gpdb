@@ -376,9 +376,10 @@ dbms_assert_object_name(PG_FUNCTION_ARGS)
 		INVALID_OBJECT_NAME_EXCEPTION();
 
 	object_name = text_to_cstring(str);
+
 	names = stringToQualifiedNameList(object_name);
 
-	classId = RangeVarGetRelid(makeRangeVarFromNameList(names), NoLock, true);
+	classId = RangeVarGetRelid(makeRangeVarFromNameList(names), true);
 	if (!OidIsValid(classId))
 		INVALID_OBJECT_NAME_EXCEPTION();
 
