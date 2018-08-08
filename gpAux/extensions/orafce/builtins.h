@@ -40,6 +40,7 @@ extern int no_such_variable
 
 /* from aggregate.c */
 extern PGDLLEXPORT Datum orafce_listagg1_transfn(PG_FUNCTION_ARGS);
+extern PGDLLEXPORT Datum orafce_wm_concat_transfn(PG_FUNCTION_ARGS);
 extern PGDLLEXPORT Datum orafce_listagg2_transfn(PG_FUNCTION_ARGS);
 extern PGDLLEXPORT Datum orafce_listagg_finalfn(PG_FUNCTION_ARGS);
 extern PGDLLEXPORT Datum orafce_median4_transfn(PG_FUNCTION_ARGS);
@@ -72,8 +73,10 @@ extern PGDLLEXPORT Datum orafce_to_char_int8(PG_FUNCTION_ARGS);
 extern PGDLLEXPORT Datum orafce_to_char_float4(PG_FUNCTION_ARGS);
 extern PGDLLEXPORT Datum orafce_to_char_float8(PG_FUNCTION_ARGS);
 extern PGDLLEXPORT Datum orafce_to_char_numeric(PG_FUNCTION_ARGS);
+extern PGDLLEXPORT Datum orafce_to_char_timestamp(PG_FUNCTION_ARGS);
 extern PGDLLEXPORT Datum orafce_to_number(PG_FUNCTION_ARGS);
 extern PGDLLEXPORT Datum orafce_to_multi_byte(PG_FUNCTION_ARGS);
+extern PGDLLEXPORT Datum orafce_to_single_byte(PG_FUNCTION_ARGS);
 
 /* from datefce.c */
 extern PGDLLEXPORT Datum next_day(PG_FUNCTION_ARGS);
@@ -81,10 +84,16 @@ extern PGDLLEXPORT Datum next_day_by_index(PG_FUNCTION_ARGS);
 extern PGDLLEXPORT Datum last_day(PG_FUNCTION_ARGS);
 extern PGDLLEXPORT Datum months_between(PG_FUNCTION_ARGS);
 extern PGDLLEXPORT Datum add_months(PG_FUNCTION_ARGS);
+extern PGDLLEXPORT Datum ora_to_date(PG_FUNCTION_ARGS);
 extern PGDLLEXPORT Datum ora_date_trunc(PG_FUNCTION_ARGS);
 extern PGDLLEXPORT Datum ora_date_round(PG_FUNCTION_ARGS);
 extern PGDLLEXPORT Datum ora_timestamptz_trunc(PG_FUNCTION_ARGS);
 extern PGDLLEXPORT Datum ora_timestamptz_round(PG_FUNCTION_ARGS);
+extern PGDLLEXPORT Datum ora_timestamp_trunc(PG_FUNCTION_ARGS);
+extern PGDLLEXPORT Datum ora_timestamp_round(PG_FUNCTION_ARGS);
+extern PGDLLEXPORT Datum orafce_sysdate(PG_FUNCTION_ARGS);
+extern PGDLLEXPORT Datum orafce_sessiontimezone(PG_FUNCTION_ARGS);
+extern PGDLLEXPORT Datum orafce_dbtimezone(PG_FUNCTION_ARGS);
 
 /* from file.c */
 extern PGDLLEXPORT Datum utl_file_fopen(PG_FUNCTION_ARGS);
@@ -113,6 +122,11 @@ extern PGDLLEXPORT Datum ora_set_nls_sort(PG_FUNCTION_ARGS);
 extern PGDLLEXPORT Datum ora_lnnvl(PG_FUNCTION_ARGS);
 extern PGDLLEXPORT Datum ora_decode(PG_FUNCTION_ARGS);
 extern PGDLLEXPORT Datum orafce_dump(PG_FUNCTION_ARGS);
+extern PGDLLEXPORT Datum ora_get_major_version(PG_FUNCTION_ARGS);
+extern PGDLLEXPORT Datum ora_get_major_version_num(PG_FUNCTION_ARGS);
+extern PGDLLEXPORT Datum ora_get_full_version_num(PG_FUNCTION_ARGS);
+extern PGDLLEXPORT Datum ora_get_platform(PG_FUNCTION_ARGS);
+extern PGDLLEXPORT Datum ora_get_status(PG_FUNCTION_ARGS);
 
 /* from pipe.c */
 extern PGDLLEXPORT Datum dbms_pipe_pack_message_text(PG_FUNCTION_ARGS);
@@ -174,6 +188,8 @@ extern PGDLLEXPORT Datum plvdate_set_nonbizday_day(PG_FUNCTION_ARGS);
 extern PGDLLEXPORT Datum plvdate_unset_nonbizday_day(PG_FUNCTION_ARGS);
 extern PGDLLEXPORT Datum plvdate_use_easter(PG_FUNCTION_ARGS);
 extern PGDLLEXPORT Datum plvdate_using_easter(PG_FUNCTION_ARGS);
+extern PGDLLEXPORT Datum plvdate_use_great_friday(PG_FUNCTION_ARGS);
+extern PGDLLEXPORT Datum plvdate_using_great_friday(PG_FUNCTION_ARGS);
 extern PGDLLEXPORT Datum plvdate_include_start(PG_FUNCTION_ARGS);
 extern PGDLLEXPORT Datum plvdate_including_start(PG_FUNCTION_ARGS);
 extern PGDLLEXPORT Datum plvdate_default_holidays(PG_FUNCTION_ARGS);
@@ -246,4 +262,25 @@ extern PGDLLEXPORT Datum dbms_random_value_range(PG_FUNCTION_ARGS);
 extern PGDLLEXPORT Datum dbms_utility_format_call_stack0(PG_FUNCTION_ARGS);
 extern PGDLLEXPORT Datum dbms_utility_format_call_stack1(PG_FUNCTION_ARGS);
 
+/* from oraguc.c */
+extern void PGDLLEXPORT _PG_init(void);
+
+/* from charpad.c */
+extern PGDLLEXPORT Datum orafce_lpad(PG_FUNCTION_ARGS);
+extern PGDLLEXPORT Datum orafce_rpad(PG_FUNCTION_ARGS);
+
+/* from charlen.c */
+extern PGDLLEXPORT Datum orafce_bpcharlen(PG_FUNCTION_ARGS);
+
+/* from varchar2.c */
+extern PGDLLEXPORT Datum varchar2in(PG_FUNCTION_ARGS);
+extern PGDLLEXPORT Datum varchar2out(PG_FUNCTION_ARGS);
+extern PGDLLEXPORT Datum varchar2(PG_FUNCTION_ARGS);
+extern PGDLLEXPORT Datum varchar2recv(PG_FUNCTION_ARGS);
+
+/* from nvarchar2.c */
+extern PGDLLEXPORT Datum nvarchar2in(PG_FUNCTION_ARGS);
+extern PGDLLEXPORT Datum nvarchar2out(PG_FUNCTION_ARGS);
+extern PGDLLEXPORT Datum nvarchar2(PG_FUNCTION_ARGS);
+extern PGDLLEXPORT Datum nvarchar2recv(PG_FUNCTION_ARGS);
 #endif

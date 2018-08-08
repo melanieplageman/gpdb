@@ -15,7 +15,7 @@
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
 #include "utils/syscache.h"
-#include "orafunc.h"
+#include "orafce.h"
 #include "builtins.h"
 
 /*
@@ -24,7 +24,7 @@
  */
 
 static char *lc_collate_cache = NULL;
-static int multiplication = 1;
+static size_t multiplication = 1;
 
 text *def_locale = NULL;
 
@@ -149,7 +149,11 @@ _nls_run_strxfrm(text *string, text *locale)
 	{
 		if ((lc_collate_cache = setlocale(LC_COLLATE, NULL)))
 			/* Make a copy of the locale name string. */
+#ifdef _MSC_VER
+			lc_collate_cache = _strdup(lc_collate_cache);
+#else
 			lc_collate_cache = strdup(lc_collate_cache);
+#endif
 		if (!lc_collate_cache)
 			elog(ERROR, "failed to retrieve the default LC_COLLATE value");
 	}
@@ -169,6 +173,7 @@ _nls_run_strxfrm(text *string, text *locale)
 	{
 		locale_len = VARSIZE_ANY_EXHDR(locale);
 	}
+
 	/*
 	 * If different than default locale is requested, call setlocale.
 	 */
@@ -325,9 +330,7 @@ ora_decode(PG_FUNCTION_ARGS)
 	else
 	{
 		FmgrInfo   *eq;
-#if PG_VERSION_NUM >= 90100
 		Oid		collation = PG_GET_COLLATION();
-#endif
 
 		/*
 		 * On first call, get the input type's operator '=' and save at
@@ -357,11 +360,8 @@ ora_decode(PG_FUNCTION_ARGS)
 			if (PG_ARGISNULL(i))
 				continue;
 
-#if PG_VERSION_NUM >= 90100
 			InitFunctionCallInfoData(func, eq, 2, collation, NULL, NULL);
-#else
-			InitFunctionCallInfoData(func, eq, 2, NULL, NULL);
-#endif
+
 			func.arg[0] = PG_GETARG_DATUM(0);
 			func.arg[1] = PG_GETARG_DATUM(i);
 			func.argnull[0] = false;
@@ -382,7 +382,6 @@ ora_decode(PG_FUNCTION_ARGS)
 		PG_RETURN_DATUM(PG_GETARG_DATUM(retarg));
 }
 
-#if PG_VERSION_NUM >= 90100
 Oid
 equality_oper_funcid(Oid argtype)
 {
@@ -390,15 +389,6 @@ equality_oper_funcid(Oid argtype)
 	get_sort_group_operators(argtype, false, true, false, NULL, &eq, NULL, NULL);
 	return get_opcode(eq);
 }
-#elif PG_VERSION_NUM >= 80400
-Oid
-equality_oper_funcid(Oid argtype)
-{
-	Oid	eq;
-	get_sort_group_operators(argtype, false, true, false, NULL, &eq, NULL);
-	return get_opcode(eq);
-}
-#endif
 
 /*
  * dump(anyexpr [,format])
@@ -510,4 +500,68 @@ orafce_dump(PG_FUNCTION_ARGS)
 	}
 
 	PG_RETURN_TEXT_P(cstring_to_text(str.data));
+}
+
+PG_FUNCTION_INFO_V1(ora_get_major_version);
+
+
+/*
+ * Returns current version etc, PostgreSQL 9.6, PostgreSQL 10, ..
+ */
+Datum
+ora_get_major_version(PG_FUNCTION_ARGS)
+{
+	PG_RETURN_TEXT_P(cstring_to_text(PACKAGE_STRING));
+}
+
+PG_FUNCTION_INFO_V1(ora_get_major_version_num);
+
+/*
+ * Returns major version number 9.5, 9.6, 10, 11, ..
+ */
+Datum
+ora_get_major_version_num(PG_FUNCTION_ARGS)
+{
+	PG_RETURN_TEXT_P(cstring_to_text(PG_MAJORVERSION));
+}
+
+PG_FUNCTION_INFO_V1(ora_get_full_version_num);
+
+/*
+ * Returns version number string - 9.5.1, 10.2, ..
+ */
+Datum
+ora_get_full_version_num(PG_FUNCTION_ARGS)
+{
+	PG_RETURN_TEXT_P(cstring_to_text(PG_VERSION));
+}
+
+PG_FUNCTION_INFO_V1(ora_get_platform);
+
+/*
+ * 32bit, 64bit
+ */
+Datum
+ora_get_platform(PG_FUNCTION_ARGS)
+{
+#ifdef USE_FLOAT8_BYVAL
+	PG_RETURN_TEXT_P(cstring_to_text("64bit"));
+#else
+	PG_RETURN_TEXT_P(cstring_to_text("32bit"));
+#endif
+}
+
+PG_FUNCTION_INFO_V1(ora_get_status);
+
+/*
+ * Production | Debug
+ */
+Datum
+ora_get_status(PG_FUNCTION_ARGS)
+{
+#ifdef USE_ASSERT_CHECKING
+	PG_RETURN_TEXT_P(cstring_to_text("Debug"));
+#else
+	PG_RETURN_TEXT_P(cstring_to_text("Production"));
+#endif
 }

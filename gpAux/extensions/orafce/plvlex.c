@@ -11,20 +11,20 @@
     1.0. first public version 13. March 2006
 */
 
+#include <sys/time.h>
+#include <stdlib.h>
+
 #include "postgres.h"
+#include "catalog/pg_type.h"
+#include "lib/stringinfo.h"
+#include "nodes/pg_list.h"
 #include "utils/date.h"
 #include "utils/builtins.h"
 #include "utils/nabstime.h"
-#include <sys/time.h>
-#include <stdlib.h>
-#include "lib/stringinfo.h"
-
 #include "plvlex.h"
 #include "sqlparse.h"
-#include "nodes/pg_list.h"
 #include "funcapi.h"
-#include "catalog/pg_type.h"
-#include "orafunc.h"
+#include "orafce.h"
 #include "builtins.h"
 
 typedef struct {
@@ -37,7 +37,7 @@ typedef struct {
 PG_FUNCTION_INFO_V1(plvlex_tokens);
 
 extern int      orafce_sql_yyparse();
-extern void orafce_sql_yyerror(const char *message);
+extern void orafce_sql_yyerror(List **result, const char *message);
 extern void orafce_sql_scanner_init(const char *str);
 extern void orafce_sql_scanner_finish(void);
 
@@ -207,7 +207,7 @@ plvlex_tokens(PG_FUNCTION_ARGS)
 
 		orafce_sql_scanner_init(CSTRING(src));
 		if (orafce_sql_yyparse(&lexems) != 0)
-			orafce_sql_yyerror("bogus input");
+			orafce_sql_yyerror(NULL, "bogus input");
 
 		orafce_sql_scanner_finish();
 
@@ -295,4 +295,3 @@ plvlex_tokens(PG_FUNCTION_ARGS)
 	SRF_RETURN_DONE (funcctx);
 #endif
 }
-

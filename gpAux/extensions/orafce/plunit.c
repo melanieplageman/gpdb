@@ -4,10 +4,13 @@
  */
 
 #include "postgres.h"
+
+#include <math.h>
+
 #include "funcapi.h"
 #include "parser/parse_oper.h"
 #include "utils/builtins.h"
-#include "orafunc.h"
+#include "orafce.h"
 #include "builtins.h"
 
 PG_FUNCTION_INFO_V1(plunit_assert_true);
@@ -229,7 +232,7 @@ assert_equals_base(FunctionCallInfo fcinfo)
 		Oid eqopfcid;
 
 		if (!OidIsValid(valtype))
-	    		elog(ERROR, "could not determine data type of input");
+			elog(ERROR, "could not determine data type of input");
 
 		eqopfcid = equality_oper_funcid(valtype);
 
@@ -238,12 +241,12 @@ assert_equals_base(FunctionCallInfo fcinfo)
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 				errmsg("unknown equal operand for datatype")));
 
-    		/* First time calling for current query: allocate storage */
-        	fcinfo->flinfo->fn_extra = MemoryContextAlloc(fcinfo->flinfo->fn_mcxt,
-            						                    sizeof(Oid));
-                ptr = (Oid *) fcinfo->flinfo->fn_extra;
-                *ptr = eqopfcid;
-        }
+		/* First time calling for current query: allocate storage */
+		fcinfo->flinfo->fn_extra = MemoryContextAlloc(fcinfo->flinfo->fn_mcxt,
+										    sizeof(Oid));
+		ptr = (Oid *) fcinfo->flinfo->fn_extra;
+		*ptr = eqopfcid;
+	}
 
 	return DatumGetBool(OidFunctionCall2(*ptr, value1, value2));
 }
@@ -379,7 +382,7 @@ plunit_assert_not_equals_range(PG_FUNCTION_ARGS)
 Datum
 plunit_assert_not_equals_range_message(PG_FUNCTION_ARGS)
 {
-	char *message = assert_get_message(fcinfo, 3, "plunit.assert_not_equal exception");
+	char *message = assert_get_message(fcinfo, 4, "plunit.assert_not_equal exception");
 
 	/* skip all tests for NULL value */
 	if (PG_ARGISNULL(0) || PG_ARGISNULL(1) || PG_ARGISNULL(2))
