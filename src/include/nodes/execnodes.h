@@ -678,6 +678,8 @@ typedef struct EState
 
 	/* Should the executor skip past the alien plan nodes */
 	bool eliminateAliens;
+
+	int32 yolo;
 } EState;
 
 struct PlanState;

@@ -93,6 +93,8 @@ static void ShutdownExprContext(ExprContext *econtext, bool isCommit);
  * ----------------------------------------------------------------
  */
 
+int32 MemoryAccounting_LastShortLivingMemoryAccountIndex();
+
 /* ----------------
  *		CreateExecutorState
  *
@@ -160,6 +162,7 @@ CreateExecutorState(void)
 	estate->es_param_exec_vals = NULL;
 
 	estate->es_query_cxt = qcontext;
+	estate->yolo = MemoryAccounting_LastShortLivingMemoryAccountIndex();
 
 	estate->es_tupleTable = NIL;
 
@@ -280,11 +283,14 @@ FreeExecutorState(EState *estate)
 		estate->dynamicTableScanInfo = NULL;
 	}
 
+	int32 oldAccountCount = estate->yolo;
 	/*
 	 * Free the per-query memory context, thereby releasing all working
 	 * memory, including the EState node itself.
 	 */
 	MemoryContextDelete(estate->es_query_cxt);
+
+	MemoryAccounting_ResetShortLivingMemoryAccountIndex(oldAccountCount);
 }
 
 /* ----------------

@@ -256,4 +256,9 @@ MemoryAccounting_RequestQuotaIncrease(void);
 extern MemoryAccountExplain *
 MemoryAccounting_ExplainCurrentOptimizerAccountInfo(void);
 
+extern void MemoryAccounting_ResetShortLivingMemoryAccountIndex(int32 oldAccountCount);
+
+extern int32
+MemoryAccounting_LastShortLivingMemoryAccountIndex();
+
 #endif   /* MEMACCOUNTING_H */

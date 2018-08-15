@@ -1472,3 +1472,31 @@ SaveMemoryBufToDisk(struct StringInfoData *memoryBuf, char *prefix)
 
 	fclose(file);
 }
+
+void MemoryAccounting_ResetShortLivingMemoryAccountIndex(int32 oldAccountCount)
+{
+	Assert(shortLivingMemoryAccountArray);
+	Assert(oldAccountCount >= 0);
+	for (size_t i = shortLivingMemoryAccountArray->accountCount - 1; i >= oldAccountCount; i--)
+	{
+		MemoryAccount *account = shortLivingMemoryAccountArray->allAccounts[i];
+		if (MemoryAccounting_GetBalance(account) != 0)
+		{
+			shortLivingMemoryAccountArray->accountCount = i + 1;
+			nextAccountId = shortLivingMemoryAccountArray->accountCount + liveAccountStartId;
+			return;
+		}
+		else
+		{
+			shortLivingMemoryAccountArray->allAccounts[i] = NULL;
+		}
+	}
+	shortLivingMemoryAccountArray->accountCount = oldAccountCount;
+	nextAccountId = shortLivingMemoryAccountArray->accountCount + liveAccountStartId;
+}
+
+int32 MemoryAccounting_LastShortLivingMemoryAccountIndex()
+{
+	Assert(shortLivingMemoryAccountArray);
+	return (int32) shortLivingMemoryAccountArray->accountCount;
+}
