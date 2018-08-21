@@ -1087,6 +1087,8 @@ MemoryAccounting_GetOwnerName(MemoryOwnerType ownerType)
 		return "Serializer";
 	case MEMORY_OWNER_TYPE_Deserializer:
 		return "Deserializer";
+	case MEMORY_OWNER_TYPE_SPI:
+		return "SPI";
 
 	case MEMORY_OWNER_TYPE_EXECUTOR:
 		return "Executor";

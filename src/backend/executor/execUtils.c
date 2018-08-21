@@ -290,7 +290,6 @@ FreeExecutorState(EState *estate)
 	 */
 	MemoryContextDelete(estate->es_query_cxt);
 
-	MemoryAccounting_ResetShortLivingMemoryAccountIndex(oldAccountCount);
 }
 
 /* ----------------

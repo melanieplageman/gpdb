@@ -1160,6 +1160,7 @@ standard_ExecutorEnd(QueryDesc *queryDesc)
 	Assert(queryDesc != NULL);
 
 	estate = queryDesc->estate;
+	int32 oldAccountId = estate->yolo;
 
 	Assert(estate != NULL);
 
@@ -1312,6 +1313,8 @@ standard_ExecutorEnd(QueryDesc *queryDesc)
 		}
 	}
 	END_MEMORY_ACCOUNT();
+	queryDesc->plannedstmt->memoryAccountId = 0;
+	MemoryAccounting_ResetShortLivingMemoryAccountIndex(oldAccountId - 1);
 
 	ReportOOMConsumption();
 }

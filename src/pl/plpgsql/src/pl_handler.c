@@ -22,6 +22,7 @@
 #include "utils/builtins.h"
 #include "utils/guc.h"
 #include "utils/lsyscache.h"
+#include "utils/memaccounting_private.h"
 #include "utils/syscache.h"
 
 PG_MODULE_MAGIC;
@@ -97,49 +98,56 @@ plpgsql_call_handler(PG_FUNCTION_ARGS)
 	/*
 	 * Connect to SPI manager
 	 */
-	if ((rc = SPI_connect()) != SPI_OK_CONNECT)
-		elog(ERROR, "SPI_connect failed: %s", SPI_result_code_string(rc));
+	int32 accountCount = 0;
+	START_MEMORY_ACCOUNT(MemoryAccounting_CreateAccount(0, MEMORY_OWNER_TYPE_SPI));
+		{
+			accountCount = shortLivingMemoryAccountArray->accountCount;
+			if ((rc = SPI_connect()) != SPI_OK_CONNECT)
+				elog(ERROR, "SPI_connect failed: %s", SPI_result_code_string(rc));
 
-	/* Find or compile the function */
-	func = plpgsql_compile(fcinfo, false);
+			/* Find or compile the function */
+			func = plpgsql_compile(fcinfo, false);
 
-	/* Must save and restore prior value of cur_estate */
-	save_cur_estate = func->cur_estate;
+			/* Must save and restore prior value of cur_estate */
+			save_cur_estate = func->cur_estate;
 
-	/* Mark the function as busy, so it can't be deleted from under us */
-	func->use_count++;
+			/* Mark the function as busy, so it can't be deleted from under us */
+			func->use_count++;
 
-	PG_TRY();
-	{
-		/*
-		 * Determine if called as function or trigger and call appropriate
-		 * subhandler
-		 */
-		if (CALLED_AS_TRIGGER(fcinfo))
-			retval = PointerGetDatum(plpgsql_exec_trigger(func,
-										   (TriggerData *) fcinfo->context));
-		else
-			retval = plpgsql_exec_function(func, fcinfo);
-	}
-	PG_CATCH();
-	{
-		/* Decrement use-count, restore cur_estate, and propagate error */
-		func->use_count--;
-		func->cur_estate = save_cur_estate;
-		PG_RE_THROW();
-	}
-	PG_END_TRY();
+			PG_TRY();
+					{
+						/*
+						 * Determine if called as function or trigger and call appropriate
+						 * subhandler
+						 */
+						if (CALLED_AS_TRIGGER(fcinfo))
+							retval = PointerGetDatum(plpgsql_exec_trigger(func,
+																		  (TriggerData *) fcinfo->context));
+						else
+							retval = plpgsql_exec_function(func, fcinfo);
+					}
+				PG_CATCH();
+					{
+						/* Decrement use-count, restore cur_estate, and propagate error */
+						func->use_count--;
+						func->cur_estate = save_cur_estate;
+						PG_RE_THROW();
+					}
+			PG_END_TRY();
 
-	func->use_count--;
+			func->use_count--;
 
-	func->cur_estate = save_cur_estate;
+			func->cur_estate = save_cur_estate;
 
-	/*
-	 * Disconnect from SPI manager
-	 */
-	if ((rc = SPI_finish()) != SPI_OK_FINISH)
-		elog(ERROR, "SPI_finish failed: %s", SPI_result_code_string(rc));
+			/*
+			 * Disconnect from SPI manager
+			 */
+			if ((rc = SPI_finish()) != SPI_OK_FINISH)
+				elog(ERROR, "SPI_finish failed: %s", SPI_result_code_string(rc));
+		}
+	END_MEMORY_ACCOUNT();
 
+	MemoryAccounting_ResetShortLivingMemoryAccountIndex(accountCount - 1);
 	return retval;
 }
 
