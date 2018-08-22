@@ -1360,6 +1360,7 @@ ExecEndNode(PlanState *node)
 	 */
 	if (node == NULL)
 		return;
+	node->plan->memoryAccountId = 0;
 
 	EState	   *estate = node->state;
 
