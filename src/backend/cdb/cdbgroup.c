@@ -4533,6 +4533,8 @@ add_second_stage_agg(PlannerInfo *root,
 	parse->jointree->quals = NULL;
 	parse->rowMarks = NIL;
 
+	parse->targetList = upper_tlist;
+
 	/*
 	 * <EXECUTE s> uses parse->targetList to derive the portal's tupDesc, so
 	 * when use_root is true, the caller owns the responsibility to make sure
