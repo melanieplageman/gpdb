@@ -1555,6 +1555,8 @@ make_two_stage_agg_plan(PlannerInfo *root,
 									   !ctx->is_grpext,
 									   true);
 
+	root->parse->targetList = final_tlist;
+
 	if (ctx->is_grpext)
 	{
 		ListCell   *lc;
@@ -4521,25 +4523,6 @@ add_second_stage_agg(PlannerInfo *root,
 	newrtable = list_make1(newrte);
 	
 
-	ListCell   *lc;
-	foreach(lc, parse->targetList) 
-	{
-		TargetEntry *outerQueryTargetListElement = (TargetEntry *) lfirst(lc);
-		RangeTblEntry *outerQueryTable; // Get this from outerQueryTargetListElement->varno
-		
-		
-		RangeTblEntry *innerQueryTable; // Get this one from subquery->rte comparing relid against outerQueryTable
-		TargetEntry *innerQueryTargetListElement; // Get from subquery->targetList with 
-												// varno == innerQueryTable.varno && 
-												// innerQueryTargetListElement.varattno == outerQueryTargetListElement.varattno
-		
-		
-//		if(((Var*)tle->expr)->varno > 1)
-//			((Var*)tle->expr)->varno = 1;
-//		else if(((Var*)tle->expr)->varno == 1)
-//			((Var*)tle->expr)->varattno = 1;
-	}
-	
 
 	/*
 	 * Modify the root query in place to look like its range table is a simple
