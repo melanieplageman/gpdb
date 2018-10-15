@@ -3942,6 +3942,7 @@ Plan *wrap_plan(PlannerInfo *root, Plan *plan, Query *query,
 	/* Make the plan. 
 	 */
 	plan = (Plan*)make_subqueryscan(root, subq_tlist, NIL, varno, plan, query->rtable);
+	SS_finalize_plan(root, ((SubqueryScan *)plan)->subplan, false);
 	mark_passthru_locus(plan, true, true);
 	
 	/* Make the corresponding Query.
@@ -4036,6 +4037,7 @@ Plan *add_join_to_wrapper(
 	/* Make the plan. 
 	 */
 	plan = (Plan*)make_subqueryscan(root, subq_tlist, NIL, varno, plan, query->rtable);
+	SS_finalize_plan(root, ((SubqueryScan *)plan)->subplan, false);
 	mark_passthru_locus(plan, true, true);
 
 	
