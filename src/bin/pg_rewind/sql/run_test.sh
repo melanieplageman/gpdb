@@ -161,6 +161,15 @@ pg_ctl -w -D $TEST_MASTER start -o "$MASTER_PG_CTL_OPTIONS" >>$log_path 2>&1
 echo "Old master restarted after rewind."
 after_rewind
 
+# Now promote master and run validation queries
+pg_ctl -w -D $TEST_MASTER promote >>$log_path 2>&1
+
+wait_until_master_is_promoted >>$log_path 2>&1
+
+#### Now run the test-specific parts to run after promotion
+echo "Master promoted."
+after_master_promotion
+
 # Stop remaining servers
 pg_ctl stop -D $TEST_MASTER -m fast -w >>$log_path 2>&1
 pg_ctl stop -D $TEST_STANDBY -m fast -w >>$log_path 2>&1

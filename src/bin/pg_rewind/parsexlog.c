@@ -961,6 +961,8 @@ extractPageInfo(XLogRecord *record)
 			}
 			break;
 
+		case RM_APPEND_ONLY_ID:
+			break;
 		default:
 			/*
 			 * It's important that we error out, not ignore, records that we

@@ -87,6 +87,17 @@ function wait_until_standby_is_promoted {
    done
 }
 
+function wait_until_master_is_promoted {
+   retry=50
+   until [ $retry -le 0 ]
+   do
+      PGOPTIONS=${PGOPTIONS_UTILITY} $MASTER_PSQL -c "select 1;" && break
+      retry=$[$retry-1]
+      sleep 0.2
+   done
+}
+
+
 function wait_until_standby_streaming_state {
    retry=150
    until [ $retry -le 0 ]
