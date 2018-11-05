@@ -41,6 +41,7 @@
 #include "commands/dbcommands.h"
 #include "commands/tablespace.h"
 #include "commands/sequence.h"
+#include "cdb/cdbappendonlyxlog.h"
 
 static void extractPageInfo(XLogRecord *record);
 
@@ -578,6 +579,7 @@ extractPageInfo(XLogRecord *record)
 
 						/* FPW does not exists. */
 						pageinfo_add(MAIN_FORKNUM, xlrec->node, xlrec->rootblk);
+						pageinfo_add(MAIN_FORKNUM, xlrec->node, BTREE_METAPAGE);
 						break;
 					}
 
@@ -963,6 +965,7 @@ extractPageInfo(XLogRecord *record)
 
 		case RM_APPEND_ONLY_ID:
 			break;
+
 		default:
 			/*
 			 * It's important that we error out, not ignore, records that we
