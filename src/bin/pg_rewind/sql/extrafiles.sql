@@ -54,5 +54,10 @@ function after_rewind
     (cd $TEST_MASTER; find tst_* | sort)
 }
 
+function after_master_promotion
+{
+  :
+}
+
 # Run the test
 . sql/run_test.sh

@@ -23,3 +23,15 @@ SELECT datname from pg_database
  standby_afterpromotion
 (6 rows)
 
+Master promoted.
+SELECT datname from pg_database
+        datname         
+------------------------
+ template1
+ template0
+ postgres
+ inmaster
+ beforepromotion
+ standby_afterpromotion
+(6 rows)
+

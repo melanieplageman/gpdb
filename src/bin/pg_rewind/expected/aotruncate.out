@@ -1,0 +1,44 @@
+Master initialized.
+Master running.
+CREATE TABLE aotable (d text) with (appendonly=true);
+CREATE TABLE
+INSERT INTO aotable VALUES ('in master');
+INSERT 0 1
+CHECKPOINT;
+CHECKPOINT
+Standby initialized and running.
+INSERT INTO aotable values ('in master, before promotion');
+INSERT 0 1
+CHECKPOINT;
+CHECKPOINT
+Standby promoted.
+DELETE from aotable;
+DELETE 2
+VACUUM full aotable;
+VACUUM
+SELECT * from aotable;
+ d 
+---
+(0 rows)
+
+INSERT INTO aotable VALUES ('in standby, after promotion');
+INSERT 0 1
+Running pg_rewind...
+Old master restarted after rewind.
+SELECT * from aotable;
+              d              
+-----------------------------
+ in master
+ in master, before promotion
+ in standby, after promotion
+(3 rows)
+
+Master promoted.
+SELECT * from aotable;
+              d              
+-----------------------------
+ in master
+ in master, before promotion
+ in standby, after promotion
+(3 rows)
+

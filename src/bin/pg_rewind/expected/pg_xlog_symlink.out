@@ -26,3 +26,12 @@ SELECT * from tbl1
  in standby, after promotion
 (3 rows)
 
+Master promoted.
+SELECT * from tbl1
+              d              
+-----------------------------
+ in master
+ in master, before promotion
+ in standby, after promotion
+(3 rows)
+

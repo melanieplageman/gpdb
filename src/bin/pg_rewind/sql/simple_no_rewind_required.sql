@@ -45,5 +45,10 @@ wait_until_standby_streaming_state
 PGOPTIONS=${PGOPTIONS_UTILITY} $STANDBY_PSQL -c "SELECT state FROM pg_stat_replication;"
 }
 
+function after_master_promotion
+{
+:
+}
+
 # Run the test
 . sql/run_test.sh

@@ -60,5 +60,10 @@ function after_rewind
 PGOPTIONS=${PGOPTIONS_UTILITY} $STANDBY_PSQL -c "SELECT * from tbl1"
 }
 
+function after_master_promotion
+{
+PGOPTIONS=${PGOPTIONS_UTILITY} $MASTER_PSQL -c "SELECT * from tbl1"
+}
+
 # Run the test
 . sql/run_test.sh
