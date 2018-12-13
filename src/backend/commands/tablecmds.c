@@ -486,6 +486,11 @@ static void ATPExecPartTruncate(Relation rel,
 static bool TypeTupleExists(Oid typeId);
 
 static void ATExecPartAddInternal(Relation rel, Node *def);
+static void ATPExecPartAttach(Relation rel, AlterPartitionCmd *alterPartitionCmd);
+static PartitionBy *createPartitionBy(Relation rel, PartitionBy *pBy, PartitionElem
+		*pelem, PartitionNode *pNode, char *partName, bool isDefault,
+		PartitionByType part_type, char *partDesc);
+
 
 static RangeVar *make_temp_table_name(Relation rel, BackendId id);
 static bool prebuild_temp_table(Relation rel, RangeVar *tmpname, DistributedBy *distro,
@@ -5670,6 +5675,9 @@ ATExecCmd(List **wqueue, AlteredTableInfo *tab, Relation *rel_p,
 			break;
 		case AT_PartAddInternal:
 			ATExecPartAddInternal(rel, cmd->def);
+			break;
+		case AT_PartAttach:
+			ATPExecPartAttach(rel, (AlterPartitionCmd *)cmd->def);
 			break;
 		default:				/* oops */
 			elog(ERROR, "unrecognized alter table type: %d",
@@ -15790,6 +15798,379 @@ wack_pid_relname(AlterPartitionId 		 *pid,
 	return locPid;
 }
 
+static PartitionBy *createPartitionBy(Relation rel, PartitionBy *pBy,
+		PartitionElem *pelem, PartitionNode *pNode, char *partName, bool
+		isDefault, PartitionByType part_type, char *partDesc)
+{
+	PartitionSpec *spec = makeNode(PartitionSpec);
+	List	   *schema = NIL;
+	List	   *inheritOids;
+	List	   *old_constraints;
+	int			parentOidCount;
+	PartitionNode *pNode_tmpl = NULL;
+
+	/* get the table column defs */
+	schema =
+		MergeAttributes(schema,
+						list_make1(
+								   makeRangeVar(
+												get_namespace_name(
+																   RelationGetNamespace(rel)),
+												pstrdup(RelationGetRelationName(rel)), -1)),
+						RELPERSISTENCE_PERMANENT, /* GPDB_91_MERGE_FIXME: what if it's unlogged or temp? Where to get a proper value for this? */
+						true /* isPartitioned */ ,
+						&inheritOids, &old_constraints, &parentOidCount);
+
+	spec->partElem = list_make1(pelem);
+
+	pelem->partName = partName;
+	pelem->isDefault = isDefault;
+	pelem->AddPartDesc = pstrdup(partDesc);
+
+	/* generate a random name for the partition relation if necessary */
+	if (partName)
+		pelem->rrand = 0;
+	else
+		pelem->rrand = random();
+
+	pBy->partType = part_type;
+	pBy->keys = NULL;
+	pBy->subPart = NULL;
+	pBy->partSpec = (Node *) spec;
+	pBy->partDepth = pNode->part->parlevel;
+	/* Note: pBy->partQuiet already set by caller */
+	pBy->parentRel =
+		makeRangeVar(get_namespace_name(RelationGetNamespace(rel)),
+					 pstrdup(RelationGetRelationName(rel)), -1);
+	pBy->location = -1;
+	pBy->partDefault = NULL;
+	pBy->bKeepMe = true;		/* nefarious: we need to keep the "top"
+								 * partition by statement because
+								 * analyze.c:do_parse_analyze needs to find it
+								 * to re-order the ALTER statements */
+
+	/* fixup the pnode_tmpl to get the right parlevel */
+	if (pNode && (pNode->rules || pNode->default_part))
+	{
+		pNode_tmpl = get_parts(pNode->part->parrelid,
+							   pNode->part->parlevel + 1,
+							   InvalidOid,	/* no parent for template */
+							   true,
+							   true /* includesubparts */
+			);
+	}
+
+	{							/* find the partitioning keys (recursively) */
+
+		PartitionBy *pBy2 = pBy;
+		PartitionBy *parent_pBy2 = NULL;
+		PartitionNode *pNode2 = pNode;
+
+		int			ii;
+		TupleDesc	tupleDesc = RelationGetDescr(rel);
+		List	   *pbykeys = NIL;
+		List	   *pbyopclass = NIL;
+		Oid			accessMethodId = BTREE_AM_OID;
+
+		while (pNode2)
+		{
+			pbykeys = NIL;
+			pbyopclass = NIL;
+
+			for (ii = 0; ii < pNode2->part->parnatts; ii++)
+			{
+				AttrNumber	attno =
+				pNode2->part->paratts[ii];
+				Form_pg_attribute attribute =
+				tupleDesc->attrs[attno - 1];
+				char	   *attributeName =
+				NameStr(attribute->attname);
+				Oid			opclass =
+				InvalidOid;
+
+				opclass =
+					GetDefaultOpClass(attribute->atttypid, accessMethodId);
+
+				if (pbykeys)
+				{
+					pbykeys = lappend(pbykeys, makeString(attributeName));
+					pbyopclass = lappend_oid(pbyopclass, opclass);
+				}
+				else
+				{
+					pbykeys = list_make1(makeString(attributeName));
+					pbyopclass = list_make1_oid(opclass);
+				}
+			}					/* end for */
+
+			pBy2->keys = pbykeys;
+			pBy2->keyopclass = pbyopclass;
+
+			if (parent_pBy2)
+				parent_pBy2->subPart = (Node *) pBy2;
+
+			parent_pBy2 = pBy2;
+
+			if (pNode2 && (pNode2->rules || pNode2->default_part))
+			{
+				PartitionRule *prule;
+				PartitionElem *el = NULL;	/* for the subpartn template */
+
+				if (pNode2->default_part)
+					prule = pNode2->default_part;
+				else
+					prule = linitial(pNode2->rules);
+
+				if (prule && prule->children)
+				{
+					pNode2 = prule->children;
+
+					Assert(('l' == pNode2->part->parkind) ||
+						   ('r' == pNode2->part->parkind));
+
+					pBy2 = makeNode(PartitionBy);
+					pBy2->partType = char_to_parttype(pNode2->part->parkind);
+					pBy2->keys = NULL;
+					pBy2->subPart = NULL;
+					pBy2->partSpec = NULL;
+					pBy2->partDepth = pNode2->part->parlevel;
+					pBy2->partQuiet = pBy->partQuiet;
+					pBy2->parentRel =
+						makeRangeVar(
+									 get_namespace_name(
+														RelationGetNamespace(rel)),
+									 pstrdup(RelationGetRelationName(rel)), -1);
+					pBy2->location = -1;
+					pBy2->partDefault = NULL;
+
+					el = NULL;
+
+					/* build the template (if it exists) */
+					if (pNode_tmpl)
+					{
+						PartitionSpec *spec_tmpl = makeNode(PartitionSpec);
+						ListCell   *lc;
+
+						spec_tmpl->istemplate = true;
+
+						/* add entries for rules at current level */
+						foreach(lc, pNode_tmpl->rules)
+						{
+							PartitionRule *rule_tmpl = lfirst(lc);
+
+							el = makeNode(PartitionElem);
+
+							if (rule_tmpl->parname && strlen(rule_tmpl->parname) > 0)
+								el->partName = rule_tmpl->parname;
+
+							el->isDefault = rule_tmpl->parisdefault;
+
+							/* MPP-6904: use storage options from template */
+							if (rule_tmpl->parreloptions ||
+								rule_tmpl->partemplatespaceId)
+							{
+								Node	   *tspaceName = NULL;
+								AlterPartitionCmd *apc =
+								makeNode(AlterPartitionCmd);
+
+								el->storeAttr = (Node *) apc;
+
+								if (rule_tmpl->partemplatespaceId)
+									tspaceName =
+										(Node *) makeString(
+															get_tablespace_name(
+																				rule_tmpl->partemplatespaceId
+																				));
+
+								apc->partid = NULL;
+								apc->arg2 = tspaceName;
+								apc->arg1 = (Node *) rule_tmpl->parreloptions;
+
+							}
+
+							/* LIST */
+							if (rule_tmpl->parlistvalues)
+							{
+								PartitionValuesSpec *vspec =
+								makeNode(PartitionValuesSpec);
+
+								el->boundSpec = (Node *) vspec;
+
+								vspec->partValues = rule_tmpl->parlistvalues;
+							}
+
+							/* RANGE */
+							if (rule_tmpl->parrangestart ||
+								rule_tmpl->parrangeend)
+							{
+								PartitionBoundSpec *bspec =
+								makeNode(PartitionBoundSpec);
+								PartitionRangeItem *ri;
+
+								if (rule_tmpl->parrangestart)
+								{
+									ri =
+										makeNode(PartitionRangeItem);
+
+									ri->partedge =
+										rule_tmpl->parrangestartincl ?
+										PART_EDGE_INCLUSIVE :
+										PART_EDGE_EXCLUSIVE;
+
+									ri->partRangeVal =
+										(List *) rule_tmpl->parrangestart;
+
+									bspec->partStart = (Node *) ri;
+
+								}
+								if (rule_tmpl->parrangeend)
+								{
+									ri =
+										makeNode(PartitionRangeItem);
+
+									ri->partedge =
+										rule_tmpl->parrangeendincl ?
+										PART_EDGE_INCLUSIVE :
+										PART_EDGE_EXCLUSIVE;
+
+									ri->partRangeVal =
+										(List *) rule_tmpl->parrangeend;
+
+									bspec->partEnd = (Node *) ri;
+
+								}
+								if (rule_tmpl->parrangeevery)
+								{
+									ri =
+										makeNode(PartitionRangeItem);
+
+									ri->partRangeVal =
+										(List *) rule_tmpl->parrangeevery;
+
+									bspec->partEvery = (Node *) ri;
+
+								}
+
+								el->boundSpec = (Node *) bspec;
+
+							}	/* end if RANGE */
+
+							spec_tmpl->partElem = lappend(spec_tmpl->partElem,
+														  el);
+						}		/* end foreach */
+
+						/* MPP-4725 */
+						/* and the default partition */
+						if (pNode_tmpl->default_part)
+						{
+							PartitionRule *rule_tmpl =
+							pNode_tmpl->default_part;
+
+							el = makeNode(PartitionElem);
+
+							if (rule_tmpl->parname && strlen(rule_tmpl->parname) > 0)
+								el->partName = rule_tmpl->parname;
+
+							el->isDefault = rule_tmpl->parisdefault;
+
+							spec_tmpl->partElem = lappend(spec_tmpl->partElem,
+														  el);
+
+						}
+
+						/* apply storage encoding for this template */
+						/* MELANIE-FIXME uncomment this out -- it was a static function in cdbpartition.c */
+						/* apply_template_storage_encodings(ct, */
+						/* 								 RelationGetRelid(rel), */
+						/* 								 pNode_tmpl->part->partid, */
+						/* 								 spec_tmpl); */
+
+						/*
+						 * the PartitionElem should hang off the pby partspec,
+						 * and subsequent templates should hang off the
+						 * subspec for the prior PartitionElem.
+						 */
+
+						pBy2->partSpec = (Node *) spec_tmpl;
+
+					}			/* end if pNode_tmpl */
+
+					/* fixup the pnode_tmpl to get the right parlevel */
+					if (pNode2 && (pNode2->rules || pNode2->default_part))
+					{
+						pNode_tmpl = get_parts(pNode2->part->parrelid,
+											   pNode2->part->parlevel + 1,
+											   InvalidOid,	/* no parent for
+															 * template */
+											   true,
+											   true /* includesubparts */
+							);
+					}
+
+				}
+				else
+					pNode2 = NULL;
+			}
+			else
+				pNode2 = NULL;
+
+		}						/* end while */
+	}
+	return pBy;
+}
+
+
+static void
+ATPExecPartAttach(
+	Relation rel,
+	AlterPartitionCmd *alterPartitionCmd)
+{
+	PartitionBy *pBy = makeNode(PartitionBy);
+	PartitionElem *pElem = (PartitionElem *) alterPartitionCmd->arg1;
+	PartitionNode *pNode = RelationBuildPartitionDesc(rel, false /* inctemplate */);
+	char *partName = pElem->partName;
+	char *partDesc = ""; /* is this always blank? */
+
+	pBy->partType = char_to_parttype(pNode->part->parkind);
+	PartitionBy *pBy2 = createPartitionBy(rel, pBy, pElem, pNode, partName, false /*isDefault */, pBy->partType, partDesc);
+
+	/* this is copy-pasta on purpose to enable a later refactor - START COPY PASTA*/
+	AlterTableStmt *ats;
+	AlterTableCmd *atc;
+	InheritPartitionCmd *ipc;
+
+	ipc = makeNode(InheritPartitionCmd);
+	//ipc->parent = parent_tab_name;
+
+	/* alter table child inherits parent */
+	atc = makeNode(AlterTableCmd);
+	atc->subtype = AT_AddInherit;
+	atc->def = (Node *) ipc;
+
+	ats = makeNode(AlterTableStmt);
+	//ats->relation = child_tab_name;
+	ats->cmds = list_make1((Node *) atc);
+	ats->relkind = OBJECT_TABLE;
+
+	/* this is the deepest we're going, add the partition rules */
+	{
+		AlterTableCmd *atc2 = makeNode(AlterTableCmd);
+
+		/* alter table add child to partition set */
+		atc2->subtype = AT_PartAddInternal;
+		atc2->def = (Node *) pBy2;
+		ats->cmds = lappend(ats->cmds, atc2);
+	}
+	/* this is copy-pasta on purpose to enable a later refactor - END COPY PASTA*/
+
+
+	// need an AlterTableStmt that looks exactly like one made with existing partition syntax
+	// use the AlterTableStmt we get from the parser (here the AlterPartitionCmd argument)
+	// and expand to two cmd arguments
+	// AT_AddInherit, AT_AddPartInternal
+}
+
+
 static void
 ATPExecPartAdd(AlteredTableInfo *tab,
 			   Relation rel,
@@ -19846,6 +20227,7 @@ char *alterTableCmdString(AlterTableType subtype)
 			
 		case AT_PartTruncate: /* Truncate */
 		case AT_PartAddInternal: /* CREATE TABLE time partition addition */
+		case AT_PartAttach:
 			break;
 
 		case AT_AddOids: /* ALTER TABLE SET WITH OIDS */

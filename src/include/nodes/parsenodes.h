@@ -1517,7 +1517,8 @@ typedef enum AlterTableType
 	AT_PartSetTemplate,			/* Set Subpartition Template */
 	AT_PartSplit,				/* Split */
 	AT_PartTruncate,			/* Truncate */
-	AT_PartAddInternal			/* CREATE TABLE time partition addition */
+	AT_PartAddInternal,			/* CREATE TABLE time partition addition */
+	AT_PartAttach,
 } AlterTableType;
 
 typedef struct ReplicaIdentityStmt
