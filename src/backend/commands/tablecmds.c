@@ -487,7 +487,7 @@ static bool TypeTupleExists(Oid typeId);
 
 static void ATExecPartAddInternal(Relation rel, Node *def);
 static void ATPExecPartAttach(Relation rel, AlterPartitionCmd *alterPartitionCmd);
-static PartitionBy *createPartitionBy(Relation rel, PartitionBy *pBy, PartitionElem
+static Node *createPartitionBy(Relation rel, PartitionBy *pBy, PartitionElem
 		*pelem, PartitionNode *pNode, char *partName, bool isDefault,
 		PartitionByType part_type, char *partDesc);
 
@@ -15798,7 +15798,7 @@ wack_pid_relname(AlterPartitionId 		 *pid,
 	return locPid;
 }
 
-static PartitionBy *createPartitionBy(Relation rel, PartitionBy *pBy,
+static Node *createPartitionBy(Relation rel, PartitionBy *pBy,
 		PartitionElem *pelem, PartitionNode *pNode, char *partName, bool
 		isDefault, PartitionByType part_type, char *partDesc)
 {
@@ -16116,58 +16116,37 @@ static PartitionBy *createPartitionBy(Relation rel, PartitionBy *pBy,
 
 		}						/* end while */
 	}
-	return pBy;
+	return (Node *)pBy;
 }
 
 
 static void
-ATPExecPartAttach(
-	Relation rel,
-	AlterPartitionCmd *alterPartitionCmd)
+ATPExecPartAttach(Relation rel, AlterPartitionCmd *alterPartitionCmd)
 {
 	PartitionBy *pBy = makeNode(PartitionBy);
 	PartitionElem *pElem = (PartitionElem *) alterPartitionCmd->arg1;
 	PartitionNode *pNode = RelationBuildPartitionDesc(rel, false /* inctemplate */);
 	char *partName = pElem->partName;
 	char *partDesc = ""; /* is this always blank? */
-
 	pBy->partType = char_to_parttype(pNode->part->parkind);
-	PartitionBy *pBy2 = createPartitionBy(rel, pBy, pElem, pNode, partName, false /*isDefault */, pBy->partType, partDesc);
+	Node *pBy2 = createPartitionBy(rel, pBy, pElem, pNode, partName,
+											false /*isDefault */, pBy->partType, partDesc);
 
-	/* this is copy-pasta on purpose to enable a later refactor - START COPY PASTA*/
-	AlterTableStmt *ats;
-	AlterTableCmd *atc;
+	ATExecPartAddInternal(rel, pBy2);
+
 	InheritPartitionCmd *ipc;
-
 	ipc = makeNode(InheritPartitionCmd);
-	//ipc->parent = parent_tab_name;
+	/* FUNCTIONTOGETRANGEVARFROMRELATION(rel); */
+	char *schemaname = "public";
+	ipc->parent = makeRangeVar(schemaname,RelationGetRelationName(rel),-1);
 
-	/* alter table child inherits parent */
-	atc = makeNode(AlterTableCmd);
-	atc->subtype = AT_AddInherit;
-	atc->def = (Node *) ipc;
+	RangeVar *partitionRangeVar = (RangeVar *)alterPartitionCmd->arg2;
+	Relation child_rel = RelationIdGetRelation(RelnameGetRelid(partitionRangeVar->relname));
+	ATExecAddInherit(child_rel, (Node *)ipc, NoLock);
 
-	ats = makeNode(AlterTableStmt);
-	//ats->relation = child_tab_name;
-	ats->cmds = list_make1((Node *) atc);
-	ats->relkind = OBJECT_TABLE;
+	// command types would be AT_AddInherit, AT_AddPartInternal
 
-	/* this is the deepest we're going, add the partition rules */
-	{
-		AlterTableCmd *atc2 = makeNode(AlterTableCmd);
-
-		/* alter table add child to partition set */
-		atc2->subtype = AT_PartAddInternal;
-		atc2->def = (Node *) pBy2;
-		ats->cmds = lappend(ats->cmds, atc2);
-	}
-	/* this is copy-pasta on purpose to enable a later refactor - END COPY PASTA*/
-
-
-	// need an AlterTableStmt that looks exactly like one made with existing partition syntax
-	// use the AlterTableStmt we get from the parser (here the AlterPartitionCmd argument)
-	// and expand to two cmd arguments
-	// AT_AddInherit, AT_AddPartInternal
+	// ? can we just execute those two functions or do we need to actually make the whole ATS?
 }
 
 
