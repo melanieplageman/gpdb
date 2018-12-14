@@ -2927,7 +2927,15 @@ alter_table_cmd:
 				}
 			| alter_table_partition_cmd
 				{
-					$$ = $1;
+					(AlterTableCmd *) n = (AlterTableCmd *)$1;
+					n->subtype = AT_PartAdd;
+					$$ = (Node *)n;
+				}
+			| ATTACH PARTITION
+				{
+					(AlterTableCmd *) n = (AlterTableCmd *)$1;
+					n->subtype = AT_PartAttach;
+					$$ = (Node *)n;
 				}
 			/* ALTER TABLE <name> EXPAND TABLE*/
 			| EXPAND TABLE
@@ -3248,7 +3256,10 @@ alter_table_partition_cmd:
 
                     pc->location = @3;
 
-					n->subtype = AT_PartAdd;
+					// if the altertablecmd has do_attach set, set subtype to AT_PartAttach
+					if (n->subtype != AT_PartAttach)
+						n->subtype = AT_PartAdd;
+
 					n->def = (Node *)pc;
 					$$ = (Node *)n;
 				}
