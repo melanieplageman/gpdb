@@ -4046,6 +4046,7 @@ AlterTableGetLockLevel(List *cmds)
 			case AT_PartAdd:
 			case AT_PartAddForSplit:
 			case AT_PartAlter:
+			case AT_PartAttach:
 			case AT_PartDrop:
 			case AT_PartExchange:
 			case AT_PartRename:
@@ -5300,6 +5301,7 @@ ATPrepCmd(List **wqueue, Relation rel, AlterTableCmd *cmd,
 			}
 		case AT_PartAdd:				/* Add */
 		case AT_PartAddForSplit:		/* Add, as part of a split */
+		case AT_PartAttach:				/* Attach */
 		case AT_PartDrop:				/* Drop */
 		case AT_PartRename:				/* Rename */
 
@@ -16123,25 +16125,41 @@ static Node *createPartitionBy(Relation rel, PartitionBy *pBy,
 static void
 ATPExecPartAttach(Relation rel, AlterPartitionCmd *alterPartitionCmd)
 {
-	PartitionBy *pBy = makeNode(PartitionBy);
-	PartitionElem *pElem = (PartitionElem *) alterPartitionCmd->arg1;
-	PartitionNode *pNode = RelationBuildPartitionDesc(rel, false /* inctemplate */);
-	char *partName = pElem->partName;
-	char *partDesc = ""; /* is this always blank? */
-	pBy->partType = char_to_parttype(pNode->part->parkind);
-	Node *pBy2 = createPartitionBy(rel, pBy, pElem, pNode, partName,
-											false /*isDefault */, pBy->partType, partDesc);
-
-	ATExecPartAddInternal(rel, pBy2);
-
+	Oid			newpartrelid;
 	InheritPartitionCmd *ipc;
+
+	/* TODO: verify that only dispatcher can perform ExecPartAddInternal */
+	if (IS_QUERY_DISPATCHER())
+	{
+		PartitionElem  *pElem = (PartitionElem *) alterPartitionCmd->arg1;
+		char		   *partName = pElem->partName;
+		char		   *partDesc = ""; /* is this always blank? */
+		PartitionBy	   *pBy = makeNode(PartitionBy);
+		PartitionNode  *pNode = RelationBuildPartitionDesc(rel, false /* inctemplate */);
+		Node		   *pBy2;
+
+		pBy->partType = char_to_parttype(pNode->part->parkind);
+		/*
+		 * FIXME This doesn't perform the correct operation, because the pElem
+		 * isn't in its final form yet, and the boundary specification contains
+		 * A_Const nodes instead of Const nodes. This transformation is
+		 * apparently done in preprocess_range_spec(), but that function couples
+		 * to CREATE TABLE and we'll need to untangle it.
+		 */
+		pBy2 = createPartitionBy(rel, pBy, pElem, pNode, partName,
+								 false /*isDefault */, pBy->partType, partDesc);
+
+		ATExecPartAddInternal(rel, pBy2);
+	}
+
 	ipc = makeNode(InheritPartitionCmd);
 	/* FUNCTIONTOGETRANGEVARFROMRELATION(rel); */
 	char *schemaname = "public";
 	ipc->parent = makeRangeVar(schemaname,RelationGetRelationName(rel),-1);
 
 	RangeVar *partitionRangeVar = (RangeVar *)alterPartitionCmd->arg2;
-	Relation child_rel = RelationIdGetRelation(RelnameGetRelid(partitionRangeVar->relname));
+	newpartrelid = RangeVarGetRelid(partitionRangeVar, NoLock, false);
+	Relation child_rel = RelationIdGetRelation(newpartrelid);
 	ATExecAddInherit(child_rel, (Node *)ipc, NoLock);
 
 	// command types would be AT_AddInherit, AT_AddPartInternal
