@@ -608,7 +608,7 @@ static Node *makeIsNotDistinctFromNode(Node *expr, int position);
 /* ordinary key words in alphabetical order */
 %token <keyword> ABORT_P ABSOLUTE_P ACCESS ACTION ADD_P ADMIN AFTER
 	AGGREGATE ALL ALSO ALTER ALWAYS ANALYSE ANALYZE AND ANY ARRAY AS ASC
-	ASSERTION ASSIGNMENT ASYMMETRIC AT ATTRIBUTE AUTHORIZATION
+	ASSERTION ASSIGNMENT ASYMMETRIC AT ATTACH ATTRIBUTE AUTHORIZATION
 
 	BACKWARD BEFORE BEGIN_P BETWEEN BIGINT BINARY BIT
 	BOOLEAN_P BOTH BY
@@ -2927,15 +2927,7 @@ alter_table_cmd:
 				}
 			| alter_table_partition_cmd
 				{
-					(AlterTableCmd *) n = (AlterTableCmd *)$1;
-					n->subtype = AT_PartAdd;
-					$$ = (Node *)n;
-				}
-			| ATTACH PARTITION
-				{
-					(AlterTableCmd *) n = (AlterTableCmd *)$1;
-					n->subtype = AT_PartAttach;
-					$$ = (Node *)n;
+					$$ = $1;
 				}
 			/* ALTER TABLE <name> EXPAND TABLE*/
 			| EXPAND TABLE
@@ -3256,10 +3248,7 @@ alter_table_partition_cmd:
 
                     pc->location = @3;
 
-					// if the altertablecmd has do_attach set, set subtype to AT_PartAttach
-					if (n->subtype != AT_PartAttach)
-						n->subtype = AT_PartAdd;
-
+					n->subtype = AT_PartAdd;
 					n->def = (Node *)pc;
 					$$ = (Node *)n;
 				}
@@ -3637,6 +3626,48 @@ alter_table_partition_cmd:
                     pc->location = @2;
 
 					n->subtype = AT_PartTruncate;
+					n->def = (Node *)pc;
+					$$ = (Node *)n;
+				}
+			| ATTACH PARTITION
+			qualified_name
+			FOR VALUES
+			TabPartitionBoundarySpec
+				{
+					/* TODO: deal with ATTACH PARTITION ... DEFAULT too */
+					AlterPartitionCmd  *pc    = makeNode(AlterPartitionCmd);
+					AlterTableCmd	   *n     = makeNode(AlterTableCmd);
+					PartitionElem	   *pelem = makeNode(PartitionElem);
+
+					/*
+					 * TODO: ADD PARTITION performs this check, whereas I have
+					 * implemented it as part of the grammar -- FOR() is simply
+					 * forbidden. Should we be consistent with ADD instead?
+					 */
+					/*
+					if (pid->idtype != AT_AP_IDName)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("Can only ATTACH a partition by name")));
+					 */
+
+					/* XXX currently, TabPartitionBoundarySpec allows EVERY()
+					 * which makes no sense here */
+					pelem->partName  = NULL;
+					pelem->boundSpec = $6;
+					pelem->subSpec   = NULL;
+					pelem->location  = @6;
+					pelem->isDefault = false;
+					pelem->storeAttr = NULL;
+					pelem->AddPartDesc = NULL;
+
+					pc->partid = NULL;
+					pc->arg1 = (Node *) pelem;
+					pc->arg2 = (Node *) $3;
+
+					pc->location = @6;
+
+					n->subtype = AT_PartAttach;
 					n->def = (Node *)pc;
 					$$ = (Node *)n;
 				}
@@ -15533,6 +15564,7 @@ unreserved_keyword:
 			| ASSERTION
 			| ASSIGNMENT
 			| AT
+			| ATTACH
 			| ATTRIBUTE
 			| BACKWARD
 			| BEFORE
