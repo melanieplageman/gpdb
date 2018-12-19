@@ -2043,6 +2043,7 @@ typedef struct PartitionBy			/* the Partition By clause */
 	bool				bKeepMe;    /* keep the top-level pby [nefarious] */
 	int				    partQuiet;	/* PartitionByVerbosity */
 	int					location;	/* token location, or -1 if unknown */
+	Node				*fakeSpec;
 } PartitionBy;
 
 /*

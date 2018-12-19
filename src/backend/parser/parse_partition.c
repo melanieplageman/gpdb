@@ -22,6 +22,7 @@
 #include "commands/defrem.h"
 #include "commands/tablespace.h"
 #include "nodes/makefuncs.h"
+#include "nodes/nodes.h"
 #include "nodes/nodeFuncs.h"
 #include "optimizer/clauses.h"
 #include "optimizer/walkers.h"
@@ -398,8 +399,16 @@ transformPartitionBy(CreateStmtContext *cxt,
 	}
 
 	/*
-	 * We'd better have some partitions to look at by now
-	 */
+	* We'd better have some partitions to look at by now
+	*/
+	/* TODO: we won't have any partitions for the new root partition using this style DDL
+	 * so, we might want to make a kind of dummy spec or something to put in the catalog
+	 * otherwise, may as well treat this as a normal table and return before doing any of this
+	* CREATE TABLE part (
+	*  a integer,
+	*  b integer
+	*  ) DISTRIBUTED BY (a) PARTITION BY ROOTONLY RANGE (b) ;
+	*/
 	if (partNumber < 1)
 	{
 		ereport(ERROR,
@@ -3070,6 +3079,10 @@ partition_range_every(ParseState *pstate, PartitionBy *pBy, List *coltypes,
 	Assert(pBy->partType == PARTTYP_RANGE);
 
 	pSpec = (PartitionSpec *) pBy->partSpec;
+	if (pBy->fakeSpec && IsA(pBy->fakeSpec, Alias))
+	{
+		return -1;
+	}
 
 	if (pSpec)					/* no bound spec for default partition */
 	{

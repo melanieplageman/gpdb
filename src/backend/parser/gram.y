@@ -668,7 +668,7 @@ static Node *makeIsNotDistinctFromNode(Node *expr, int position);
 
 	RANGE READ REAL REASSIGN RECHECK RECURSIVE REF REFERENCES REFRESH REINDEX
 	RELATIVE_P RELEASE RENAME REPEATABLE REPLACE REPLICA
-	RESET RESTART RESTRICT RETURNING RETURNS REVOKE RIGHT ROLE ROLLBACK
+	RESET RESTART RESTRICT RETURNING RETURNS REVOKE RIGHT ROLE ROLLBACK ROOTONLY
 	ROW ROWS RULE
 
 	SAVEPOINT SCHEMA SCROLL SEARCH SECOND_P SECURITY SELECT SEQUENCE SEQUENCES
@@ -5159,27 +5159,55 @@ TabPartitionByType:
 		;
 
 OptTabPartitionBy:
-			PARTITION BY 
+			PARTITION BY
             TabPartitionByType '(' columnList ')'
 			opt_list_subparts
-            OptTabPartitionSpec						
+			OptTabPartitionSpec
 				{
-					PartitionBy *n = makeNode(PartitionBy); 
-						
+					PartitionBy *n = makeNode(PartitionBy);
+
 					n->partType = $3;
-					n->keys     = $5; 
+					n->keys     = $5;
 					n->subPart  = $7;
 					if (PointerIsValid(n->subPart) &&
 						!IsA(n->subPart, PartitionBy))
 						parser_yyerror("syntax error");
 
 					n->partSpec = $8;
+					n->fakeSpec = NULL;
 					n->partDepth = 0;
 					n->partQuiet = PART_VERBO_NODISTRO;
 					n->location  = @3;
 					n->partDefault = NULL;
 					$$ = (Node *)n;
 				}
+
+
+				| PARTITION BY ROOTONLY
+				TabPartitionByType '(' columnList ')'
+				opt_list_subparts
+				OptTabPartitionSpec
+					{
+						PartitionBy *n = makeNode(PartitionBy);
+
+						n->partType = $4;
+						n->keys     = $6;
+						n->subPart  = $8;
+						if (PointerIsValid(n->subPart) &&
+							!IsA(n->subPart, PartitionBy))
+							parser_yyerror("syntax error");
+						Alias *fakeSpec = palloc(sizeof(Alias));
+						fakeSpec->type = T_Alias;
+						fakeSpec->aliasname = "ATTACH";
+						fakeSpec->colnames = NIL;
+						n->fakeSpec = fakeSpec;
+						n->partSpec = NULL;
+						n->partDepth = 0;
+						n->partQuiet = PART_VERBO_NODISTRO;
+						n->location  = @3;
+						n->partDefault = NULL;
+						$$ = (Node *)n;
+					}
 			| /*EMPTY*/								{ $$ = NULL; }
 		;
 
@@ -15778,6 +15806,7 @@ unreserved_keyword:
 			| REVOKE
 			| ROLE
 			| ROLLBACK
+			| ROOTONLY
 			| ROOTPARTITION
 			| ROWS
 			| RULE
