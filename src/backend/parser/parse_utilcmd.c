@@ -4868,6 +4868,26 @@ transformAlterTable_all_PartitionStmt(
 			atc1 = (AlterTableCmd *)pci->arg1;
 			pci = (AlterPartitionCmd *)atc1->def;
 		} /* end while */
+		if(atc1->subtype == AT_PartAttach)
+		{
+			/* TODO: verify that only dispatcher can perform ExecPartAddInternal */
+			if (IS_QUERY_DISPATCHER())
+			{
+				AlterPartitionCmd *alterPartitionCmd = (AlterPartitionCmd *)atc1->def;
+				PartitionElem *pElem = (PartitionElem *) alterPartitionCmd->arg1;
+				char *partName = pElem->partName;
+				char *partDesc = ""; /* is this always blank? */
+				PartitionBy *pBy = makeNode(PartitionBy);
+				PartitionNode *pNode = RelationBuildPartitionDesc(rel, false /* inctemplate */);
+				Node *pBy2;
+
+				pBy->partType = char_to_parttype(pNode->part->parkind);
+				pBy2 = createPartitionBy(rel, pBy, pElem, pNode, partName,
+										 false /*isDefault */, pBy->partType, partDesc);
+
+				add_part_to_catalog(RelationGetRelid(rel), pBy2, false);
+			}
+		}
 		if (rel)
 			/* No need to hold onto the lock -- see above */
 			heap_close(rel, AccessShareLock);

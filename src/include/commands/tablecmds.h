@@ -133,4 +133,8 @@ extern void RangeVarCallbackOwnsTable(const RangeVar *relation,
 
 extern void RangeVarCallbackOwnsRelation(const RangeVar *relation,
 							 Oid relId, Oid oldRelId, void *noCatalogs);
+
+extern Node *createPartitionBy(Relation rel, PartitionBy *pBy, PartitionElem
+*pelem, PartitionNode *pNode, char *partName, bool isDefault,
+						PartitionByType part_type, char *partDesc);
 #endif   /* TABLECMDS_H */
