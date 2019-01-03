@@ -18092,6 +18092,7 @@ ATPExecPartSplit(Relation *rel,
 		/* should be unique enough */
 		snprintf(tmpname, NAMEDATALEN, "pg_temp_%u", relid);
 		tmprv = makeRangeVar(nspname, tmpname, -1);
+		tmprv->relpersistence = (*rel)->rd_rel->relpersistence;
 		ct->relation = tmprv;
 		ct->relKind = RELKIND_RELATION;
 		ct->ownerid = (*rel)->rd_rel->relowner;

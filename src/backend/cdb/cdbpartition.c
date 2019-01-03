@@ -6481,6 +6481,7 @@ atpxPartAddList(Relation rel,
 	ct = makeNode(CreateStmt);
 	ct->relation = makeRangeVar(get_namespace_name(RelationGetNamespace(par_rel)),
 								RelationGetRelationName(par_rel), -1);
+	ct->relation->relpersistence = rel->rd_rel->relpersistence;
 
 	/*
 	 * in analyze.c, fill in tableelts with a list of TableLikeClause of the
