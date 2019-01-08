@@ -5052,6 +5052,7 @@ atpxPart_validate_spec(PartitionBy *pBy,
 		get_namespace_name(RelationGetNamespace(rel)),
 		pstrdup(RelationGetRelationName(rel)),
 		-1);
+	parent_rv->relpersistence = rel->rd_rel->relpersistence;
 	SetSchemaAndConstraints(parent_rv, &schema, &constraints);
 
 	int			result;
@@ -5176,6 +5177,7 @@ atpxPart_validate_spec(PartitionBy *pBy,
 									 get_namespace_name(
 														RelationGetNamespace(rel)),
 									 pstrdup(RelationGetRelationName(rel)), -1);
+					pBy2->parentRel->relpersistence = rel->rd_rel->relpersistence;
 					pBy2->location = -1;
 					pBy2->partDefault = NULL;
 
@@ -7185,6 +7187,7 @@ build_rename_part_recurse(PartitionRule *rule, const char *old_parentname,
 
 	rv = makeRangeVar(get_namespace_name(RelationGetNamespace(rel)),
 					  relname, -1);
+	rv->relpersistence = rel->rd_rel->relpersistence;
 
 	/* unlock, because we have a lock on the master */
 	heap_close(rel, AccessShareLock);
