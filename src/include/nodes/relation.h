@@ -310,6 +310,7 @@ typedef struct PlannerInfo
 	int		   upd_del_replicated_table;
 	bool		is_split_update;	/* true if UPDATE that modifies
 									 * distribution key columns */
+	bool is_correlated_subplan;
 } PlannerInfo;
 
 /*
