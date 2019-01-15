@@ -70,6 +70,7 @@ static uint64 DoPortalRunFetch(Portal portal,
 				 DestReceiver *dest);
 static void DoPortalRewind(Portal portal);
 static void PortalSetBackoffWeight(Portal portal);
+static void upgradeLockforDML(Oid relid, Plan *plan);
 
 /*
  * CreateQueryDesc
@@ -1446,6 +1447,15 @@ PortalRunMulti(Portal portal, bool isTopLevel,
 			 */
 			PlannedStmt *pstmt = (PlannedStmt *) stmt;
 
+			if (pstmt->resultRelations &&
+				(pstmt->commandType == CMD_INSERT ||
+				 pstmt->commandType == CMD_DELETE ||
+				 pstmt->commandType == CMD_UPDATE))
+			{
+				RangeTblEntry *rt;
+				rt = linitial(pstmt->rtable);
+				upgradeLockforDML(rt->relid, pstmt->planTree);
+			}
 			TRACE_POSTGRESQL_QUERY_EXECUTE_START();
 
 			if (log_executor_stats)
@@ -1954,4 +1964,33 @@ PortalSetBackoffWeight(Portal portal)
 		/* Initialize the SHM backend entry with the computed backoff weight */
 		BackoffBackendEntryInit(gp_session_id, gp_command_count, weight);
 	}
+}
+
+static void
+upgradeLockforDML(Oid relid, Plan *plan)
+{
+	int base = 0;
+	int lockmode = NoLock;
+	Relation rel = NULL;
+
+	if (!plan || Gp_role != GP_ROLE_DISPATCH)
+		return;
+
+	switch(plan->type)
+	{
+		case T_Motion:
+			base++;
+			plan = plan->lefttree;
+		case T_ModifyTable:
+			if (plan->nMotionNodes > base)
+				lockmode = ExclusiveLock;
+			else
+				lockmode = RowExclusiveLock;
+			break;
+		default:
+			lockmode = NoLock;
+	}
+
+	rel = heap_open(relid, lockmode);
+	heap_close(rel, NoLock);
 }

@@ -1208,13 +1208,14 @@ CdbTryOpenRelation(Oid relid, LOCKMODE reqmode, bool noWait, bool *lockUpgraded)
 		if (!rel)
 			return NULL;
 
-		if (Gp_role == GP_ROLE_DISPATCH &&
-			RelationIsAppendOptimized(rel))
+		if (Gp_role == GP_ROLE_DISPATCH)
 		{
-			lockmode = ExclusiveLock;
-			if (lockUpgraded != NULL)
-				*lockUpgraded = true;
+			if (RelationIsAppendOptimized(rel))
+				lockmode = ExclusiveLock;
+			else
+				lockmode = AccessShareLock;
 		}
+
 		relation_close(rel, NoLock);
     }
 
