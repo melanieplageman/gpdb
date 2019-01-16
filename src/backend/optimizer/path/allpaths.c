@@ -1729,11 +1729,24 @@ qual_is_pushdown_safe(Query *subquery, RangeTblEntry *rte, Index rti, Node *qual
 		 * use columns included in in the Partition-By clauses of every OVER
 		 * clause in the subquery
 		 * */
+		Query *newsubquery;
+		bool windowclause = false;
 		if (subquery->windowClause != NIL)
+		{
+			windowclause = true;
+			newsubquery = subquery;
+		}
+		RangeTblEntry *rte = linitial(subquery->rtable);
+		if((rte->rtekind == RTE_SUBQUERY &&  ((Query *)(rte->subquery))->windowClause) != NIL)
+		{
+			windowclause = true;
+			newsubquery = rte->subquery;
+		}
+		if(windowclause)
 		{
 			ListCell   *lc = NULL;
 
-			foreach(lc, subquery->windowClause)
+			foreach(lc, newsubquery->windowClause)
 			{
 				WindowSpec *ws = (WindowSpec *) lfirst(lc);
 
