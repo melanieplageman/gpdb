@@ -775,27 +775,3 @@ select relname from pg_class where exists(select * from init_main_plan_parallel)
 -- case2: init plan is not parallel, main plan is parallel
 select * from init_main_plan_parallel where exists (select * from pg_class);
 
---
--- Test correlated subquery in subplan with motion chooses seqscan
---
--- Given I have two distributed tables
-create table choose_seqscan_t1(id1 int,id2 int);
-create table choose_seqscan_t2(id1 int,id2 int);
--- and they have some data
-insert into choose_seqscan_t1 select i+1,i from generate_series(1,50)i;
-insert into choose_seqscan_t2 select i+1,i from generate_series(1,50)i;
-analyze choose_seqscan_t1; analyze choose_seqscan_t2;
--- and one of the tables has an index on a column which is not the distribution column
-create index bidx2 on choose_seqscan_t2(id2);
--- making an indexscan cheaper with this GUC is only necessary with this small dataset
--- if you insert more data, you can still ensure an indexscan is considered
-set random_page_cost=1;
--- and I query the table with the index from inside a subquery which will be pulled up inside of a subquery that will stay a subplan
-select (select id1 from (select * from choose_seqscan_t2) foo where id2=choose_seqscan_t1.id2) from choose_seqscan_t1;
-explain select (select id1 from (select * from choose_seqscan_t2) foo where id2=choose_seqscan_t1.id2) from choose_seqscan_t1;
--- then, a sequential scan is chosen because I need a motion to move choose_seqscan_t2
-
--- start_ignore
-drop table if exists choose_seqscan_t1;
-drop table if exists choose_seqscan_t2;
--- end ignore

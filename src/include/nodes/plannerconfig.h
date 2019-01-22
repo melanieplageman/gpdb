@@ -45,7 +45,7 @@ typedef struct PlannerConfig
 
 	bool		honor_order_by;
 
-	bool is_under_subplan;
+	bool		is_under_subplan; /* True for plan rooted at a subquery which is planned as a subplan */
 
 	/* These ones are tricky */
 	//GpRoleValue	Gp_role; // TODO: this one is tricky
