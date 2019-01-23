@@ -1818,3 +1818,4 @@ select * from init_main_plan_parallel where exists (select * from pg_class);
  c1 | c2 
 ----+----
 (0 rows)
+
