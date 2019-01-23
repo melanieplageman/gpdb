@@ -644,22 +644,19 @@ subquery_planner(PlannerGlobal *glob, Query *parse,
 		IsSubqueryCorrelated(parse))
 	{
 		root->is_correlated_subplan = true;
-		if (QueryHasDistributedRelation(parse))
-		{
-			/*
-			 * Generate the plan for the subquery with certain options disabled.
-			 */
-			config->gp_enable_direct_dispatch = false;
-			config->gp_enable_multiphase_agg = false;
+		/*
+		 * Generate the plan for the subquery with certain options disabled.
+		 */
+		config->gp_enable_direct_dispatch = false;
+		config->gp_enable_multiphase_agg = false;
 
-			/*
-			 * The MIN/MAX optimization works by inserting a subplan with LIMIT 1.
-			 * That effectively turns a correlated subquery into a multi-level
-			 * correlated subquery, which we don't currently support. (See check
-			 * above.)
-			 */
-			config->gp_enable_minmax_optimization = false;
-		}
+		/*
+		 * The MIN/MAX optimization works by inserting a subplan with LIMIT 1.
+		 * That effectively turns a correlated subquery into a multi-level
+		 * correlated subquery, which we don't currently support. (See check
+		 * above.)
+		 */
+		config->gp_enable_minmax_optimization = false;
 	}
 
 	/*
