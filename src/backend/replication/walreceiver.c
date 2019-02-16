@@ -43,6 +43,14 @@
  */
 #include "postgres.h"
 
+/*
+ * OpenSolaris has this header, but Solaris 10 doesn't.
+ * Linux and OSX 10.5 have it.
+ */
+#if !defined(_WIN32) && !defined(_WIN64)
+#include <execinfo.h>
+#endif
+
 #include <signal.h>
 #include <unistd.h>
 
@@ -185,6 +193,53 @@ DisableWalRcvImmediateExit(void)
 	ProcessWalRcvInterrupts();
 }
 
+
+/*
+ * We call ereport(FATAL) in WalRcvShutdownHandler, which, in GPDB, calls
+ * backtrace(3). backtrace from glibc isn't async-safe on the first call.
+ *
+ * Comment and pattern yanked from Chromium:
+ * https://github.com/chromium/chromium/blob/10d316d88a86a65dcd7e5bbe34dd2078f2ea32d8/base/debug/stack_trace_posix.cc#L457
+ *
+ * Warm up stack trace infrastructure. It turns out that on the first
+ * call glibc initializes some internal data structures using pthread_once,
+ * and even backtrace() can call malloc(), leading to hangs.
+ *
+ * Example stack trace snippet (with tcmalloc):
+ *
+ * #8  0x0000000000a173b5 in tc_malloc
+ *             at ./third_party/tcmalloc/chromium/src/debugallocation.cc:1161
+ * #9  0x00007ffff7de7900 in _dl_map_object_deps at dl-deps.c:517
+ * #10 0x00007ffff7ded8a9 in dl_open_worker at dl-open.c:262
+ * #11 0x00007ffff7de9176 in _dl_catch_error at dl-error.c:178
+ * #12 0x00007ffff7ded31a in _dl_open (file=0x7ffff625e298 "libgcc_s.so.1")
+ *             at dl-open.c:639
+ * #13 0x00007ffff6215602 in do_dlopen at dl-libc.c:89
+ * #14 0x00007ffff7de9176 in _dl_catch_error at dl-error.c:178
+ * #15 0x00007ffff62156c4 in dlerror_run at dl-libc.c:48
+ * #16 __GI___libc_dlopen_mode at dl-libc.c:165
+ * #17 0x00007ffff61ef8f5 in init
+ *             at ../sysdeps/x86_64/../ia64/backtrace.c:53
+ * #18 0x00007ffff6aad400 in pthread_once
+ *             at ../nptl/sysdeps/unix/sysv/linux/x86_64/pthread_once.S:104
+ * #19 0x00007ffff61efa14 in __GI___backtrace
+ *             at ../sysdeps/x86_64/../ia64/backtrace.c:104
+ * #20 0x0000000000752a54 in base::debug::StackTrace::StackTrace
+ *             at base/debug/stack_trace_posix.cc:175
+ * #21 0x00000000007a4ae5 in
+ *             base::(anonymous namespace)::StackDumpSignalHandler
+ *             at base/process_util_posix.cc:172
+ * #22 <signal handler called>
+ */
+static void
+WarmUpBacktrace()
+{
+#if !defined(_WIN32) && !defined(_WIN64)
+	void *array[1];
+	(void) backtrace(array, ARRAY_SIZE(array));
+#endif
+}
+
 /* Main entry point for walreceiver process */
 void
 WalReceiverMain(void)
@@ -268,6 +323,8 @@ WalReceiverMain(void)
 	on_shmem_exit(WalRcvDie, 0);
 
 	OwnLatch(&walrcv->latch);
+
+	WarmUpBacktrace();
 
 	/*
 	 * If possible, make this process a group leader, so that the postmaster
