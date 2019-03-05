@@ -30,7 +30,7 @@
 #include "utils/tuplesort_mk_details.h"
 #include "miscadmin.h"
 #include "utils/memutils.h"
-
+#include "executor/nodeIndexonlyscan.h"
 
 /* #define MEASURE_MOTION_TIME */
 
@@ -1584,7 +1584,14 @@ doSendTuple(Motion *motion, MotionState *node, TupleTableSlot *outerTupleSlot)
 void
 ExecReScanMotion(MotionState *node)
 {
-	if (node->mstype != MOTIONSTATE_RECV ||
+
+	// add something here to have receiver send param to sender motion if rescanning
+	// if (node->mstype == MOTIONSTATE_RECV && node->shouldRescan)
+
+	// hard-code this for now to only initiate the rescan if the child of the sender motion is an indexonly scan
+	if (node->mstype == MOTIONSTATE_SEND && IsA(node->ps.lefttree, IndexOnlyScanState))
+		ExecReScanIndexOnlyScan((IndexOnlyScanState *) node->ps.lefttree);
+	else if (node->mstype != MOTIONSTATE_RECV ||
 		node->numTuplesToParent != 0)
 	{
 		ereport(ERROR,

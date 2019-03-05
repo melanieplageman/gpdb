@@ -552,8 +552,15 @@ void
 ExecReScanMaterial(MaterialState *node)
 {
 	ExecClearTuple(node->ss.ps.ps_ResultTupleSlot);
-
-	if (node->eflags != 0)
+	// use the fact that in this hacky example, there is a material node on top of the motion and simply use the material
+	// node as a pass-thru to be able to rescan motion without having to change planner to not put the materialize on top of the motion
+	// also, in a working example (this example only seeks to demonstrate the sender motion side), we would need to have us call rescan on
+	// receiver motion also and have it send the param to the sender
+	if(node->eflags != 0 && IsA(node->ss.ps.lefttree, MotionState) && (((MotionState *)(node->ss.ps.lefttree))->mstype == MOTIONSTATE_SEND))
+	{
+		ExecChildRescan(node);
+	}
+	else if (node->eflags != 0)
 	{
 		/*
 		 * If tuple store is empty, then either we have not materialized yet

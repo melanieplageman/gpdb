@@ -34,6 +34,9 @@
 #include "utils/memutils.h"
 #include "utils/rel.h"
 
+#include  "optimizer/clauses.h"
+#include "nodes/makefuncs.h"
+#include "catalog/pg_operator.h"
 
 static TupleTableSlot *IndexOnlyNext(IndexOnlyScanState *node);
 static void StoreIndexTuple(TupleTableSlot *slot, IndexTuple itup,
@@ -379,6 +382,39 @@ ExecIndexOnlyRestrPos(IndexOnlyScanState *node)
 IndexOnlyScanState *
 ExecInitIndexOnlyScan(IndexOnlyScan *node, EState *estate, int eflags)
 {
+
+	// In order to get the rescan working, we need to change the planner to add the indexqual to the indexpath
+	// it is passed along after that to the plan and planstate
+	// I didn't dig in too much into why it doesn't add an indexqual to the path in this example
+	// (for my analagous query, the indexqual was added to the path)
+	// so I don't know if it was because of the non-rescannable node above it or what
+
+	// anyway, hardcode in the qual to be var = param where both are ints compared with equality
+	// this means that all queries with indexonlyscan will have this set this way, so this hack breaks all of the things :)
+	Var *fooVar = makeVar(65002, 1, 23, -1, 0, 0);
+
+	Param *fakeParam = makeNode(Param);
+	fakeParam->paramkind = 1;
+	fakeParam->paramid = 0;
+	fakeParam->paramtype = 23;
+	fakeParam->paramtypmod = -1;
+	fakeParam->paramcollid = 0;
+	fakeParam->location = 36;
+
+	OpExpr	   *fakequal = makeNode(OpExpr);
+
+	fakequal->opno = 96;
+	fakequal->opfuncid = 65;
+	fakequal->opresulttype = 16;
+	fakequal->opretset = false;
+	fakequal->opcollid = 0;
+	fakequal->inputcollid = 0;
+	fakequal->args = list_make2(fooVar, fakeParam);
+	fakequal->location = -1;
+
+
+	node->indexqual = list_make1(fakequal);
+
 	IndexOnlyScanState *indexstate;
 	Relation	currentRelation;
 	bool		relistarget;
