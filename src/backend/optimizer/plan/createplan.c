@@ -3043,8 +3043,11 @@ create_nestloop_plan(PlannerInfo *root,
 	 * NOTE: materialize_finished_plan() does *almost* what we want -- except
 	 * we aren't finished.
 	 */
+#if 0
 	if (best_path->innerjoinpath->motionHazard ||
 		!best_path->innerjoinpath->rescannable)
+#endif
+	if (!best_path->innerjoinpath->rescannable)
 	{
 		Plan	   *p;
 		Material   *mat;
