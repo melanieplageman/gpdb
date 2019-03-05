@@ -65,6 +65,12 @@ cdbpath_cost_motion(PlannerInfo *root, CdbMotionPath *motionpath)
 
 	motionpath->path.total_cost = motioncost + subpath->total_cost;
 	motionpath->path.startup_cost = subpath->startup_cost;
+	if (CdbPathLocus_IsReplicated(motionpath->path.locus))
+	{
+		motionpath->path.total_cost *= 100;
+		motionpath->path.startup_cost *= 100; 
+	}
+
 	motionpath->path.memory = subpath->memory;
 }								/* cdbpath_cost_motion */
 
@@ -156,7 +162,7 @@ cdbpath_create_motion_path(PlannerInfo *root,
 			pathnode->path.motionHazard = subpath->motionHazard;
 
 			/* Motion nodes are never rescannable. */
-			pathnode->path.rescannable = false;
+			pathnode->path.rescannable = true;
 			return (Path *) pathnode;
 		}
 
@@ -188,7 +194,7 @@ cdbpath_create_motion_path(PlannerInfo *root,
 			pathnode->path.motionHazard = subpath->motionHazard;
 
 			/* Motion nodes are never rescannable. */
-			pathnode->path.rescannable = false;
+			pathnode->path.rescannable = true;
 			return (Path *) pathnode;
 		}
 
@@ -362,7 +368,7 @@ cdbpath_create_motion_path(PlannerInfo *root,
 
 	/* Tell operators above us that slack may be needed for deadlock safety. */
 	pathnode->path.motionHazard = true;
-	pathnode->path.rescannable = false;
+	pathnode->path.rescannable = true;
 
 	return (Path *) pathnode;
 
