@@ -2898,6 +2898,8 @@ ExecEndPlan(PlanState *planstate, EState *estate)
  * user can see it
  * ----------------------------------------------------------------
  */
+extern bool paramExists = false;
+
 static void
 ExecutePlan(EState *estate,
 			PlanState *planstate,
@@ -2936,6 +2938,14 @@ ExecutePlan(EState *estate,
 		/*
 		 * Execute the plan and obtain a tuple
 		 */
+		if (IsA(planstate, MotionState))
+		{
+			MotionState *pMotionState = (MotionState *)planstate;
+			if (pMotionState->mstype == MOTIONSTATE_SEND && paramExists)
+			{
+				ExecReScan(planstate);
+			}
+		}
 		slot = ExecProcNode(planstate);
 
 		/*
