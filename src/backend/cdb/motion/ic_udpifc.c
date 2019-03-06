@@ -5742,65 +5742,6 @@ doSendParamMessageUDPIFC(ChunkTransportState *transportStates, int16 motNodeID, 
 					elog(DEBUG1, "first packet did not arrive yet. don't sent stop message. node %d route %d",
 						 motNodeID, i);
 			}
-#if 0
-			if (conn->conn_info.flags & UDPIC_FLAGS_EOS)
-			{
-				/*
-				 * we have a queued packet that has EOS in it. We've acked it,
-				 * so we're done
-				 */
-				if (gp_log_interconnect >= GPVARS_VERBOSITY_DEBUG)
-					elog(DEBUG1, "do sendstop: already have queued EOS packet, we're done. node %d route %d",
-						 motNodeID, i);
-
-				conn->stillActive = false;
-
-				/* need to drop the queues in the teardown function. */
-				while (conn->pkt_q_size > 0)
-				{
-					putRxBufferAndSendAck(conn, NULL);
-				}
-			}
-			else
-			{
-				conn->stopRequested = true;
-				conn->conn_info.flags |= UDPIC_FLAGS_STOP;
-
-				/*
-				 * The peer addresses for incoming connections will not be set
-				 * until the first packet has arrived. However, when the lower
-				 * slice does not have data to send, the corresponding peer
-				 * address for the incoming connection will never be set. We
-				 * will skip sending ACKs to those connections.
-				 */
-
-#ifdef FAULT_INJECTOR
-				if (FaultInjector_InjectFaultIfSet(
-												   InterconnectStopAckIsLost,
-												   DDLNotSpecified,
-												   "" /* databaseName */ ,
-												   "" /* tableName */ ) == FaultInjectorTypeSkip)
-				{
-					continue;
-				}
-#endif
-
-				if (conn->peer.ss_family == AF_INET || conn->peer.ss_family == AF_INET6)
-				{
-					uint32		seq = conn->conn_info.seq > 0 ? conn->conn_info.seq - 1 : 0;
-
-					sendAck(conn, UDPIC_FLAGS_STOP | UDPIC_FLAGS_ACK | UDPIC_FLAGS_CAPACITY | conn->conn_info.flags, seq, seq);
-
-					if (gp_log_interconnect >= GPVARS_VERBOSITY_DEBUG)
-						elog(DEBUG1, "sent stop message. node %d route %d seq %d", motNodeID, i, seq);
-				}
-				else
-				{
-					if (gp_log_interconnect >= GPVARS_VERBOSITY_DEBUG)
-						elog(DEBUG1, "first packet did not arrive yet. don't sent stop message. node %d route %d",
-							 motNodeID, i);
-				}
-#endif
 		}
 	}
 
@@ -7046,50 +6987,9 @@ send_error:
 	return;
 }
 
-#if 0
-bool handleParamMsgs(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntry)
-{
-	int			n;
-
-	struct sockaddr_storage peer;
-	socklen_t	peerlen;
-
-	struct icpkthdr *pkt = snd_control_info.ackBuffer;
-
-
-	bool		shouldSendBuffers = false;
-
-	for (;;)
-	{
-
-		/* ready to read on our socket ? */
-		peerlen = sizeof(peer);
-		n = recvfrom(pEntry->txfd, (char *) pkt, MIN_PACKET_SIZE, 0,
-					 (struct sockaddr *) &peer, &peerlen);
-		if(n < 0)
-		{
-			if (errno == EWOULDBLOCK)    /* had nothing to read. */
-				return ret;
-			if (errno == EINTR)
-				continue;
-		}
-		else if (n < sizeof(struct icpkthdr))
-		{
-			continue;
-		}
-		else if (n != pkt->len)
-		{
-			continue;
-		}
-		if (pkt->flags & UDPIC_FLAGS_NAK)
-			continue;
-	}
-}
 
 uint32
 getActiveMotionConns(void)
 {
 	return ic_statistics.activeConnectionsNum;
 }
-
-#endif

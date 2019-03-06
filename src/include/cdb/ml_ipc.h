@@ -76,7 +76,6 @@ extern void CleanUpMotionLayerIPC(void);
  */
 extern void WaitInterconnectQuit(void);
 
-extern bool handleParamMsgs(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntry);
 /*
  * checkForCancelFromQD
  * 		Check for cancel from QD.
