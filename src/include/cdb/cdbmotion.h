@@ -121,7 +121,10 @@ extern GenericTuple RecvTupleFrom(MotionLayerState *mlStates,
 extern void SendStopMessage(MotionLayerState *mlStates,
 							ChunkTransportState *transportStates,
 							int16 motNodeID);
-
+extern void SendParamMessage(MotionLayerState *mlStates,
+				ChunkTransportState *transportStates,
+				int16 motNodeID,
+				int param);
 /* used by ml_ipc to set the number of receivers that the motion node is expecting.
  * This is used by cdbmotion to keep track of when its seen enough EndOfStream
  * messages.

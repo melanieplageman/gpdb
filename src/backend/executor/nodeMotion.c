@@ -21,6 +21,7 @@
 #include "cdb/cdbutil.h"
 #include "cdb/cdbvars.h"
 #include "cdb/cdbhash.h"
+#include "cdb/ml_ipc.h"
 #include "executor/executor.h"
 #include "executor/execdebug.h"
 #include "executor/execUtils.h"
@@ -402,7 +403,16 @@ execMotionUnsortedReceiver(MotionState *node)
 		Assert(node->numTuplesFromAMS == node->numTuplesToParent);
 		Assert(node->numTuplesFromChild == 0);
 		Assert(node->numTuplesToAMS == 0);
-		return NULL;
+		//return NULL;
+
+		int param = 1;
+		if (param)
+		{
+			SendParamMessage(node->ps.state->motionlayer_context,
+							 node->ps.state->interconnect_context,
+							 motion->motionID,
+							 param);
+		}
 	}
 
 	node->numTuplesFromAMS++;
@@ -1106,6 +1116,7 @@ ExecInitMotion(Motion *node, EState *estate, int eflags)
 	}
 #endif
 
+	param_exec_econtext = motionstate->ps.ps_ExprContext;
 	return motionstate;
 }
 

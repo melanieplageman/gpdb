@@ -350,6 +350,16 @@ SendStopMessage(MotionLayerState *mlStates,
 }
 
 void
+SendParamMessage(MotionLayerState *mlStates,
+				ChunkTransportState *transportStates,
+				int16 motNodeID,
+				int param)
+{
+	if (transportStates != NULL)
+		transportStates->doSendParamMessage(transportStates, motNodeID, param);
+}
+
+void
 CheckAndSendRecordCache(MotionLayerState *mlStates,
 						ChunkTransportState *transportStates,
 						int16 motNodeID,

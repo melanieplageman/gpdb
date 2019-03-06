@@ -521,6 +521,7 @@ typedef struct ChunkTransportState
 	TupleChunkListItem (*RecvTupleChunkFrom)(struct ChunkTransportState *transportStates, int16 motNodeID, int16 srcRoute);
 	TupleChunkListItem (*RecvTupleChunkFromAny)(struct ChunkTransportState *transportStates, int16 motNodeID, int16 *srcRoute);
 	void (*doSendStopMessage)(struct ChunkTransportState *transportStates, int16 motNodeID);
+	void (*doSendParamMessage)(struct ChunkTransportState *transportStates, int16 motNodeID, int param);
 	void (*SendEos)(struct ChunkTransportState *transportStates, int motNodeID, TupleChunkListItem tcItem);
 } ChunkTransportState;
 
