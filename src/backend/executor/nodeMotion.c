@@ -1584,21 +1584,61 @@ doSendTuple(Motion *motion, MotionState *node, TupleTableSlot *outerTupleSlot)
 void
 ExecReScanMotion(MotionState *node)
 {
+	Motion	   *motion = (Motion *) node->ps.plan;
 
 	// add something here to have receiver send param to sender motion if rescanning
-	// if (node->mstype == MOTIONSTATE_RECV && node->shouldRescan)
-
-	// hard-code this for now to only initiate the rescan if the child of the sender motion is an indexonly scan
-	if (node->mstype == MOTIONSTATE_SEND && IsA(node->ps.lefttree, IndexOnlyScanState))
-		ExecReScanIndexOnlyScan((IndexOnlyScanState *) node->ps.lefttree);
-	else if (node->mstype != MOTIONSTATE_RECV ||
-		node->numTuplesToParent != 0)
+	switch(node->mstype)
 	{
-		ereport(ERROR,
-				(errcode(ERRCODE_INTERNAL_ERROR),
-				 errmsg("illegal rescan of motion node: invalid plan"),
-				 errhint("Likely caused by bad NL-join, try setting enable_nestloop to off")));
+		case MOTIONSTATE_RECV:
+		// The MotionState node has the ParamExecData in the ecxt_param_exec_vals array too
+		// However, the actual value of the param in its outer tupletableslot won't be there
+		// Because we need to actually need to set it
+		// The NLJ will have these
+
+		//		ParamExecData hackExprContext = node->ps.ps_ExprContext->ecxt_param_exec_vals[0];
+		// 		node->ps.state->motionlayer_context;
+		//		node->ps.state->interconnect_context;
+		{
+
+
+			ChunkTransportState *transportStates = node->ps.state->interconnect_context;
+			ChunkTransportStateEntry *pEntry = NULL;
+			getChunkTransportState(transportStates, motion->motionID, &pEntry);
+			pEntry->conns->pBuff = palloc(Gp_max_packet_size);
+			pEntry->conns->msgSize = sizeof(pEntry->conns->conn_info);
+			MotionConn *conn = pEntry->conns;
+			TupleChunkListItem tcItem = (TupleChunkListItem) palloc(sizeof(TupleChunkListItemData));
+
+			tcItem->p_next = NULL;
+			tcItem->chunk_length = sizeof(Datum);
+			tcItem->inplace = (char *) (conn->msgPos + sizeof(Datum));
+			tcItem->chunk_data[0] = 5;
+
+			transportStates->SendChunk(transportStates, pEntry, conn, tcItem, motion->motionID);
+			break;
+		}
+		case MOTIONSTATE_SEND:
+		{
+			elog(NOTICE, "Old mcdonald had a farm");
+			// hard-code this for now to only initiate the rescan if the child of the sender motion is an indexonly scan
+			if (IsA(node->ps.lefttree, IndexOnlyScanState))
+			{
+				ChunkTransportState *transportStates = node->ps.state->interconnect_context;
+				ChunkTransportStateEntry *pEntry = NULL;
+				getChunkTransportState(transportStates, motion->motionID, &pEntry);
+//				handleParamMsgs(transportStates, pEntry);
+				node->ps.ps_ExprContext->ecxt_param_exec_vals[0].value = Int32GetDatum(5);
+				node->ps.ps_ExprContext->ecxt_param_exec_vals[0].isnull = false;
+				ExecReScanIndexOnlyScan((IndexOnlyScanState *) node->ps.lefttree);
+			}
+			break;
+		}
+		case MOTIONSTATE_NONE:
+			break;
+		default:
+			elog(ERROR, "your motion type is neither recv or send, skeeeeetch");
 	}
+
 	return;
 }
 
