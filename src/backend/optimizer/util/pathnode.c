@@ -3018,7 +3018,7 @@ create_nestloop_path(PlannerInfo *root,
 										 pathkeys,
 										 NIL,
 										 outer_must_be_local,
-										 inner_must_be_local);
+										 false);
 	if (CdbPathLocus_IsNull(join_locus))
 		return NULL;
 
