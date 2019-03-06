@@ -149,6 +149,7 @@ int
 #define UDPIC_FLAGS_DISORDER    		(32)
 #define UDPIC_FLAGS_DUPLICATE   		(64)
 #define UDPIC_FLAGS_CAPACITY    		(128)
+#define UDPIC_FLAGS_PARAM				(256)
 
 /*
  * ConnHtabBin
@@ -5306,7 +5307,6 @@ SendChunkUDPIFC(ChunkTransportState *transportStates,
 	bool		doCheckExpiration = false;
 	bool		gotStops = false;
 
-	Assert(conn->stillActive);
 	Assert(conn->msgSize > 0);
 
 #ifdef AMS_VERBOSE_LOGGING
@@ -6949,6 +6949,48 @@ send_error:
 	if (sockfd != -1)
 		closesocket(sockfd);
 	return;
+}
+
+
+bool handleParamMsgs(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntry)
+{
+	bool		ret = false;
+	MotionConn *ackConn = NULL;
+	int			n;
+
+	struct sockaddr_storage peer;
+	socklen_t	peerlen;
+
+	struct icpkthdr *pkt = snd_control_info.ackBuffer;
+
+
+	bool		shouldSendBuffers = false;
+
+	for (;;)
+	{
+
+		/* ready to read on our socket ? */
+		peerlen = sizeof(peer);
+		n = recvfrom(pEntry->txfd, (char *) pkt, MIN_PACKET_SIZE, 0,
+					 (struct sockaddr *) &peer, &peerlen);
+		if(n < 0)
+		{
+			if (errno == EWOULDBLOCK)    /* had nothing to read. */
+				return ret;
+			if (errno == EINTR)
+				continue;
+		}
+		else if (n < sizeof(struct icpkthdr))
+		{
+			continue;
+		}
+		else if (n != pkt->len)
+		{
+			continue;
+		}
+		if (pkt->flags & UDPIC_FLAGS_NAK)
+			continue;
+	}
 }
 
 uint32
