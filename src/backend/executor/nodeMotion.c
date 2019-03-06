@@ -289,7 +289,10 @@ execMotionSender(MotionState *node)
 				(motion->motionType == MOTIONTYPE_FIXED));
 	Assert(node->ps.state->interconnect_context);
 
-	while (!done)
+	ChunkTransportStateEntry *pEntry = NULL;
+	getChunkTransportState(node->ps.state->interconnect_context, motion->motionID, &pEntry);
+
+	while (pEntry->numEOPRecved != pEntry->numConns && !node->stopRequested)
 	{
 		/* grab TupleTableSlot from our child. */
 		outerNode = outerPlanState(node);
@@ -390,6 +393,7 @@ execMotionUnsortedReceiver(MotionState *node)
 		return NULL;
 	}
 
+retry:
 	tuple = RecvTupleFrom(node->ps.state->motionlayer_context,
 						  node->ps.state->interconnect_context,
 						  motion->motionID, ANY_ROUTE);
@@ -403,16 +407,17 @@ execMotionUnsortedReceiver(MotionState *node)
 		Assert(node->numTuplesFromAMS == node->numTuplesToParent);
 		Assert(node->numTuplesFromChild == 0);
 		Assert(node->numTuplesToAMS == 0);
-		//return NULL;
 
-		int param = 1;
-		if (param)
-		{
-			SendParamMessage(node->ps.state->motionlayer_context,
-							 node->ps.state->interconnect_context,
-							 motion->motionID,
-							 param);
-		}
+		int param = 0;
+		SendParamMessage(node->ps.state->motionlayer_context,
+						 node->ps.state->interconnect_context,
+						 motion->motionID,
+						 param);
+
+		if (param != 0)
+			goto retry;
+		else
+			return NULL;
 	}
 
 	node->numTuplesFromAMS++;

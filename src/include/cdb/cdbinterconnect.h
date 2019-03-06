@@ -187,6 +187,54 @@ struct ICBuffer
 	icpkthdr pkt[0];
 };
 
+/*
+ * Used to organize all of the information for a given motion node.
+ */
+typedef struct ChunkTransportStateEntry
+{
+	int         motNodeId;
+	bool		valid;
+
+	/* Connection array */
+    MotionConn *conns;
+	int			numConns;
+
+	/*
+	 * used for receiving. to select() from a set of interesting MotionConns
+	 * to see when data is ready to be read.  When the incoming connections
+	 * are established, read interest is turned on.  It is turned off when an
+	 * EOS (End of Stream) message is read.
+	 */
+	mpp_fd_set  readSet;
+
+	/* highest file descriptor in the readSet. */
+	int			highReadSock;
+
+    int         scanStart;
+
+    /* slice table entries */
+    struct Slice   *sendSlice;
+    struct Slice   *recvSlice;
+
+	/* setup info */
+	int			txfd;
+	int			txfd_family;
+	unsigned short txport;
+
+	bool		sendingEos;
+
+	int			numEOPRecved;
+
+	/* Statistics info for this motion on the interconnect level */
+	uint64 stat_total_ack_time;
+	uint64 stat_count_acks;
+	uint64 stat_max_ack_time;
+	uint64 stat_min_ack_time;
+	uint64 stat_count_resent;
+	uint64 stat_max_resent;
+	uint64 stat_count_dropped;
+
+}	ChunkTransportStateEntry;
 
 /*
  * Structure used for keeping track of a pt-to-pt connection between two
@@ -304,54 +352,8 @@ struct MotionConn
 	 * all the remap information.
 	 */
 	TupleRemapper	*remapper;
+	ChunkTransportStateEntry *tsEntry;
 };
-
-/*
- * Used to organize all of the information for a given motion node.
- */
-typedef struct ChunkTransportStateEntry
-{
-	int         motNodeId;
-	bool		valid;
-
-	/* Connection array */
-    MotionConn *conns;
-	int			numConns;
-
-	/*
-	 * used for receiving. to select() from a set of interesting MotionConns
-	 * to see when data is ready to be read.  When the incoming connections
-	 * are established, read interest is turned on.  It is turned off when an
-	 * EOS (End of Stream) message is read.
-	 */
-	mpp_fd_set  readSet;
-
-	/* highest file descriptor in the readSet. */
-	int			highReadSock;
-
-    int         scanStart;
-
-    /* slice table entries */
-    struct Slice   *sendSlice;
-    struct Slice   *recvSlice;
-
-	/* setup info */
-	int			txfd;
-	int			txfd_family;
-	unsigned short txport;
-
-	bool		sendingEos;
-
-	/* Statistics info for this motion on the interconnect level */
-	uint64 stat_total_ack_time;
-	uint64 stat_count_acks;
-	uint64 stat_max_ack_time;
-	uint64 stat_min_ack_time;
-	uint64 stat_count_resent;
-	uint64 stat_max_resent;
-	uint64 stat_count_dropped;
-
-}	ChunkTransportStateEntry;
 
 /* ChunkTransportState array initial size */
 #define CTS_INITIAL_SIZE (10)

@@ -150,6 +150,7 @@ int
 #define UDPIC_FLAGS_DUPLICATE   		(64)
 #define UDPIC_FLAGS_CAPACITY    		(128)
 #define UDPIC_FLAGS_PARAM				(256)
+#define UDPIC_FLAGS_EOP					(512)  /*END OF PARAM*/
 
 /*
  * ConnHtabBin
@@ -5723,7 +5724,10 @@ doSendParamMessageUDPIFC(ChunkTransportState *transportStates, int16 motNodeID, 
 			{
 				uint32		seq = conn->conn_info.seq > 0 ? conn->conn_info.seq - 1 : 0;
 
-				sendParam(conn, UDPIC_FLAGS_CAPACITY | UDPIC_FLAGS_PARAM | conn->conn_info.flags, seq, seq, param);
+				if (param != 0)
+					sendParam(conn, UDPIC_FLAGS_CAPACITY | UDPIC_FLAGS_PARAM | conn->conn_info.flags, seq, seq, param);
+				else
+					sendParam(conn, UDPIC_FLAGS_CAPACITY | UDPIC_FLAGS_EOP | conn->conn_info.flags, seq, seq, param);
 
 				if (gp_log_interconnect >= GPVARS_VERBOSITY_DEBUG)
 					elog(DEBUG1, "sent stop message. node %d route %d seq %d", motNodeID, i, seq);
@@ -5945,7 +5949,16 @@ handleDataPacket(MotionConn *conn, icpkthdr *pkt, struct sockaddr_storage *peer,
 {
 
 	if (pkt->flags & UDPIC_FLAGS_PARAM)
+	{
 		handleParamPacket(conn, pkt);
+		return false;
+	}
+
+	if (pkt->flags & UDPIC_FLAGS_EOP)
+	{
+		conn->tsEntry->numEOPRecved++;
+		return false;
+	}
 
 	if ((pkt->len == sizeof(icpkthdr)) && (pkt->flags & UDPIC_FLAGS_CAPACITY))
 	{
