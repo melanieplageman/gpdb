@@ -292,9 +292,10 @@ execMotionSender(MotionState *node)
 	ChunkTransportStateEntry *pEntry = NULL;
 	getChunkTransportState(node->ps.state->interconnect_context, motion->motionID, &pEntry);
 
-	outerNode = outerPlanState(node);
-	while (!outerNode->squelched && pEntry->numEOPRecved != pEntry->numConns && !node->stopRequested)
+//	while (!outerNode->squelched && pEntry->numEOPRecved != pEntry->numConns && !node->stopRequested)
+	while (pEntry->numEOPRecved != pEntry->numConns && !node->stopRequested)
 	{
+		outerNode = outerPlanState(node);
 		/* grab TupleTableSlot from our child. */
 		outerTupleSlot = ExecProcNode(outerNode);
 

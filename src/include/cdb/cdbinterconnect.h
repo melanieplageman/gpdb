@@ -322,8 +322,6 @@ struct MotionConn
 	struct sockaddr_storage peer;		/* Allow for IPv4 or IPv6 */
 	socklen_t peer_len;					/* And remember the actual length */
 
-	struct sockaddr_storage sender_peer;		/* Allow for IPv4 or IPv6 */
-	socklen_t sender_peer_len;					/* And remember the actual length */
 	/* a queue of maximum length Gp_interconnect_queue_depth */
 	int			pkt_q_capacity;			/*max capacity of the queue*/
 	int			pkt_q_size;				/*number of packets in the queue*/
