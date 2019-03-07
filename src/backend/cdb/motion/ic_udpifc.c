@@ -5164,6 +5164,43 @@ checkDeadlock(ChunkTransportStateEntry *pEntry, MotionConn *conn)
 	}
 }
 
+bool pollParams(ChunkTransportState *transportStates, int fd, int timeout)
+{
+	struct pollfd nfd;
+	int			n;
+
+	nfd.fd = fd;
+	nfd.events = POLLIN;
+
+	n = poll(&nfd, 1, timeout);
+	if (n < 0)
+	{
+		ML_CHECK_FOR_INTERRUPTS(transportStates->teardownActive);
+		if (errno == EINTR)
+			return false;
+
+		ereport(ERROR,
+				(errcode(ERRCODE_GP_INTERCONNECTION_ERROR),
+						errmsg("interconnect error waiting for peer to send param"),
+						errdetail("During poll() call.")));
+
+		/* not reached */
+	}
+
+	if (n == 0)					/* timeout */
+	{
+		return false;
+	}
+
+	/* got a param to handle */
+	if (n == 1 && (nfd.events & POLLIN))
+	{
+		return true;
+	}
+
+	return false;
+}
+
 /*
  * pollAcks
  * 		Timeout polling of acks
