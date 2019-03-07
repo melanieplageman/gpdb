@@ -293,7 +293,7 @@ execMotionSender(MotionState *node)
 	getChunkTransportState(node->ps.state->interconnect_context, motion->motionID, &pEntry);
 
 //	while (!outerNode->squelched && pEntry->numEOPRecved != pEntry->numConns && !node->stopRequested)
-	while (pEntry->numEOPRecved != pEntry->numConns && !node->stopRequested)
+	while (!done && !node->stopRequested)
 	{
 		outerNode = outerPlanState(node);
 		/* grab TupleTableSlot from our child. */
@@ -321,50 +321,70 @@ execMotionSender(MotionState *node)
 #define UDPIC_FLAGS_PARAM				(256)
 #define UDPIC_FLAGS_EOP					(512)
 
-		if (done || TupIsNull(outerTupleSlot))
+		if (TupIsNull(outerTupleSlot))
 		{
-			doSendEndOfStream(motion, node);
-			/* poll to see if one of the receivers has sent a new param */
-			bool newParam = pollParams(node->ps.state->interconnect_context, pEntry->txfd,0);
-			if (newParam)
-			{
-				/* if it has, loop through the receiver connections and check the packet queues for param packets */
-				for (size_t i = 0; i < pEntry->numConns; i++)
-				{
-					MotionConn currentConn = pEntry->conns[i];
-					icpkthdr *pkt = NULL;
-					for (size_t j = 0; j < currentConn.pkt_q_size; j++)
-					{
-						pkt = (icpkthdr *) currentConn.pkt_q[j];
-						if (pkt == NULL)
-							continue;
+			int			n;
+			struct sockaddr_storage peer;
+			socklen_t	peerlen;
+			char *buffer = palloc(sizeof(icpkthdr)+100);
+			struct icpkthdr *pkt = (icpkthdr*)buffer;
 
-						if (pkt->flags & UDPIC_FLAGS_EOP)
-						{
-							pEntry->numEOPRecved++;
-						}
-						/* if you get one, put it in the econtext and initiate a rescan */
-						if (pkt->flags & UDPIC_FLAGS_PARAM)
-						{
-							//handleParamPacket(currentConn, pkt);
-							ParamExecData *prm;
-							Datum d;
-							memcpy(&d, pkt + sizeof(icpkthdr), sizeof(Datum));
-							prm = &(node->ps.ps_ExprContext->ecxt_param_exec_vals[0]);
-							prm->value = d;
-							node->ps.ps_ExprContext->ecxt_param_exec_vals[0].isnull = false;
-							ExecReScan(outerNode);
-						}
-					}
+			doSendEndOfStream(motion, node);
+			bool newParam = pollParams(node->ps.state->interconnect_context, pEntry->txfd,0);
+			if (!newParam)
+				continue;
+
+			for (;;)
+			{
+
+				/* ready to read on our socket ? */
+				peerlen = sizeof(peer);
+				n = recvfrom(pEntry->txfd, (char *) pkt, MIN_PACKET_SIZE, 0,
+						(struct sockaddr *) &peer, &peerlen);
+
+				if (n < 0)
+				{
+					if (errno == EWOULDBLOCK)	/* had nothing to read. */
+						break;
+
+					if (errno == EINTR)
+						continue;
+
+					ereport(ERROR,
+							(errcode(ERRCODE_GP_INTERCONNECTION_ERROR),
+							 errmsg("interconnect error waiting for peer ack"),
+							 errdetail("During recvfrom() call.")));
+				}
+				else if (n < sizeof(struct icpkthdr))
+					continue;
+				else if (n != pkt->len)
+					continue;
+
+				if (pkt->flags & UDPIC_FLAGS_EOP)
+				{
+					pEntry->numEOPRecved++;
+				}
+				/* if you get one, put it in the econtext and initiate a rescan */
+				if (pkt->flags & UDPIC_FLAGS_PARAM)
+				{
+					//handleParamPacket(currentConn, pkt);
+					ParamExecData *prm;
+					Datum d;
+					memcpy(&d, pkt + sizeof(icpkthdr), sizeof(Datum));
+					prm = &(node->ps.ps_ExprContext->ecxt_param_exec_vals[0]);
+					prm->value = d;
+					node->ps.ps_ExprContext->ecxt_param_exec_vals[0].isnull = false;
+					ExecReScan(outerNode);
 				}
 			}
+
 			/*
 			 * what do you do if you don't have new params but you do have params?
 			 * also, what if you don't have params at all, how will we exit?
 			 */
 
 			/* if you have received params from all segments, you are done */
-			if (pEntry->numEOPRecved == numsegments)
+			if (pEntry->numEOPRecved == pEntry->numConns)
 				done = true;
 		}
 		else if (node->isExplictGatherMotion &&

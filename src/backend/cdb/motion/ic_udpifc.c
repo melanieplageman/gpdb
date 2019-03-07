@@ -5760,7 +5760,7 @@ doSendParamMessageUDPIFC(ChunkTransportState *transportStates, int16 motNodeID, 
 		 * Note here, the stillActive flag of a connection may have been set
 		 * to false by markUDPConnInactiveIFC.
 		 */
-		if (conn->stillActive)
+		//if (conn->stillActive)
 		{
 			if (conn->peer.ss_family == AF_INET || conn->peer.ss_family == AF_INET6)
 			{
