@@ -677,6 +677,7 @@ createChunkTransportState(ChunkTransportState *transportStates,
 		conn->sent_record_typmod = 0;
 		conn->remapper = NULL;
 		conn->tsEntry = pEntry;
+		conn->sender_peer_len = 0;
 	}
 
 	return pEntry;

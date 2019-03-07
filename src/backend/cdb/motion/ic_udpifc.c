@@ -1831,7 +1831,11 @@ sendParam(MotionConn *conn, int32 flags, uint32 seq, uint32 extraSeq, int param)
 	if (gp_interconnect_full_crc)
 		addCRC(msghdr);
 
-	sendto(UDP_listenerFd, msghdr, msghdr->len, 0, (struct sockaddr *) &conn->peer, conn->peer_len);
+	if (conn->sender_peer_len == 0)
+		getSockAddr(&conn->sender_peer, &conn->sender_peer_len, conn->cdbProc->listenerAddr, conn->cdbProc->listenerPort);
+
+	int n = sendto(UDP_listenerFd, msghdr, msghdr->len, 0, (struct sockaddr *) &conn->sender_peer, conn->sender_peer_len);
+	write_log("send %d bytes", n);
 }
 
 
@@ -5718,7 +5722,7 @@ doSendParamMessageUDPIFC(ChunkTransportState *transportStates, int16 motNodeID, 
 		 * Note here, the stillActive flag of a connection may have been set
 		 * to false by markUDPConnInactiveIFC.
 		 */
-		if (conn->stillActive)
+	//	if (conn->stillActive)
 		{
 			if (conn->peer.ss_family == AF_INET || conn->peer.ss_family == AF_INET6)
 			{
