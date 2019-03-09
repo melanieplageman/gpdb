@@ -568,7 +568,7 @@ GenericTuple
 RecvTupleFrom(MotionLayerState *mlStates,
 			  ChunkTransportState *transportStates,
 			  int16 motNodeID,
-			  int16 srcRoute, uint32 *EOSseq)
+			  int16 srcRoute, bool *gotEOS)
 {
 	MotionNodeEntry *pMNEntry;
 	ChunkSorterEntry *pCSEntry;
@@ -587,6 +587,8 @@ RecvTupleFrom(MotionLayerState *mlStates,
 		pCSEntry = NULL;
 
 		ReadyList = pMNEntry->ready_tuples;
+		if(pMNEntry->num_stream_ends_recvd == pMNEntry->num_senders)
+			*gotEOS = true;
 	}
 	else
 	{
@@ -597,7 +599,6 @@ RecvTupleFrom(MotionLayerState *mlStates,
 		 * the tuple-store we should use.
 		 */
 		pCSEntry = getChunkSorterEntry(mlStates, pMNEntry, srcRoute);
-		pCSEntry->EOSseq = *EOSseq;
 		ReadyList = pCSEntry->ready_tuples;
 	}
 
@@ -1120,8 +1121,6 @@ addChunkToSorter(MotionLayerState *mlStates,
 
 			/* Mark the state as "end of stream." */
 			chunkSorterEntry->end_of_stream = true;
-			if (chunkSorterEntry->EOSseq == 0)
-				chunkSorterEntry->EOSseq++;
 			pMNEntry->num_stream_ends_recvd++;
 
 			if (pMNEntry->num_stream_ends_recvd == pMNEntry->num_senders)

@@ -116,7 +116,7 @@ SendEndOfStream(MotionLayerState       *mlStates,
 extern GenericTuple RecvTupleFrom(MotionLayerState *mlStates,
 								  ChunkTransportState *transportStates,
 								  int16 motNodeID,
-								  int16 srcRoute, uint32 *EOSseq);
+								  int16 srcRoute, bool *gotEOS);
 
 extern void SendStopMessage(MotionLayerState *mlStates,
 							ChunkTransportState *transportStates,

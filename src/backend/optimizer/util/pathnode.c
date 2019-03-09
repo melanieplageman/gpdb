@@ -3006,7 +3006,6 @@ create_nestloop_path(PlannerInfo *root,
 	Relids		outer_req_outer = PATH_REQ_OUTER(outer_path);
 	bool		outer_must_be_local = !bms_is_empty(outer_req_outer);
 	Relids		inner_req_outer = PATH_REQ_OUTER(inner_path);
-	bool		inner_must_be_local = !bms_is_empty(inner_req_outer);
 
 	/* Add motion nodes above subpaths and decide where to join. */
 	join_locus = cdbpath_motion_for_join(root,

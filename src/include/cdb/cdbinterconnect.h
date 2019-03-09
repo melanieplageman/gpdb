@@ -383,7 +383,6 @@ typedef struct ChunkSorterEntry
 	 * Flag recording whether end-of-stream has been reported from the source.
 	 */
 	bool		end_of_stream;
-	uint32 EOSseq;
 }	ChunkSorterEntry;
 
 /* This is the entry data-structure for a motion node. */

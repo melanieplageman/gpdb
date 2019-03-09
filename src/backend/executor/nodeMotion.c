@@ -449,7 +449,7 @@ execMotionUnsortedReceiver(MotionState *node)
 						motion->motionID);
 		return NULL;
 	}
-	uint32 EOSseq = 0; /* 0 means is not EOS */
+	bool gotEOS = false;
 	int param = 5;
 	uint32 currentParamSeq = 0; /* 0 means haven't sent any yet */
 
@@ -457,19 +457,19 @@ execMotionUnsortedReceiver(MotionState *node)
 	// how do I start the sending of params?
 
 	// try to receive a tuple
-	// if the motion node chunk sorter entry for this sender has end of stream:
+	// if all senders have sent EOS:
 		// if the EOS is for the param which is being processed and I have more params
 			// send the next param
 		// if the EOS is for the param which is being processed and I have no more params
 			// send EOSAck
 		// if the EOS is for a different param
-			// do nothing (or send the same param as before?)
-	// if the mot node chunk sort entry for this sender does not have end of stream:
+			// send the same param as before
+	// if all senders have not sent EOS:
 		// retry
 		//  TODO: check if the EOS is the right EOS
 	tuple = RecvTupleFrom(node->ps.state->motionlayer_context,
 						  node->ps.state->interconnect_context,
-						  motion->motionID, ANY_ROUTE, &EOSseq
+						  motion->motionID, ANY_ROUTE, &gotEOS
 						  );
 
 	if (!tuple)
@@ -482,26 +482,25 @@ execMotionUnsortedReceiver(MotionState *node)
 		Assert(node->numTuplesFromChild == 0);
 		Assert(node->numTuplesToAMS == 0);
 
-		if(EOSseq > 0)
+		if(gotEOS)
 		{
-			if(EOSseq == currentParamSeq)
+			if(node->EOSseq == currentParamSeq)
 			{
 				if (param > 0)
 				{
 					currentParamSeq++;
-					param--;
 				}
-
-				SendParamMessage(node->ps.state->motionlayer_context,
-								 node->ps.state->interconnect_context,
-								 motion->motionID,
-								 param, &currentParamSeq);
+				param--;
 			}
 			else
 			{
 				goto retry;
 			}
 
+			SendParamMessage(node->ps.state->motionlayer_context,
+							 node->ps.state->interconnect_context,
+							 motion->motionID,
+							 param, &currentParamSeq);
 		}
 
 		if (param != 0)
@@ -624,7 +623,7 @@ motion_mkhp_read(void *vpctxt, MKEntry *a)
 
 	MemSet(a, 0, sizeof(MKEntry));
 
-	uint32 EOSseq = 0;
+	bool EOSseq = false;
 
 	/* Receive the successor of the tuple that we returned last time. */
 	inputTuple = RecvTupleFrom(node->ps.state->motionlayer_context,
@@ -785,7 +784,7 @@ execMotionSortedReceiver(MotionState *node)
 	{
 		/* Old element is still at the head of the pq. */
 		Assert(DatumGetInt32(binaryheap_first(hp)) == node->routeIdNext);
-		uint32 EOSseq = 0;
+		bool EOSseq = false;
 		/* Receive the successor of the tuple that we returned last time. */
 		inputTuple = RecvTupleFrom(node->ps.state->motionlayer_context,
 								   node->ps.state->interconnect_context,
@@ -918,7 +917,7 @@ execMotionSortedReceiverFirstTime(MotionState *node)
 		 * another place where we are mapping segid space to routeid space. so
 		 * route[x] = inputSegIdx[x] now.
 		 */
-		uint32 EOSseq = 0;
+		bool EOSseq = false;
 		inputTuple = RecvTupleFrom(node->ps.state->motionlayer_context,
 								   node->ps.state->interconnect_context,
 								   motion->motionID, iSegIdx, &EOSseq);
@@ -1061,6 +1060,7 @@ ExecInitMotion(Motion *node, EState *estate, int eflags)
 		{
 			/* this is recv */
 			motionstate->mstype = MOTIONSTATE_RECV;
+			motionstate->EOSseq = 0;
 		}
 		else if (LocallyExecutingSliceIndex(estate) == sendSlice->sliceIndex)
 		{

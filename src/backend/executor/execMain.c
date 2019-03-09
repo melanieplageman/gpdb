@@ -2898,7 +2898,6 @@ ExecEndPlan(PlanState *planstate, EState *estate)
  * user can see it
  * ----------------------------------------------------------------
  */
-extern bool paramExists = false;
 
 static void
 ExecutePlan(EState *estate,
@@ -2941,7 +2940,7 @@ ExecutePlan(EState *estate,
 		if (IsA(planstate, MotionState))
 		{
 			MotionState *pMotionState = (MotionState *)planstate;
-			if (pMotionState->mstype == MOTIONSTATE_SEND && paramExists)
+			if (pMotionState->mstype == MOTIONSTATE_SEND)
 			{
 				ExecReScan(planstate);
 			}
