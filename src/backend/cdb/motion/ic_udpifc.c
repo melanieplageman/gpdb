@@ -726,7 +726,7 @@ static bool SendChunkUDPIFC(ChunkTransportState *transportStates,
 				ChunkTransportStateEntry *pEntry, MotionConn *conn, TupleChunkListItem tcItem, int16 motionId);
 
 static void doSendStopMessageUDPIFC(ChunkTransportState *transportStates, int16 motNodeID);
-static void doSendParamMessageUDPIFC(ChunkTransportState *transportStates, int16 motNodeID, int param);
+static void doSendParamMessageUDPIFC(ChunkTransportState *transportStates, int16 motNodeID, int param, uint32 *currentSeq);
 static bool dispatcherAYT(void);
 static void checkQDConnectionAlive(void);
 
@@ -5768,7 +5768,7 @@ doSendStopMessageUDPIFC(ChunkTransportState *transportStates, int16 motNodeID)
  * 		Send parameter messages to all senders.
  */
 static void
-doSendParamMessageUDPIFC(ChunkTransportState *transportStates, int16 motNodeID, int param)
+doSendParamMessageUDPIFC(ChunkTransportState *transportStates, int16 motNodeID, int param, uint32 *currentSeq)
 {
 	ChunkTransportStateEntry *pEntry = NULL;
 	MotionConn *conn = NULL;
@@ -5797,27 +5797,26 @@ doSendParamMessageUDPIFC(ChunkTransportState *transportStates, int16 motNodeID, 
 		 * Note here, the stillActive flag of a connection may have been set
 		 * to false by markUDPConnInactiveIFC.
 		 */
-		//if (conn->stillActive)
+
+		if (conn->peer.ss_family == AF_INET || conn->peer.ss_family == AF_INET6)
 		{
-			if (conn->peer.ss_family == AF_INET || conn->peer.ss_family == AF_INET6)
-			{
-				uint32		seq = conn->conn_info.seq > 0 ? conn->conn_info.seq - 1 : 0;
-
-				if (param != 0)
-					sendParam(conn, UDPIC_FLAGS_CAPACITY | UDPIC_FLAGS_PARAM | conn->conn_info.flags, seq, seq, param);
-				else
-					sendParam(conn, UDPIC_FLAGS_CAPACITY | UDPIC_FLAGS_EOS_ACK | conn->conn_info.flags, seq, seq, param);
-
-				if (gp_log_interconnect >= GPVARS_VERBOSITY_DEBUG)
-					elog(DEBUG1, "sent stop message. node %d route %d seq %d", motNodeID, i, seq);
-			}
+			uint32		seq = conn->conn_info.seq > 0 ? conn->conn_info.seq - 1 : 0;
+			*currentSeq = seq;
+			if (param != 0)
+				sendParam(conn, UDPIC_FLAGS_CAPACITY | UDPIC_FLAGS_PARAM | conn->conn_info.flags, seq, seq, param);
 			else
-			{
-				if (gp_log_interconnect >= GPVARS_VERBOSITY_DEBUG)
-					elog(DEBUG1, "first packet did not arrive yet. don't sent stop message. node %d route %d",
-						 motNodeID, i);
-			}
+				sendParam(conn, UDPIC_FLAGS_CAPACITY | UDPIC_FLAGS_EOS_ACK | conn->conn_info.flags, seq, seq, param);
+
+			if (gp_log_interconnect >= GPVARS_VERBOSITY_DEBUG)
+				elog(DEBUG1, "sent stop message. node %d route %d seq %d", motNodeID, i, seq);
 		}
+		else
+		{
+			if (gp_log_interconnect >= GPVARS_VERBOSITY_DEBUG)
+				elog(DEBUG1, "first packet did not arrive yet. don't sent stop message. node %d route %d",
+					 motNodeID, i);
+		}
+
 	}
 
 	pthread_mutex_unlock(&ic_control_info.lock);

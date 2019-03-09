@@ -353,10 +353,10 @@ void
 SendParamMessage(MotionLayerState *mlStates,
 				ChunkTransportState *transportStates,
 				int16 motNodeID,
-				int param)
+				int param, uint32 *currentSeq)
 {
 	if (transportStates != NULL)
-		transportStates->doSendParamMessage(transportStates, motNodeID, param);
+		transportStates->doSendParamMessage(transportStates, motNodeID, param, currentSeq);
 }
 
 void
@@ -568,7 +568,7 @@ GenericTuple
 RecvTupleFrom(MotionLayerState *mlStates,
 			  ChunkTransportState *transportStates,
 			  int16 motNodeID,
-			  int16 srcRoute, bool *isEOS)
+			  int16 srcRoute, uint32 *EOSseq)
 {
 	MotionNodeEntry *pMNEntry;
 	ChunkSorterEntry *pCSEntry;
@@ -597,6 +597,7 @@ RecvTupleFrom(MotionLayerState *mlStates,
 		 * the tuple-store we should use.
 		 */
 		pCSEntry = getChunkSorterEntry(mlStates, pMNEntry, srcRoute);
+		pCSEntry->EOSseq = *EOSseq;
 		ReadyList = pCSEntry->ready_tuples;
 	}
 
@@ -619,7 +620,6 @@ RecvTupleFrom(MotionLayerState *mlStates,
 			 * end-of-stream has been marked.  No more tuples are going to
 			 * show up.
 			 */
-			*isEOS = true;
 			break;
 		}
 
@@ -1120,6 +1120,8 @@ addChunkToSorter(MotionLayerState *mlStates,
 
 			/* Mark the state as "end of stream." */
 			chunkSorterEntry->end_of_stream = true;
+			if (chunkSorterEntry->EOSseq == 0)
+				chunkSorterEntry->EOSseq++;
 			pMNEntry->num_stream_ends_recvd++;
 
 			if (pMNEntry->num_stream_ends_recvd == pMNEntry->num_senders)

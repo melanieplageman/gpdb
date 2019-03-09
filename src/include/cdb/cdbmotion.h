@@ -116,7 +116,7 @@ SendEndOfStream(MotionLayerState       *mlStates,
 extern GenericTuple RecvTupleFrom(MotionLayerState *mlStates,
 								  ChunkTransportState *transportStates,
 								  int16 motNodeID,
-								  int16 srcRoute, bool *isEOS);
+								  int16 srcRoute, uint32 *EOSseq);
 
 extern void SendStopMessage(MotionLayerState *mlStates,
 							ChunkTransportState *transportStates,
@@ -124,7 +124,7 @@ extern void SendStopMessage(MotionLayerState *mlStates,
 extern void SendParamMessage(MotionLayerState *mlStates,
 				ChunkTransportState *transportStates,
 				int16 motNodeID,
-				int param);
+				int param, uint32 *currentSeq);
 /* used by ml_ipc to set the number of receivers that the motion node is expecting.
  * This is used by cdbmotion to keep track of when its seen enough EndOfStream
  * messages.
