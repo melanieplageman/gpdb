@@ -291,8 +291,10 @@ execMotionSender(MotionState *node)
 
 	ChunkTransportStateEntry *pEntry = NULL;
 	getChunkTransportState(node->ps.state->interconnect_context, motion->motionID, &pEntry);
+#define UDPIC_FLAGS_PARAM				(256)
 
-//	while (!outerNode->squelched && pEntry->numEOPRecved != pEntry->numConns && !node->stopRequested)
+	int numParams = 5;
+
 	while (!done && !node->stopRequested)
 	{
 		outerNode = outerPlanState(node);
@@ -317,26 +319,28 @@ execMotionSender(MotionState *node)
 			node->otherTime.tv_sec++;
 		}
 #endif
-
-#define UDPIC_FLAGS_PARAM				(256)
-#define UDPIC_FLAGS_EOP					(512)
-
 		if (TupIsNull(outerTupleSlot))
 		{
+			doSendEndOfStream(motion, node);
+
 			int			n;
 			struct sockaddr_storage peer;
 			socklen_t	peerlen;
 			char *buffer = palloc(sizeof(icpkthdr)+100);
 			struct icpkthdr *pkt = (icpkthdr*)buffer;
 
-			doSendEndOfStream(motion, node);
 			bool newParam = pollParams(node->ps.state->interconnect_context, pEntry->txfd,0);
+			bool gotEOSAck = pollEOSAcks(node->ps.state->interconnect_context, pEntry->txfd,0);
+			if (gotEOSAck)
+			{
+				done = true;
+				continue;
+			}
 			if (!newParam)
 				continue;
 
 			for (;;)
 			{
-
 				/* ready to read on our socket ? */
 				peerlen = sizeof(peer);
 				n = recvfrom(pEntry->txfd, (char *) pkt, MIN_PACKET_SIZE, 0,
@@ -360,32 +364,20 @@ execMotionSender(MotionState *node)
 				else if (n != pkt->len)
 					continue;
 
-				if (pkt->flags & UDPIC_FLAGS_EOP)
-				{
-					pEntry->numEOPRecved++;
-				}
 				/* if you get one, put it in the econtext and initiate a rescan */
 				if (pkt->flags & UDPIC_FLAGS_PARAM)
 				{
-					//handleParamPacket(currentConn, pkt);
 					ParamExecData *prm;
 					Datum d;
 					memcpy(&d, pkt + sizeof(icpkthdr), sizeof(Datum));
+					node->ps.ps_ExprContext->ecxt_param_exec_vals = (ParamExecData *)
+							palloc0(numParams * sizeof(ParamExecData));
 					prm = &(node->ps.ps_ExprContext->ecxt_param_exec_vals[0]);
 					prm->value = d;
 					node->ps.ps_ExprContext->ecxt_param_exec_vals[0].isnull = false;
 					ExecReScan(outerNode);
 				}
 			}
-
-			/*
-			 * what do you do if you don't have new params but you do have params?
-			 * also, what if you don't have params at all, how will we exit?
-			 */
-
-			/* if you have received params from all segments, you are done */
-			if (pEntry->numEOPRecved == pEntry->numConns)
-				done = true;
 		}
 		else if (node->isExplictGatherMotion &&
 				 GpIdentity.segindex != (gp_session_id % numsegments))
@@ -457,11 +449,27 @@ execMotionUnsortedReceiver(MotionState *node)
 						motion->motionID);
 		return NULL;
 	}
+	bool isEOS = false;
+	int param = 5;
 
-retry:
+	retry:
+	// how do I start the sending of params?
+
+	// try to receive a tuple
+	// if the motion node chunk sorter entry for this sender has end of stream:
+		// if the EOS is for the param which is being processed and I have more params
+			// send the next param
+		// if the EOS is for the param which is being processed and I have no more params
+			// send EOSAck
+		// if the EOS is for a different param
+			// do nothing (or send the same param as before?)
+	// if the mot node chunk sort entry for this sender does not have end of stream:
+		// retry
+		//  TODO: check if the EOS is the right EOS
 	tuple = RecvTupleFrom(node->ps.state->motionlayer_context,
 						  node->ps.state->interconnect_context,
-						  motion->motionID, ANY_ROUTE);
+						  motion->motionID, ANY_ROUTE, &isEOS
+						  );
 
 	if (!tuple)
 	{
@@ -473,11 +481,16 @@ retry:
 		Assert(node->numTuplesFromChild == 0);
 		Assert(node->numTuplesToAMS == 0);
 
-		int param = 0;
-		SendParamMessage(node->ps.state->motionlayer_context,
-						 node->ps.state->interconnect_context,
-						 motion->motionID,
-						 param);
+		if(isEOS)
+		{
+			if (param > 0)
+				param--;
+
+			SendParamMessage(node->ps.state->motionlayer_context,
+							 node->ps.state->interconnect_context,
+							 motion->motionID,
+							 param);
+		}
 
 		if (param != 0)
 			goto retry;
@@ -599,11 +612,13 @@ motion_mkhp_read(void *vpctxt, MKEntry *a)
 
 	MemSet(a, 0, sizeof(MKEntry));
 
+	bool isEOS;
+
 	/* Receive the successor of the tuple that we returned last time. */
 	inputTuple = RecvTupleFrom(node->ps.state->motionlayer_context,
 							   node->ps.state->interconnect_context,
 							   motion->motionID,
-							   ctxt->srcRoute);
+							   ctxt->srcRoute, &isEOS);
 
 	if (inputTuple)
 	{
@@ -758,12 +773,12 @@ execMotionSortedReceiver(MotionState *node)
 	{
 		/* Old element is still at the head of the pq. */
 		Assert(DatumGetInt32(binaryheap_first(hp)) == node->routeIdNext);
-
+		bool isEOS;
 		/* Receive the successor of the tuple that we returned last time. */
 		inputTuple = RecvTupleFrom(node->ps.state->motionlayer_context,
 								   node->ps.state->interconnect_context,
 								   motion->motionID,
-								   node->routeIdNext);
+								   node->routeIdNext, &isEOS);
 
 		/* Substitute it in the pq for its predecessor. */
 		if (inputTuple)
@@ -891,9 +906,10 @@ execMotionSortedReceiverFirstTime(MotionState *node)
 		 * another place where we are mapping segid space to routeid space. so
 		 * route[x] = inputSegIdx[x] now.
 		 */
+		bool isEOS;
 		inputTuple = RecvTupleFrom(node->ps.state->motionlayer_context,
 								   node->ps.state->interconnect_context,
-								   motion->motionID, iSegIdx);
+								   motion->motionID, iSegIdx, &isEOS);
 
 		if (inputTuple)
 		{
@@ -1707,7 +1723,6 @@ ExecReScanMotion(MotionState *node)
 				ChunkTransportState *transportStates = node->ps.state->interconnect_context;
 				ChunkTransportStateEntry *pEntry = NULL;
 				getChunkTransportState(transportStates, motion->motionID, &pEntry);
-//				handleParamMsgs(transportStates, pEntry);
 				node->ps.ps_ExprContext->ecxt_param_exec_vals[0].value = Int32GetDatum(5);
 				node->ps.ps_ExprContext->ecxt_param_exec_vals[0].isnull = false;
 				ExecReScanIndexOnlyScan((IndexOnlyScanState *) node->ps.lefttree);

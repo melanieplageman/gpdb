@@ -150,7 +150,7 @@ int
 #define UDPIC_FLAGS_DUPLICATE   		(64)
 #define UDPIC_FLAGS_CAPACITY    		(128)
 #define UDPIC_FLAGS_PARAM				(256)
-#define UDPIC_FLAGS_EOP					(512)  /*END OF PARAM*/
+#define UDPIC_FLAGS_EOS_ACK					(512)
 
 /*
  * ConnHtabBin
@@ -5202,6 +5202,43 @@ bool pollParams(ChunkTransportState *transportStates, int fd, int timeout)
 	return false;
 }
 
+bool pollEOSAcks(ChunkTransportState *transportStates, int fd, int timeout)
+{
+	struct pollfd nfd;
+	int			n;
+
+	nfd.fd = fd;
+	nfd.events = POLLIN;
+
+	n = poll(&nfd, 1, timeout);
+	if (n < 0)
+	{
+		ML_CHECK_FOR_INTERRUPTS(transportStates->teardownActive);
+		if (errno == EINTR)
+			return false;
+
+		ereport(ERROR,
+				(errcode(ERRCODE_GP_INTERCONNECTION_ERROR),
+						errmsg("interconnect error waiting for peer to send param"),
+						errdetail("During poll() call.")));
+
+		/* not reached */
+	}
+
+	if (n == 0)					/* timeout */
+	{
+		return false;
+	}
+
+	/* got an EOSAck to handle */
+	if (n == 1 && (nfd.events & POLLIN))
+	{
+		return true;
+	}
+
+	return false;
+}
+
 /*
  * pollAcks
  * 		Timeout polling of acks
@@ -5769,7 +5806,7 @@ doSendParamMessageUDPIFC(ChunkTransportState *transportStates, int16 motNodeID, 
 				if (param != 0)
 					sendParam(conn, UDPIC_FLAGS_CAPACITY | UDPIC_FLAGS_PARAM | conn->conn_info.flags, seq, seq, param);
 				else
-					sendParam(conn, UDPIC_FLAGS_CAPACITY | UDPIC_FLAGS_EOP | conn->conn_info.flags, seq, seq, param);
+					sendParam(conn, UDPIC_FLAGS_CAPACITY | UDPIC_FLAGS_EOS_ACK | conn->conn_info.flags, seq, seq, param);
 
 				if (gp_log_interconnect >= GPVARS_VERBOSITY_DEBUG)
 					elog(DEBUG1, "sent stop message. node %d route %d seq %d", motNodeID, i, seq);
@@ -5934,12 +5971,6 @@ handleDataPacket(MotionConn *conn, icpkthdr *pkt, struct sockaddr_storage *peer,
 	if (pkt->flags & UDPIC_FLAGS_PARAM)
 	{
 		handleParamPacket(conn, pkt);
-		return false;
-	}
-
-	if (pkt->flags & UDPIC_FLAGS_EOP)
-	{
-		conn->tsEntry->numEOPRecved++;
 		return false;
 	}
 

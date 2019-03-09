@@ -568,7 +568,7 @@ GenericTuple
 RecvTupleFrom(MotionLayerState *mlStates,
 			  ChunkTransportState *transportStates,
 			  int16 motNodeID,
-			  int16 srcRoute)
+			  int16 srcRoute, bool *isEOS)
 {
 	MotionNodeEntry *pMNEntry;
 	ChunkSorterEntry *pCSEntry;
@@ -619,6 +619,7 @@ RecvTupleFrom(MotionLayerState *mlStates,
 			 * end-of-stream has been marked.  No more tuples are going to
 			 * show up.
 			 */
+			*isEOS = true;
 			break;
 		}
 
