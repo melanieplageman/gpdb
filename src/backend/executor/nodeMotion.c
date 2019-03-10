@@ -484,18 +484,8 @@ execMotionUnsortedReceiver(MotionState *node)
 
 		if(gotEOS)
 		{
-			if(node->EOSseq == currentParamSeq)
-			{
-				if (param > 0)
-				{
-					currentParamSeq++;
-				}
+			if (param > 0)
 				param--;
-			}
-			else
-			{
-				goto retry;
-			}
 
 			SendParamMessage(node->ps.state->motionlayer_context,
 							 node->ps.state->interconnect_context,
