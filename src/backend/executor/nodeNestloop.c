@@ -351,7 +351,7 @@ ExecNestLoop(NestLoopState *node)
 		 * clog up the pipeline with our never-to-be-consumed
 		 * data.
 		 */
-		ExecSquelchNode((PlanState *) node);
+		//ExecSquelchNode((PlanState *) node);
 	}
 
 	return result;
