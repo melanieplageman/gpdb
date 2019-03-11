@@ -1685,21 +1685,11 @@ ExecReScanMotion(MotionState *node)
 {
 	Motion	   *motion = (Motion *) node->ps.plan;
 
-	// add something here to have receiver send param to sender motion if rescanning
 	switch(node->mstype)
 	{
 		case MOTIONSTATE_RECV:
-		// The MotionState node has the ParamExecData in the ecxt_param_exec_vals array too
-		// However, the actual value of the param in its outer tupletableslot won't be there
-		// Because we need to actually need to set it
-		// The NLJ will have these
-
-		//		ParamExecData hackExprContext = node->ps.ps_ExprContext->ecxt_param_exec_vals[0];
-		// 		node->ps.state->motionlayer_context;
-		//		node->ps.state->interconnect_context;
 		{
-
-
+			Datum someParam = node->ps.ps_ExprContext->ecxt_param_exec_vals[0].value;
 			ChunkTransportState *transportStates = node->ps.state->interconnect_context;
 			ChunkTransportStateEntry *pEntry = NULL;
 			getChunkTransportState(transportStates, motion->motionID, &pEntry);
@@ -1711,22 +1701,19 @@ ExecReScanMotion(MotionState *node)
 			tcItem->p_next = NULL;
 			tcItem->chunk_length = sizeof(Datum);
 			tcItem->inplace = (char *) (conn->msgPos + sizeof(Datum));
-			tcItem->chunk_data[0] = 5;
+			tcItem->chunk_data[0] = DatumGetInt8(someParam);
 
 			transportStates->SendChunk(transportStates, pEntry, conn, tcItem, motion->motionID);
 			break;
 		}
 		case MOTIONSTATE_SEND:
 		{
-			elog(NOTICE, "Old mcdonald had a farm");
 			// hard-code this for now to only initiate the rescan if the child of the sender motion is an indexonly scan
 			if (IsA(node->ps.lefttree, IndexOnlyScanState))
 			{
 				ChunkTransportState *transportStates = node->ps.state->interconnect_context;
 				ChunkTransportStateEntry *pEntry = NULL;
 				getChunkTransportState(transportStates, motion->motionID, &pEntry);
-				node->ps.ps_ExprContext->ecxt_param_exec_vals[0].value = Int32GetDatum(5);
-				node->ps.ps_ExprContext->ecxt_param_exec_vals[0].isnull = false;
 				ExecReScanIndexOnlyScan((IndexOnlyScanState *) node->ps.lefttree);
 			}
 			break;

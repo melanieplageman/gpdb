@@ -1831,11 +1831,6 @@ sendParam(MotionConn *conn, int32 flags, uint32 seq, uint32 extraSeq, int param)
 	if (gp_interconnect_full_crc)
 		addCRC(msghdr);
 
-//	if (conn->sender_peer_len == 0)
-//		getSockAddr(&conn->sender_peer, &conn->sender_peer_len, conn->cdbProc->listenerAddr, conn->cdbProc->listenerPort);
-//
-//	int n = sendto(UDP_listenerFd, msghdr, msghdr->len, 0, (struct sockaddr *) &conn->sender_peer, conn->sender_peer_len);
-//	write_log("send %d bytes", n);
 	sendto(UDP_listenerFd, msghdr, msghdr->len, 0, (struct sockaddr *) &conn->peer, conn->peer_len);
 }
 
