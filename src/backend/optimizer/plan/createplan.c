@@ -1259,19 +1259,17 @@ create_motion_plan(PlannerInfo *root, CdbMotionPath *path)
 
 		return subplan;
 	}
-
-	subplan = create_subplan(root, subpath);
+	Plan *temp_plan = create_plan_recurse(root, subpath);
 
 	/* Only the needed columns should be projected from base rel. */
-	disuse_physical_tlist(root, subplan, subpath);
+	disuse_physical_tlist(root, temp_plan, subpath);
 
 	/* Add motion operator. */
-	motion = cdbpathtoplan_create_motion_plan(root, path, subplan);
+	motion = cdbpathtoplan_create_motion_plan(root, path, temp_plan);
 
 	copy_path_costsize(root, &motion->plan, (Path *) path);
 
 	root->curOuterRels = save_curOuterRels;
-	root->curOuterParams = save_curOuterParams;
 
 	return (Plan *) motion;
 }	/* create_motion_plan */
