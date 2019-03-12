@@ -322,11 +322,13 @@ extern void TeardownTCPInterconnect(ChunkTransportState *transportStates,
 extern void TeardownUDPIFCInterconnect(ChunkTransportState *transportStates,
 								 bool forceEOS);
 
+extern void indicateParamFinish(void);
 extern uint32 getActiveMotionConns(void);
 extern void adjustMasterRouting(Slice *recvSlice);
 
 extern char *format_sockaddr(struct sockaddr_storage *sa, char *buf, size_t len);
 
 extern ExprContext *param_exec_econtext;
+
 
 #endif   /* ML_IPC_H */

@@ -438,6 +438,8 @@ struct ICGlobalControlInfo
 
 	/* Used by main thread to ask the background thread to exit. */
 	uint32		shutdown;
+
+	bool send_eos_ack;
 };
 
 /*
@@ -6373,7 +6375,18 @@ rxThreadFunc(void *arg)
 			 * real ack sending is after lock release to decrease the lock
 			 * holding time.
 			 */
-			if (param.msg.len != 0)
+			uint32		expected = 1;
+			bool sendAck = true;
+
+			// if send_eos_ack is equal to 1 -- meaning it it is set, then this will return true and the new value will be 0
+			// meaning we have agreed to send eos ack and main thread will know
+			// if it is false, that means it is not equal to 1 and so it has not been set
+			// main thread is not ready for us to EOS ack, perhaps because it has more params so don't send EOS ACK
+			if (!(pkt->flags & UDPIC_FLAGS_EOS && pg_atomic_compare_exchange_u32((pg_atomic_uint32 *) &ic_control_info.send_eos_ack, &expected, 0)))
+			{
+				sendAck = false;
+			}
+			if (param.msg.len != 0 && sendAck)
 				sendAckWithParam(&param);
 		}
 
@@ -6391,6 +6404,22 @@ rxThreadFunc(void *arg)
 
 	/* nothing to return */
 	return NULL;
+}
+
+void indicateParamFinish()
+{
+	// if it is 0, set it to 1
+	uint32 expected = 0;
+	if (!(pg_atomic_compare_exchange_u32((pg_atomic_uint32 *) &ic_control_info.send_eos_ack, &expected, 1)))
+	{
+		// it is false, so write some message to log to indicate that the value was not 0 as expected
+	}
+	else
+	{
+
+		// write some message to indicate that the value was changed by us (should be main thread)
+	}
+
 }
 
 /*
