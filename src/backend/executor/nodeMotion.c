@@ -360,13 +360,9 @@ execMotionSender(MotionState *node)
 				{
 					int numParams = 2; /* pretend there are 2 params */
 					ParamExecData *prm;
-					Datum d;
-					memcpy(&d, pkt + sizeof(icpkthdr), sizeof(Datum));
-					node->ps.ps_ExprContext->ecxt_param_exec_vals = (ParamExecData *)
-							palloc0(numParams * sizeof(ParamExecData));
+
 					prm = &(node->ps.ps_ExprContext->ecxt_param_exec_vals[0]);
-					prm->value = d;
-					node->ps.ps_ExprContext->ecxt_param_exec_vals[0].isnull = false;
+					*prm = param_exec_econtext->ecxt_param_exec_vals[0];
 					ExecReScan(outerNode);
 				}
 			}
@@ -1192,7 +1188,9 @@ ExecInitMotion(Motion *node, EState *estate, int eflags)
 						  &typisvarlena);
 	}
 #endif
-
+	int numParams = 2;
+	motionstate->ps.ps_ExprContext->ecxt_param_exec_vals = (ParamExecData *)
+		palloc0(numParams * sizeof(ParamExecData));
 	param_exec_econtext = motionstate->ps.ps_ExprContext;
 	return motionstate;
 }

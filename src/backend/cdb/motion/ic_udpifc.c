@@ -5571,6 +5571,7 @@ SendEosUDPIFC(ChunkTransportState *transportStates,
 							Datum d;
 							memcpy(&d, &paramPkt + sizeof(icpkthdr), sizeof(Datum));
 							prm = &(param_exec_econtext->ecxt_param_exec_vals[0]);
+							param_exec_econtext->ecxt_param_exec_vals[0].isnull = false;
 							prm->value = d;
 						}
 
