@@ -150,7 +150,6 @@ int
 #define UDPIC_FLAGS_DUPLICATE   		(64)
 #define UDPIC_FLAGS_CAPACITY    		(128)
 #define UDPIC_FLAGS_PARAM				(256)
-#define UDPIC_FLAGS_EOS_ACK					(512)
 
 /*
  * ConnHtabBin
@@ -5160,80 +5159,6 @@ checkDeadlock(ChunkTransportStateEntry *pEntry, MotionConn *conn)
 	}
 }
 
-bool pollParams(ChunkTransportState *transportStates, int fd, int timeout)
-{
-	struct pollfd nfd;
-	int			n;
-
-	nfd.fd = fd;
-	nfd.events = POLLIN;
-
-	n = poll(&nfd, 1, timeout);
-	if (n < 0)
-	{
-		ML_CHECK_FOR_INTERRUPTS(transportStates->teardownActive);
-		if (errno == EINTR)
-			return false;
-
-		ereport(ERROR,
-				(errcode(ERRCODE_GP_INTERCONNECTION_ERROR),
-						errmsg("interconnect error waiting for peer to send param"),
-						errdetail("During poll() call.")));
-
-		/* not reached */
-	}
-
-	if (n == 0)					/* timeout */
-	{
-		return false;
-	}
-
-	/* got a param to handle */
-	if (n == 1 && (nfd.events & POLLIN))
-	{
-		return true;
-	}
-
-	return false;
-}
-
-bool pollEOSAcks(ChunkTransportState *transportStates, int fd, int timeout)
-{
-	struct pollfd nfd;
-	int			n;
-
-	nfd.fd = fd;
-	nfd.events = POLLIN;
-
-	n = poll(&nfd, 1, timeout);
-	if (n < 0)
-	{
-		ML_CHECK_FOR_INTERRUPTS(transportStates->teardownActive);
-		if (errno == EINTR)
-			return false;
-
-		ereport(ERROR,
-				(errcode(ERRCODE_GP_INTERCONNECTION_ERROR),
-						errmsg("interconnect error waiting for peer to send param"),
-						errdetail("During poll() call.")));
-
-		/* not reached */
-	}
-
-	if (n == 0)					/* timeout */
-	{
-		return false;
-	}
-
-	/* got an EOSAck to handle */
-	if (n == 1 && (nfd.events & POLLIN))
-	{
-		return true;
-	}
-
-	return false;
-}
-
 /*
  * pollAcks
  * 		Timeout polling of acks
@@ -5632,9 +5557,28 @@ SendEosUDPIFC(ChunkTransportState *transportStates,
 					   icBufferListLength(&conn->sndQueue) > 0)
 				{
 					timeout = computeTimeout(conn, retry);
-
+					// todo: replace hard-coding get param from header with real handling like handleAcks
 					if (pollAcks(transportStates, pEntry->txfd, timeout))
-						handleAcks(transportStates, pEntry);
+					{
+						Datum pad;
+						// check if it is a param
+						icpkthdr paramPkt;
+						memcpy(&paramPkt, (char *)&conn->conn_info, sizeof(icpkthdr) + sizeof(Datum));
+						if (paramPkt.flags & UDPIC_FLAGS_PARAM)
+						{
+							ParamExecData *prm;
+
+							Datum d;
+							memcpy(&d, &paramPkt + sizeof(icpkthdr), sizeof(Datum));
+							prm = &(param_exec_econtext->ecxt_param_exec_vals[0]);
+							prm->value = d;
+						}
+
+						else
+						{
+							handleAcks(transportStates, pEntry);
+						}
+					}
 
 					checkExceptions(transportStates, pEntry, conn, retry++, timeout);
 
@@ -5799,8 +5743,6 @@ doSendParamMessageUDPIFC(ChunkTransportState *transportStates, int16 motNodeID, 
 			*currentSeq = seq;
 			if (param != 0)
 				sendParam(conn, UDPIC_FLAGS_CAPACITY | UDPIC_FLAGS_PARAM | conn->conn_info.flags, seq, seq, param);
-			else
-				sendParam(conn, UDPIC_FLAGS_CAPACITY | UDPIC_FLAGS_EOS_ACK | conn->conn_info.flags, seq, seq, param);
 
 			if (gp_log_interconnect >= GPVARS_VERBOSITY_DEBUG)
 				elog(DEBUG1, "sent stop message. node %d route %d seq %d", motNodeID, i, seq);

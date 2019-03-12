@@ -293,11 +293,11 @@ execMotionSender(MotionState *node)
 	getChunkTransportState(node->ps.state->interconnect_context, motion->motionID, &pEntry);
 #define UDPIC_FLAGS_PARAM				(256)
 
-	int numParams = 5;
-
 	while (!done && !node->stopRequested)
 	{
 		outerNode = outerPlanState(node);
+		if (GpIdentity.segindex == 0)
+			elog(WARNING, "yolo %d", DatumGetInt8(node->ps.ps_ExprContext->ecxt_param_exec_vals[0].value));
 		/* grab TupleTableSlot from our child. */
 		outerTupleSlot = ExecProcNode(outerNode);
 
@@ -329,15 +329,6 @@ execMotionSender(MotionState *node)
 			char *buffer = palloc(sizeof(icpkthdr)+100);
 			struct icpkthdr *pkt = (icpkthdr*)buffer;
 
-			bool newParam = pollParams(node->ps.state->interconnect_context, pEntry->txfd,0);
-			bool gotEOSAck = pollEOSAcks(node->ps.state->interconnect_context, pEntry->txfd,0);
-			if (gotEOSAck)
-			{
-				done = true;
-				continue;
-			}
-			if (!newParam)
-				continue;
 
 			for (;;)
 			{
@@ -367,6 +358,7 @@ execMotionSender(MotionState *node)
 				/* if you get one, put it in the econtext and initiate a rescan */
 				if (pkt->flags & UDPIC_FLAGS_PARAM)
 				{
+					int numParams = 2; /* pretend there are 2 params */
 					ParamExecData *prm;
 					Datum d;
 					memcpy(&d, pkt + sizeof(icpkthdr), sizeof(Datum));
@@ -482,16 +474,13 @@ execMotionUnsortedReceiver(MotionState *node)
 		Assert(node->numTuplesFromChild == 0);
 		Assert(node->numTuplesToAMS == 0);
 
-		if(gotEOS)
-		{
-			if (param > 0)
-				param--;
+		if (param > 0)
+			param--;
 
-			SendParamMessage(node->ps.state->motionlayer_context,
-							 node->ps.state->interconnect_context,
-							 motion->motionID,
-							 param, &currentParamSeq);
-		}
+		SendParamMessage(node->ps.state->motionlayer_context,
+				node->ps.state->interconnect_context,
+				motion->motionID,
+				param, &currentParamSeq);
 
 		if (param != 0)
 			goto retry;

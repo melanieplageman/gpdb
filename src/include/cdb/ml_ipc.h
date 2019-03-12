@@ -324,8 +324,6 @@ extern void TeardownUDPIFCInterconnect(ChunkTransportState *transportStates,
 
 extern uint32 getActiveMotionConns(void);
 extern void adjustMasterRouting(Slice *recvSlice);
-extern bool pollParams(ChunkTransportState *transportStates, int fd, int timeout);
-extern bool pollEOSAcks(ChunkTransportState *transportStates, int fd, int timeout);
 
 extern char *format_sockaddr(struct sockaddr_storage *sa, char *buf, size_t len);
 
