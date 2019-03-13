@@ -1082,21 +1082,6 @@ select count(*) from qp_misc_jiras.tbl7126_co_zlib3;
 
 -- util functions
 
--- start_ignore
-
-select get_ao_compression_ratio('qp_misc_jiras.tbl7126_ao');
-select get_ao_compression_ratio('qp_misc_jiras.tbl7126_ao_zlib3');
-select get_ao_compression_ratio('qp_misc_jiras.tbl7126_co');
-select get_ao_compression_ratio('qp_misc_jiras.tbl7126_co_zlib3');
-
-
-select get_ao_distribution('qp_misc_jiras.tbl7126_ao');
-select get_ao_distribution('qp_misc_jiras.tbl7126_ao_zlib3');
-select get_ao_distribution('qp_misc_jiras.tbl7126_co');
-select get_ao_distribution('qp_misc_jiras.tbl7126_co_zlib3');
-
--- end_ignore
-
 select gp_update_ao_master_stats('qp_misc_jiras.tbl7126_ao');
 select gp_update_ao_master_stats('qp_misc_jiras.tbl7126_ao_zlib3');
 select gp_update_ao_master_stats('qp_misc_jiras.tbl7126_co');
