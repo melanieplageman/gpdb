@@ -5745,7 +5745,22 @@ doSendParamMessageUDPIFC(ChunkTransportState *transportStates, int16 motNodeID, 
 			uint32		seq = conn->conn_info.seq > 0 ? conn->conn_info.seq - 1 : 0;
 			*currentSeq = seq;
 			if (param != 0)
+			{
+				// switch source and dest
+				int32 srcPid = conn->conn_info.srcPid;
+				conn->conn_info.srcPid = conn->conn_info.dstPid;
+				conn->conn_info.dstPid = srcPid;
+
+				int32 srcListenerPort = conn->conn_info.srcListenerPort;
+				conn->conn_info.srcListenerPort = conn->conn_info.dstListenerPort;
+				conn->conn_info.dstListenerPort = srcListenerPort;
+
+				uint32 sendSliceIndex = conn->conn_info.sendSliceIndex;
+				conn->conn_info.sendSliceIndex = conn->conn_info.recvSliceIndex;
+				conn->conn_info.recvSliceIndex = sendSliceIndex;
+
 				sendParam(conn, UDPIC_FLAGS_CAPACITY | UDPIC_FLAGS_PARAM | conn->conn_info.flags, seq, seq, param);
+			}
 
 			if (gp_log_interconnect >= GPVARS_VERBOSITY_DEBUG)
 				elog(DEBUG1, "sent stop message. node %d route %d seq %d", motNodeID, i, seq);
