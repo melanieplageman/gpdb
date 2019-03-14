@@ -2136,6 +2136,7 @@ void mppExecutorCleanup(QueryDesc *queryDesc)
 	/* Clean up the interconnect. */
 	if (estate->es_interconnect_is_setup)
 	{
+		elog(DEBUG4, "Melanie: we are doing cleanup mppExecutorCleanup. forceEOS is set to true");
 		TeardownInterconnect(estate->interconnect_context, true /* force EOS */, true);
 		estate->es_interconnect_is_setup = false;
 	}

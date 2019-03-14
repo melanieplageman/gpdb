@@ -1829,7 +1829,7 @@ sendParam(MotionConn *conn, int32 flags, uint32 seq, uint32 extraSeq, int param)
 	/* Add CRC for the control message. */
 	if (gp_interconnect_full_crc)
 		addCRC(msghdr);
-
+	elog(NOTICE, "In sendParam, sending the param now %d", param);
 	sendto(UDP_listenerFd, msghdr, msghdr->len, 0, (struct sockaddr *) &conn->peer, conn->peer_len);
 }
 
@@ -3689,10 +3689,11 @@ receiveChunksUDPIFC(ChunkTransportState *pTransportStates, ChunkTransportStateEn
 		if (rx_control_info.mainWaitingState.reachRoute != ANY_ROUTE)
 		{
 			rxconn = pEntry->conns + rx_control_info.mainWaitingState.reachRoute;
-
+			uint8 *head = conn->pkt_q[conn->pkt_q_head];
+			elog(DEBUG4, "Melanie: in receiveChunksUDPIFC. pkt_q_head is %d. motion node id is %d, send slice idx is %d, recv slice idx is %d, src content id is %d, dst content id is %d ", *head, motNodeID, conn->conn_info.sendSliceIndex, conn->conn_info.recvSliceIndex, conn->conn_info.srcContentId, conn->conn_info.dstContentId);
 			prepareRxConnForRead(rxconn);
 
-			elog(DEBUG2, "receiveChunksUDPIFC: non-directed rx woke on route %d", rx_control_info.mainWaitingState.reachRoute);
+			elog(DEBUG4, "receiveChunksUDPIFC: non-directed rx woke on route %d. MotionConn state is %d", rx_control_info.mainWaitingState.reachRoute, conn->state);
 			resetMainThreadWaiting(&rx_control_info.mainWaitingState);
 		}
 
@@ -3838,6 +3839,8 @@ RecvTupleChunkFromAnyUDPIFC_Internal(ChunkTransportState *transportStates,
 		if (conn->pkt_q_size > 0)
 		{
 			found = true;
+			uint8 *head = conn->pkt_q[conn->pkt_q_head];
+			elog(DEBUG4, "Melanie: in RecvTupleChunkFromAnyUDPIFC_Internal. pkt_q_head is %d. motion node id is %d, send slice idx is %d, recv slice idx is %d, src content id is %d, dst content id is %d ", *head, motNodeID, conn->conn_info.sendSliceIndex, conn->conn_info.recvSliceIndex, conn->conn_info.srcContentId, conn->conn_info.dstContentId);
 			prepareRxConnForRead(conn);
 			break;
 		}
@@ -3959,6 +3962,8 @@ RecvTupleChunkFromUDPIFC_Internal(ChunkTransportState *transportStates,
 
 	if (conn->pkt_q[conn->pkt_q_head] != NULL)
 	{
+		uint8 *head = conn->pkt_q[conn->pkt_q_head];
+		elog(DEBUG4, "Melanie: in RecvTupleChunkFromUDPIFC_Internal. pkt_q_head is %d. motion node id is %d, send slice idx is %d, recv slice idx is %d, src content id is %d, dst content id is %d ", *head, motNodeID, conn->conn_info.sendSliceIndex, conn->conn_info.recvSliceIndex, conn->conn_info.srcContentId, conn->conn_info.dstContentId);
 		prepareRxConnForRead(conn);
 
 		pthread_mutex_unlock(&ic_control_info.lock);

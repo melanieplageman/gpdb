@@ -296,8 +296,7 @@ execMotionSender(MotionState *node)
 	while (!done && !node->stopRequested)
 	{
 		outerNode = outerPlanState(node);
-		if (GpIdentity.segindex == 0)
-			elog(WARNING, "yolo %d", DatumGetInt8(node->ps.ps_ExprContext->ecxt_param_exec_vals[0].value));
+		elog(DEBUG4, "Melanie: in ExecMotionSender. Preparing to exec_proc_node outer. Current ecxt_param_exec_vals[0].value is %d. Segment id %d", DatumGetInt8(node->ps.ps_ExprContext->ecxt_param_exec_vals[0].value), GpIdentity.segindex);
 		/* grab TupleTableSlot from our child. */
 		outerTupleSlot = ExecProcNode(outerNode);
 
@@ -472,7 +471,10 @@ execMotionUnsortedReceiver(MotionState *node)
 
 		if (param > 0)
 			param--;
-
+		if (param == 0)
+		{
+			elog(NOTICE, "going to send param %d", param);
+		}
 		SendParamMessage(node->ps.state->motionlayer_context,
 				node->ps.state->interconnect_context,
 				motion->motionID,
