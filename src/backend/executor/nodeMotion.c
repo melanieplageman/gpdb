@@ -469,18 +469,10 @@ execMotionUnsortedReceiver(MotionState *node)
 		Assert(node->numTuplesFromAMS == node->numTuplesToParent);
 		Assert(node->numTuplesFromChild == 0);
 		Assert(node->numTuplesToAMS == 0);
-		if (param == 0)
-		{
-			indicateParamFinish();
-		}
-		else if (param > 0)
-		{
+
+		if (param > 0)
 			param--;
-		}
-		else
-		{
-			// this is an error
-		}
+
 		SendParamMessage(node->ps.state->motionlayer_context,
 				node->ps.state->interconnect_context,
 				motion->motionID,
