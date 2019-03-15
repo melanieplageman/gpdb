@@ -296,7 +296,7 @@ execMotionSender(MotionState *node)
 	while (!done && !node->stopRequested)
 	{
 		outerNode = outerPlanState(node);
-		elog(DEBUG4, "Melanie: in ExecMotionSender. Preparing to exec_proc_node outer. Current ecxt_param_exec_vals[0].value is %d. Segment id %d", DatumGetInt8(node->ps.ps_ExprContext->ecxt_param_exec_vals[0].value), GpIdentity.segindex);
+		elog(DEBUG3, "Melanie: in ExecMotionSender. Preparing to exec_proc_node outer. Current ecxt_param_exec_vals[0].value is %d. Segment id %d", DatumGetInt8(node->ps.ps_ExprContext->ecxt_param_exec_vals[0].value), GpIdentity.segindex);
 		/* grab TupleTableSlot from our child. */
 		outerTupleSlot = ExecProcNode(outerNode);
 
