@@ -18,6 +18,7 @@
 #include "cdb/cdbselect.h"
 #include "cdb/cdbinterconnect.h"
 #include "cdb/ml_ipc.h"
+#include "nodes/execnodes.h"
 
 /* Define this if you want tons of logs! */
 #undef AMS_VERBOSE_LOGGING
@@ -99,9 +100,10 @@ extern SendReturnCode SendTuple(MotionLayerState *mlStates,
 /* Send or broadcast an END_OF_STREAM token to the corresponding motion-node
  * on other segments.
  */
-void
+bool
 SendEndOfStream(MotionLayerState       *mlStates,
                 ChunkTransportState    *transportStates,
+				ExprContext			   *paramContext,
                 int                     motNodeID);
 
 /*
@@ -121,10 +123,6 @@ extern GenericTuple RecvTupleFrom(MotionLayerState *mlStates,
 extern void SendStopMessage(MotionLayerState *mlStates,
 							ChunkTransportState *transportStates,
 							int16 motNodeID);
-extern void SendParamMessage(MotionLayerState *mlStates,
-				ChunkTransportState *transportStates,
-				int16 motNodeID,
-				int param, uint32 *currentSeq);
 /* used by ml_ipc to set the number of receivers that the motion node is expecting.
  * This is used by cdbmotion to keep track of when its seen enough EndOfStream
  * messages.
@@ -137,4 +135,5 @@ extern void UpdateMotionExpectedReceivers(MotionLayerState *mlStates,
  */
 extern TupleChunkListItem get_eos_tuplechunklist(void);
 
+extern void ResetEosRecved(MotionLayerState *mlStates, ChunkTransportState *transportStates, int16 motNodeID);
 #endif   /* CDBMOTION_H */

@@ -111,7 +111,7 @@ static void execMotionSortedReceiverFirstTime(MotionState *node);
 static int	CdbMergeComparator(Datum lhs, Datum rhs, void *context);
 static uint32 evalHashKey(ExprContext *econtext, List *hashkeys, CdbHash *h);
 
-static void doSendEndOfStream(Motion *motion, MotionState *node);
+static bool doSendEndOfStream(Motion *motion, MotionState *node);
 static void doSendTuple(Motion *motion, MotionState *node, TupleTableSlot *outerTupleSlot);
 
 
@@ -320,51 +320,11 @@ execMotionSender(MotionState *node)
 #endif
 		if (TupIsNull(outerTupleSlot))
 		{
-			doSendEndOfStream(motion, node);
-
-			int			n;
-			struct sockaddr_storage peer;
-			socklen_t	peerlen;
-			char *buffer = palloc(sizeof(icpkthdr)+100);
-			struct icpkthdr *pkt = (icpkthdr*)buffer;
-
-
-			for (;;)
-			{
-				/* ready to read on our socket ? */
-				peerlen = sizeof(peer);
-				n = recvfrom(pEntry->txfd, (char *) pkt, MIN_PACKET_SIZE, 0,
-						(struct sockaddr *) &peer, &peerlen);
-
-				if (n < 0)
-				{
-					if (errno == EWOULDBLOCK)	/* had nothing to read. */
-						break;
-
-					if (errno == EINTR)
-						continue;
-
-					ereport(ERROR,
-							(errcode(ERRCODE_GP_INTERCONNECTION_ERROR),
-							 errmsg("interconnect error waiting for peer ack"),
-							 errdetail("During recvfrom() call.")));
-				}
-				else if (n < sizeof(struct icpkthdr))
-					continue;
-				else if (n != pkt->len)
-					continue;
-
-				/* if you get one, put it in the econtext and initiate a rescan */
-				if (pkt->flags & UDPIC_FLAGS_PARAM)
-				{
-					int numParams = 2; /* pretend there are 2 params */
-					ParamExecData *prm;
-
-					prm = &(node->ps.ps_ExprContext->ecxt_param_exec_vals[0]);
-					*prm = param_exec_econtext->ecxt_param_exec_vals[0];
-					ExecReScan(outerNode);
-				}
-			}
+			bool hasNewParam = doSendEndOfStream(motion, node);
+			if (!hasNewParam)
+				done = true;
+			else
+				ExecReScan(outerNode);
 		}
 		else if (node->isExplictGatherMotion &&
 				 GpIdentity.segindex != (gp_session_id % numsegments))
@@ -436,31 +396,33 @@ execMotionUnsortedReceiver(MotionState *node)
 						motion->motionID);
 		return NULL;
 	}
-	bool gotEOS = false;
-	int param = 5;
-	uint32 currentParamSeq = 0; /* 0 means haven't sent any yet */
 
-	retry:
-	// how do I start the sending of params?
+	updateParameterToSend(node->parameter);
 
-	// try to receive a tuple
-	// if all senders have sent EOS:
-		// if the EOS is for the param which is being processed and I have more params
-			// send the next param
-		// if the EOS is for the param which is being processed and I have no more params
-			// send EOSAck
-		// if the EOS is for a different param
-			// send the same param as before
-	// if all senders have not sent EOS:
-		// retry
-		//  TODO: check if the EOS is the right EOS
-	tuple = RecvTupleFrom(node->ps.state->motionlayer_context,
-						  node->ps.state->interconnect_context,
-						  motion->motionID, ANY_ROUTE, &gotEOS
-						  );
-
-	if (!tuple)
+	for(;;)
 	{
+		bool gotEOS = false;
+
+		// how do I start the sending of params?
+
+		// try to receive a tuple
+		// if all senders have sent EOS:
+			// if the EOS is for the param which is being processed and I have more params
+				// send the next param
+			// if the EOS is for the param which is being processed and I have no more params
+				// send EOSAck
+			// if the EOS is for a different param
+				// send the same param as before
+		// if all senders have not sent EOS:
+			// retry
+			//  TODO: check if the EOS is the right EOS
+		tuple = RecvTupleFrom(node->ps.state->motionlayer_context,
+							  node->ps.state->interconnect_context,
+							  motion->motionID, ANY_ROUTE, &gotEOS
+							  );
+
+		if (tuple)
+			break;
 #ifdef CDB_MOTION_DEBUG
 		if (gp_log_interconnect >= GPVARS_VERBOSITY_DEBUG)
 			elog(DEBUG4, "motionID=%d saw end of stream", motion->motionID);
@@ -469,21 +431,29 @@ execMotionUnsortedReceiver(MotionState *node)
 		Assert(node->numTuplesFromChild == 0);
 		Assert(node->numTuplesToAMS == 0);
 
-		if (param > 0)
-			param--;
-		if (param == 0)
-		{
-			elog(NOTICE, "going to send param %d", param);
-		}
-		SendParamMessage(node->ps.state->motionlayer_context,
-				node->ps.state->interconnect_context,
-				motion->motionID,
-				param, &currentParamSeq);
+		// haven't get EOS from all senders
+		if (!gotEOS)
+			continue;
 
-		if (param != 0)
-			goto retry;
-		else
+		node->parameter--;
+		if (node->parameter < 0)
 			return NULL;
+		updateParameterToSend(node->parameter);
+		if (node->parameter == 0)
+		{
+			int i;
+			ChunkTransportStateEntry *pEntry = NULL;
+			getChunkTransportState(node->ps.state->interconnect_context, motion->motionID, &pEntry);
+			for (i = 0; i < pEntry->numConns; i++)
+			{
+				int16 route = pEntry->conns[i].route;
+				DeregisterReadInterest(node->ps.state->interconnect_context, motion->motionID, route,
+									   "end of stream");
+			}
+
+			return NULL;
+		}
+		ResetEosRecved(node->ps.state->motionlayer_context, node->ps.state->interconnect_context, motion->motionID);
 	}
 
 	node->numTuplesFromAMS++;
@@ -1193,7 +1163,8 @@ ExecInitMotion(Motion *node, EState *estate, int eflags)
 	int numParams = 2;
 	motionstate->ps.ps_ExprContext->ecxt_param_exec_vals = (ParamExecData *)
 		palloc0(numParams * sizeof(ParamExecData));
-	param_exec_econtext = motionstate->ps.ps_ExprContext;
+	motionstate->parameter = 2;
+
 	return motionstate;
 }
 
@@ -1502,17 +1473,19 @@ evalHashKey(ExprContext *econtext, List *hashkeys, CdbHash * h)
 }
 
 
-void
+bool
 doSendEndOfStream(Motion *motion, MotionState *node)
 {
 	/*
 	 * We have no more child tuples, but we have not successfully sent an
 	 * End-of-Stream token yet.
 	 */
-	SendEndOfStream(node->ps.state->motionlayer_context,
+	bool hasNewParam = SendEndOfStream(node->ps.state->motionlayer_context,
 					node->ps.state->interconnect_context,
+					node->ps.ps_ExprContext,
 					motion->motionID);
-	node->sentEndOfStream = true;
+	node->sentEndOfStream = true; //todo: not needed?
+	return hasNewParam;
 }
 
 /*

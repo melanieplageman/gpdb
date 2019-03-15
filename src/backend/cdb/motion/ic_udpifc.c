@@ -440,6 +440,7 @@ struct ICGlobalControlInfo
 	uint32		shutdown;
 };
 
+static int parameter_to_send = 0;
 /*
  * Shared control information that is used by senders, receivers and background thread.
  */
@@ -719,13 +720,12 @@ static TupleChunkListItem RecvTupleChunkFromUDPIFC(ChunkTransportState *transpor
 static TupleChunkListItem receiveChunksUDPIFC(ChunkTransportState *pTransportStates, ChunkTransportStateEntry *pEntry,
 					int16 motNodeID, int16 *srcRoute, MotionConn *conn);
 
-static void SendEosUDPIFC(ChunkTransportState *transportStates,
+static bool SendEosUDPIFC(ChunkTransportState *transportStates, ExprContext *paramContext,
 			  int motNodeID, TupleChunkListItem tcItem);
 static bool SendChunkUDPIFC(ChunkTransportState *transportStates,
 				ChunkTransportStateEntry *pEntry, MotionConn *conn, TupleChunkListItem tcItem, int16 motionId);
 
 static void doSendStopMessageUDPIFC(ChunkTransportState *transportStates, int16 motNodeID);
-static void doSendParamMessageUDPIFC(ChunkTransportState *transportStates, int16 motNodeID, int param, uint32 *currentSeq);
 static bool dispatcherAYT(void);
 static void checkQDConnectionAlive(void);
 
@@ -734,7 +734,7 @@ static void *rxThreadFunc(void *arg);
 
 static bool handleMismatch(icpkthdr *pkt, struct sockaddr_storage *peer, int peer_len);
 static void handleAckedPacket(MotionConn *ackConn, ICBuffer *buf, uint64 now);
-static bool handleAcks(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntry);
+static bool handleAcks(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntry, ExprContext *paramContext, bool *hasNewParam);
 static void handleStopMsgs(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntry, int16 motionId);
 static void handleDisorderPacket(MotionConn *conn, int pos, uint32 tailSeq, icpkthdr *pkt);
 static bool handleDataPacket(MotionConn *conn, icpkthdr *pkt, struct sockaddr_storage *peer, socklen_t *peerlen, AckSendParam *param, bool *wakeup_mainthread);
@@ -768,6 +768,7 @@ static inline void logPkt(char *prefix, icpkthdr *pkt);
 static void aggregateStatistics(ChunkTransportStateEntry *pEntry);
 
 static inline bool pollAcks(ChunkTransportState *transportStates, int fd, int timeout);
+static void sendParam(AckSendParam *param, int p);
 
 /* #define TRANSFER_PROTOCOL_STATS */
 
@@ -1781,7 +1782,10 @@ setAckSendParam(AckSendParam *param, MotionConn *conn, int32 flags, uint32 seq, 
 static inline void
 sendAckWithParam(AckSendParam *param)
 {
-	sendControlMessage(&param->msg, UDP_listenerFd, (struct sockaddr *) &param->peer, param->peer_len);
+	if ((param->msg.flags & UDPIC_FLAGS_EOS) && parameter_to_send != 0)
+		sendParam(param, parameter_to_send);
+	else
+		sendControlMessage(&param->msg, UDP_listenerFd, (struct sockaddr *) &param->peer, param->peer_len);
 }
 
 /*
@@ -1804,33 +1808,50 @@ sendAck(MotionConn *conn, int32 flags, uint32 seq, uint32 extraSeq)
 	write_log("sendack: flags 0x%x node %d route %d seq %d extraSeq %d",
 			  msg.flags, msg.motNodeId, conn->route, msg.seq, msg.extraSeq);
 #endif
+	if ((msg.flags & UDPIC_FLAGS_EOS) && parameter_to_send != 0)
+	{
+		int size = sizeof(icpkthdr) + sizeof(Datum);
+		char *parammsg = malloc(size);
+		icpkthdr *msghdr = (icpkthdr*)parammsg;
+		msghdr->flags = flags | UDPIC_FLAGS_PARAM;
+		msghdr->seq = seq;
+		msghdr->extraSeq = extraSeq;
+		msghdr->len = size;
 
-	sendControlMessage(&msg, UDP_listenerFd, (struct sockaddr *) &conn->peer, conn->peer_len);
+		Datum d = Int32GetDatum(parameter_to_send);
+		memcpy(parammsg+sizeof(icpkthdr), (char *) &d, sizeof(d));
+
+		/* Add CRC for the control message. */
+		if (gp_interconnect_full_crc)
+			addCRC(msghdr);
+		sendto(UDP_listenerFd, msghdr, msghdr->len, 0, (struct sockaddr *) &conn->peer, conn->peer_len);
+		free(parammsg);
+	}
+	else
+		sendControlMessage(&msg, UDP_listenerFd, (struct sockaddr *) &conn->peer, conn->peer_len);
 
 }
 
 static void
-sendParam(MotionConn *conn, int32 flags, uint32 seq, uint32 extraSeq, int param)
+sendParam(AckSendParam *param, int p)
 {
 	int size = sizeof(icpkthdr) + sizeof(Datum);
-	char *msg = palloc(size);
+	char *msg = malloc(size);
 	icpkthdr *msghdr = (icpkthdr*)msg;
 
-	memcpy(msg, (char *) &conn->conn_info, sizeof(icpkthdr));
+	memcpy(msg, (char *) &param->msg, sizeof(icpkthdr));
 
-	msghdr->flags = flags;
-	msghdr->seq = seq;
-	msghdr->extraSeq = extraSeq;
+	msghdr->flags |= UDPIC_FLAGS_PARAM;
 	msghdr->len = size;
 
-	Datum d = Int32GetDatum(param);
+	Datum d = Int32GetDatum(p);
 	memcpy(msg+sizeof(icpkthdr), (char *) &d, sizeof(d));
 
 	/* Add CRC for the control message. */
 	if (gp_interconnect_full_crc)
 		addCRC(msghdr);
-	elog(NOTICE, "In sendParam, sending the param now %d", param);
-	sendto(UDP_listenerFd, msghdr, msghdr->len, 0, (struct sockaddr *) &conn->peer, conn->peer_len);
+	sendto(UDP_listenerFd, msghdr, msghdr->len, 0, (struct sockaddr *) &param->peer, param->peer_len);
+	free(msg);
 }
 
 
@@ -3022,7 +3043,6 @@ SetupUDPIFCInterconnect_Internal(SliceTable *sliceTable)
 	interconnect_context->SendEos = SendEosUDPIFC;
 	interconnect_context->SendChunk = SendChunkUDPIFC;
 	interconnect_context->doSendStopMessage = doSendStopMessageUDPIFC;
-	interconnect_context->doSendParamMessage = doSendParamMessageUDPIFC;
 
 	mySlice = (Slice *) list_nth(interconnect_context->sliceTable->slices, sliceTable->localSlice);
 
@@ -4172,10 +4192,6 @@ handleAckedPacket(MotionConn *ackConn, ICBuffer *buf, uint64 now)
 	if (bufIsHead)
 		ackConn->receivedAckSeq = buf->pkt->seq;
 
-	/* The first packet acts like a connect setup packet */
-	if (buf->pkt->seq == 1)
-		ackConn->state = mcsStarted;
-
 	icBufferListAppend(&snd_buffer_pool.freeList, buf);
 
 #ifdef AMS_VERBOSE_LOGGING
@@ -4195,7 +4211,7 @@ handleAckedPacket(MotionConn *ackConn, ICBuffer *buf, uint64 now)
  * if we receive a stop message, return true (caller will clean up).
  */
 static bool
-handleAcks(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntry)
+handleAcks(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntry, ExprContext *paramContext, bool *hasNewParam)
 {
 
 	bool		ret = false;
@@ -4303,6 +4319,24 @@ handleAcks(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntr
 
 			if (pkt->flags & UDPIC_FLAGS_NAK)
 				continue;
+
+			if (pkt->flags & UDPIC_FLAGS_PARAM)
+			{
+				ParamExecData *prm;
+				Datum d;
+
+				ackConn->state = mcsParamRecved;
+				if (hasNewParam != NULL)
+					*hasNewParam = true;
+
+				if (paramContext != NULL)
+				{
+					memcpy(&d, (char *)pkt + sizeof(icpkthdr), sizeof(Datum));
+					prm = &(paramContext->ecxt_param_exec_vals[0]);
+					paramContext->ecxt_param_exec_vals[0].isnull = false;
+					prm->value = d;
+				}
+			}
 
 			while (true)
 			{
@@ -4624,7 +4658,7 @@ handleStopMsgs(ChunkTransportState *transportStates, ChunkTransportStateEntry *p
 		{
 			if (pollAcks(transportStates, pEntry->txfd, 0))
 			{
-				if (handleAcks(transportStates, pEntry))
+				if (handleAcks(transportStates, pEntry, NULL, NULL))
 				{
 					/* more stops found, loop again. */
 					i = 0;
@@ -4718,20 +4752,6 @@ sendBuffers(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEnt
 
 		buf->conn->sentSeq = buf->pkt->seq;
 	}
-}
-
-
-ExprContext *param_exec_econtext;
-
-static void
-handleParamPacket(MotionConn *conn, icpkthdr *pkt)
-{
-	ParamExecData *prm;
-
-	Datum d;
-	memcpy(&d, pkt + sizeof(icpkthdr), sizeof(Datum));
-	prm = &(param_exec_econtext->ecxt_param_exec_vals[0]);
-	prm->value = d;
 }
 
 /*
@@ -5404,7 +5424,7 @@ SendChunkUDPIFC(ChunkTransportState *transportStates,
 
 		if (pollAcks(transportStates, pEntry->txfd, timeout))
 		{
-			if (handleAcks(transportStates, pEntry))
+			if (handleAcks(transportStates, pEntry, NULL, NULL))
 			{
 				/*
 				 * We make sure that we deal with the stop messages only after
@@ -5450,8 +5470,9 @@ SendChunkUDPIFC(ChunkTransportState *transportStates,
  * See ml_ipc.h
  *
  */
-static void
+static bool
 SendEosUDPIFC(ChunkTransportState *transportStates,
+			  ExprContext *paramContext,
 			  int motNodeID,
 			  TupleChunkListItem tcItem)
 {
@@ -5461,6 +5482,7 @@ SendEosUDPIFC(ChunkTransportState *transportStates,
 	int			retry = 0;
 	int			activeCount = 0;
 	int			timeout = 0;
+	bool        retval = false;
 
 	if (!transportStates)
 	{
@@ -5510,16 +5532,23 @@ SendEosUDPIFC(ChunkTransportState *transportStates,
 			if (pEntry->sendingEos)
 				conn->conn_info.flags |= UDPIC_FLAGS_EOS;
 
+
+			if (!conn->curBuff)
+			{
+				conn->curBuff = getSndBuffer(conn);
+				conn->pBuff = (uint8 *) conn->curBuff->pkt;
+			}
 			prepareXmit(conn);
 
-			/* place it into the send queue */
 			icBufferListAppend(&conn->sndQueue, conn->curBuff);
+
 			sendBuffers(transportStates, pEntry, conn);
 
 			conn->tupleCount = 0;
 			conn->msgSize = sizeof(conn->conn_info);
 			conn->curBuff = NULL;
 			conn->deadlockCheckBeginTime = now;
+			conn->state = mcsStarted;
 
 			activeCount++;
 		}
@@ -5543,7 +5572,7 @@ SendEosUDPIFC(ChunkTransportState *transportStates,
 		{
 			conn = pEntry->conns + i;
 
-			if (conn->stillActive)
+			if (conn->stillActive && conn->state != mcsParamRecved)
 			{
 				retry = 0;
 				ic_control_info.lastPacketSendTime = 0;
@@ -5559,27 +5588,15 @@ SendEosUDPIFC(ChunkTransportState *transportStates,
 					   icBufferListLength(&conn->sndQueue) > 0)
 				{
 					timeout = computeTimeout(conn, retry);
-					// todo: replace hard-coding get param from header with real handling like handleAcks
+
 					if (pollAcks(transportStates, pEntry->txfd, timeout))
 					{
-						Datum pad;
-						// check if it is a param
-						icpkthdr paramPkt;
-						memcpy(&paramPkt, (char *)&conn->conn_info, sizeof(icpkthdr) + sizeof(Datum));
-						if (paramPkt.flags & UDPIC_FLAGS_PARAM)
+						bool hasNewParam = false;
+						handleAcks(transportStates, pEntry, paramContext, &hasNewParam);
+						if (hasNewParam)
 						{
-							ParamExecData *prm;
-
-							Datum d;
-							memcpy(&d, &paramPkt + sizeof(icpkthdr), sizeof(Datum));
-							prm = &(param_exec_econtext->ecxt_param_exec_vals[0]);
-							param_exec_econtext->ecxt_param_exec_vals[0].isnull = false;
-							prm->value = d;
-						}
-
-						else
-						{
-							handleAcks(transportStates, pEntry);
+							retval = true;
+							break;
 						}
 					}
 
@@ -5588,6 +5605,10 @@ SendEosUDPIFC(ChunkTransportState *transportStates,
 					if (retry >= MAX_TRY)
 						break;
 				}
+
+				if (conn->state == mcsParamRecved)
+					continue;
+
 
 				if ((!conn->cdbProc) || (icBufferListLength(&conn->unackQueue) == 0 &&
 										 icBufferListLength(&conn->sndQueue) == 0))
@@ -5601,8 +5622,7 @@ SendEosUDPIFC(ChunkTransportState *transportStates,
 		}
 	}
 
-	if (gp_log_interconnect >= GPVARS_VERBOSITY_DEBUG)
-		elog(DEBUG1, "SendEosUDPIFC leaving, activeCount %d", activeCount);
+	return retval;
 }
 
 /*
@@ -5705,77 +5725,6 @@ doSendStopMessageUDPIFC(ChunkTransportState *transportStates, int16 motNodeID)
 }
 
 
-/*
- * doSendParamMessageUDPIFC
- * 		Send parameter messages to all senders.
- */
-static void
-doSendParamMessageUDPIFC(ChunkTransportState *transportStates, int16 motNodeID, int param, uint32 *currentSeq)
-{
-	ChunkTransportStateEntry *pEntry = NULL;
-	MotionConn *conn = NULL;
-	int			i;
-
-	if (!transportStates->activated)
-		return;
-
-	getChunkTransportState(transportStates, motNodeID, &pEntry);
-	Assert(pEntry);
-
-	/*
-	 * Note: we're only concerned with receivers here.
-	 */
-	pthread_mutex_lock(&ic_control_info.lock);
-
-	if (gp_log_interconnect >= GPVARS_VERBOSITY_DEBUG)
-		elog(DEBUG1, "Interconnect needs no more input from slice%d; notifying senders to stop.",
-			 motNodeID);
-
-	for (i = 0; i < pEntry->numConns; i++)
-	{
-		conn = pEntry->conns + i;
-
-		/*
-		 * Note here, the stillActive flag of a connection may have been set
-		 * to false by markUDPConnInactiveIFC.
-		 */
-
-		if (conn->peer.ss_family == AF_INET || conn->peer.ss_family == AF_INET6)
-		{
-			uint32		seq = conn->conn_info.seq > 0 ? conn->conn_info.seq - 1 : 0;
-			*currentSeq = seq;
-			if (param != 0)
-			{
-				// switch source and dest
-				int32 srcPid = conn->conn_info.srcPid;
-				conn->conn_info.srcPid = conn->conn_info.dstPid;
-				conn->conn_info.dstPid = srcPid;
-
-				int32 srcListenerPort = conn->conn_info.srcListenerPort;
-				conn->conn_info.srcListenerPort = conn->conn_info.dstListenerPort;
-				conn->conn_info.dstListenerPort = srcListenerPort;
-
-				uint32 sendSliceIndex = conn->conn_info.sendSliceIndex;
-				conn->conn_info.sendSliceIndex = conn->conn_info.recvSliceIndex;
-				conn->conn_info.recvSliceIndex = sendSliceIndex;
-
-				sendParam(conn, UDPIC_FLAGS_CAPACITY | UDPIC_FLAGS_PARAM | conn->conn_info.flags, seq, seq, param);
-			}
-
-			if (gp_log_interconnect >= GPVARS_VERBOSITY_DEBUG)
-				elog(DEBUG1, "sent stop message. node %d route %d seq %d", motNodeID, i, seq);
-		}
-		else
-		{
-			if (gp_log_interconnect >= GPVARS_VERBOSITY_DEBUG)
-				elog(DEBUG1, "first packet did not arrive yet. don't sent stop message. node %d route %d",
-					 motNodeID, i);
-		}
-
-	}
-
-	pthread_mutex_unlock(&ic_control_info.lock);
-}
 
 /*
  * dispatcherAYT
@@ -5921,13 +5870,6 @@ static bool
 handleDataPacket(MotionConn *conn, icpkthdr *pkt, struct sockaddr_storage *peer, socklen_t *peerlen,
 				 AckSendParam *param, bool *wakeup_mainthread)
 {
-
-	if (pkt->flags & UDPIC_FLAGS_PARAM)
-	{
-		handleParamPacket(conn, pkt);
-		return false;
-	}
-
 	if ((pkt->len == sizeof(icpkthdr)) && (pkt->flags & UDPIC_FLAGS_CAPACITY))
 	{
 		if (DEBUG1 >= log_min_messages)
@@ -6017,7 +5959,7 @@ handleDataPacket(MotionConn *conn, icpkthdr *pkt, struct sockaddr_storage *peer,
 		{
 			if (DEBUG2 >= log_min_messages)
 				write_log("stop requested and acknowledged by sending peer");
-			conn->stillActive = false;
+			//conn->stillActive = false;
 		}
 
 		return false;
@@ -6037,7 +5979,7 @@ handleDataPacket(MotionConn *conn, icpkthdr *pkt, struct sockaddr_storage *peer,
 	}
 
 	/* sequence number is correct */
-	if (!conn->stillActive)
+	if (!conn->stillActive && parameter_to_send == 0)
 	{
 		/* peer may have dropped ack */
 		if (gp_log_interconnect >= GPVARS_VERBOSITY_VERBOSE &&
@@ -6390,6 +6332,7 @@ rxThreadFunc(void *arg)
 			 * real ack sending is after lock release to decrease the lock
 			 * holding time.
 			 */
+
 			if (param.msg.len != 0)
 				sendAckWithParam(&param);
 		}
@@ -7015,4 +6958,10 @@ uint32
 getActiveMotionConns(void)
 {
 	return ic_statistics.activeConnectionsNum;
+}
+
+void
+updateParameterToSend(int param)
+{
+	parameter_to_send = param;
 }

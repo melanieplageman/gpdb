@@ -350,16 +350,6 @@ SendStopMessage(MotionLayerState *mlStates,
 }
 
 void
-SendParamMessage(MotionLayerState *mlStates,
-				ChunkTransportState *transportStates,
-				int16 motNodeID,
-				int param, uint32 *currentSeq)
-{
-	if (transportStates != NULL)
-		transportStates->doSendParamMessage(transportStates, motNodeID, param, currentSeq);
-}
-
-void
 CheckAndSendRecordCache(MotionLayerState *mlStates,
 						ChunkTransportState *transportStates,
 						int16 motNodeID,
@@ -537,12 +527,14 @@ get_eos_tuplechunklist(void)
  * Sends a token to all peer Motion Nodes, indicating that this motion
  * node has no more tuples to send out.
  */
-void
+bool
 SendEndOfStream(MotionLayerState *mlStates,
 				ChunkTransportState *transportStates,
+				ExprContext *paramContext,
 				int motNodeID)
 {
 	MotionNodeEntry *pMNEntry;
+	bool hasNewParam;
 
 	/*
 	 * Pull up the motion node entry with the node's details.  This includes
@@ -551,7 +543,7 @@ SendEndOfStream(MotionLayerState *mlStates,
 	 */
 	pMNEntry = getMotionNodeEntry(mlStates, motNodeID);
 
-	transportStates->SendEos(transportStates, motNodeID, s_eos_chunk_data);
+	hasNewParam = transportStates->SendEos(transportStates, paramContext, motNodeID, s_eos_chunk_data);
 
 	/*
 	 * We increment our own "stream-ends received" count when we send our own,
@@ -561,6 +553,7 @@ SendEndOfStream(MotionLayerState *mlStates,
 
 	/* We record EOS as if a tuple were sent. */
 	statSendEOS(mlStates, pMNEntry);
+	return hasNewParam;
 }
 
 /* An unordered receiver will call this with srcRoute == ANY_ROUTE */
@@ -1265,4 +1258,25 @@ static void
 UpdateSentRecordCache(MotionConn *conn)
 {
 	conn->sent_record_typmod = NextRecordTypmod;
+}
+
+void
+ResetEosRecved(MotionLayerState *mlStates,
+			  ChunkTransportState *transportStates,
+			  int16 motNodeID)
+{
+	int i;
+	ChunkTransportStateEntry *pEntry = NULL;
+	MotionNodeEntry *pMNEntry = getMotionNodeEntry(mlStates, motNodeID);
+	pMNEntry->num_stream_ends_recvd = 0;
+	pMNEntry->moreNetWork = true;
+
+	getChunkTransportState(transportStates, motNodeID, &pEntry);
+	for (i = 0; i < pEntry->numConns; i++)
+	{
+		int16 route = pEntry->conns[i].route;
+		pEntry->conns[i].stillActive = true;
+		ChunkSorterEntry *chunkSorterEntry = getChunkSorterEntry(mlStates, pMNEntry, route);
+		chunkSorterEntry->end_of_stream = false;
+	}
 }

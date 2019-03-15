@@ -558,7 +558,7 @@ forceEosToPeers(ChunkTransportState *transportStates,
 
 	transportStates->teardownActive = true;
 
-	transportStates->SendEos(transportStates, motNodeID, get_eos_tuplechunklist());
+	transportStates->SendEos(transportStates, NULL, motNodeID, get_eos_tuplechunklist());
 
 	transportStates->teardownActive = false;
 }

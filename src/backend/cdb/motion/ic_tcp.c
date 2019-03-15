@@ -85,7 +85,7 @@ static TupleChunkListItem RecvTupleChunkFromTCP(ChunkTransportState *transportSt
 					  int16 motNodeID,
 					  int16 srcRoute);
 
-static void SendEosTCP(ChunkTransportState *transportStates,
+static bool SendEosTCP(ChunkTransportState *transportStates, ExprContext *paramContext,
 		   int motNodeID, TupleChunkListItem tcItem);
 
 static bool SendChunkTCP(ChunkTransportState *transportStates,
@@ -2536,8 +2536,9 @@ RecvTupleChunkFromAnyTCP(ChunkTransportState *transportStates,
 }
 
 /* See ml_ipc.h */
-static void
+static bool
 SendEosTCP(ChunkTransportState *transportStates,
+		   ExprContext *paramContext,
 		   int motNodeID,
 		   TupleChunkListItem tcItem)
 {
@@ -2582,7 +2583,7 @@ SendEosTCP(ChunkTransportState *transportStates,
 #endif
 	}
 
-	return;
+	return 0;
 }
 
 static bool

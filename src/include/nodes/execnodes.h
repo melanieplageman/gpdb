@@ -2884,6 +2884,7 @@ typedef struct MotionState
 	int			numInputSegs;	/* the number of segments on the sending slice */
 	bool		isExplictGatherMotion;
 	uint32 		EOSseq;
+	int      parameter;
 } MotionState;
 
 /*zx

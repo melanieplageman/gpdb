@@ -17,6 +17,7 @@
 
 #include "libpq/libpq-be.h"
 #include "nodes/primnodes.h"
+#include "nodes/execnodes.h"
 #include "cdb/tupchunklist.h"
 #include "access/htup.h"
 #include "cdb/htupfifo.h"
@@ -105,7 +106,8 @@ typedef enum MotionConnState
 	mcsRecvRegMsg,
 	mcsSendRegMsg,
     mcsStarted,
-	mcsEosSent
+	mcsEosSent,
+	mcsParamRecved
 } MotionConnState;
 
 typedef struct ICBuffer ICBuffer;
@@ -523,8 +525,7 @@ typedef struct ChunkTransportState
 	TupleChunkListItem (*RecvTupleChunkFrom)(struct ChunkTransportState *transportStates, int16 motNodeID, int16 srcRoute);
 	TupleChunkListItem (*RecvTupleChunkFromAny)(struct ChunkTransportState *transportStates, int16 motNodeID, int16 *srcRoute);
 	void (*doSendStopMessage)(struct ChunkTransportState *transportStates, int16 motNodeID);
-	void (*doSendParamMessage)(struct ChunkTransportState *transportStates, int16 motNodeID, int param, uint32 *currentSeq);
-	void (*SendEos)(struct ChunkTransportState *transportStates, int motNodeID, TupleChunkListItem tcItem);
+	bool (*SendEos)(struct ChunkTransportState *transportStates, ExprContext *paramContext, int motNodeID, TupleChunkListItem tcItem);
 } ChunkTransportState;
 
 extern void dumpICBufferList(ICBufferList *list, const char *fname);
