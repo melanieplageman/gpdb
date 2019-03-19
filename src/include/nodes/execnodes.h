@@ -167,6 +167,7 @@ typedef struct ExprContext
 	 * in a grouping extension query. */
 	uint64      grouping;
 	uint32      group_id;
+	uint32      paramSeq;
 } ExprContext;
 
 /*

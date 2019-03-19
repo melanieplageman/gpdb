@@ -4334,6 +4334,8 @@ handleAcks(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntr
 					memcpy(&d, (char *)pkt + sizeof(icpkthdr), sizeof(Datum));
 					prm = &(paramContext->ecxt_param_exec_vals[0]);
 					paramContext->ecxt_param_exec_vals[0].isnull = false;
+					paramContext->paramSeq = pkt->extraSeq;
+					elog(NOTICE, "param value is %d", prm->value);
 					prm->value = d;
 				}
 			}
@@ -5541,7 +5543,12 @@ SendEosUDPIFC(ChunkTransportState *transportStates,
 			prepareXmit(conn);
 
 			icBufferListAppend(&conn->sndQueue, conn->curBuff);
-
+			if (conn->conn_info.dstContentId != paramContext->paramSeq)
+			{
+				/* don't send EOS to this receiver? */
+				//continue;
+				elog(NOTICE, "dstContentId is %d. paramContext paramSeq is %d", conn->conn_info.dstContentId, paramContext->paramSeq);
+			}
 			sendBuffers(transportStates, pEntry, conn);
 
 			conn->tupleCount = 0;
@@ -6332,9 +6339,16 @@ rxThreadFunc(void *arg)
 			 * real ack sending is after lock release to decrease the lock
 			 * holding time.
 			 */
-
 			if (param.msg.len != 0)
+			{
+				/* I am assuming if it is going to be resent it will already have this field set */
+				if (param.msg.extraSeq == 0)
+				{
+					param.msg.extraSeq = conn->conn_info.srcContentId;
+				}
+
 				sendAckWithParam(&param);
+			}
 		}
 
 		/* pthread_yield(); */
