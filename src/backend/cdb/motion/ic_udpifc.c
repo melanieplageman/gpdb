@@ -1835,6 +1835,7 @@ sendAck(MotionConn *conn, int32 flags, uint32 seq, uint32 extraSeq)
 static void
 sendParam(AckSendParam *param, int p)
 {
+	int static paramSeq = 0;
 	int size = sizeof(icpkthdr) + sizeof(Datum);
 	char *msg = malloc(size);
 	icpkthdr *msghdr = (icpkthdr*)msg;
@@ -1843,6 +1844,7 @@ sendParam(AckSendParam *param, int p)
 
 	msghdr->flags |= UDPIC_FLAGS_PARAM;
 	msghdr->len = size;
+	msghdr->paramSeq = paramSeq++;
 
 	Datum d = Int32GetDatum(p);
 	memcpy(msg+sizeof(icpkthdr), (char *) &d, sizeof(d));
@@ -2002,7 +2004,10 @@ MlPutRxBufferIFC(ChunkTransportState *transportStates, int motNodeID, int route)
 	 * time.
 	 */
 	if (param.msg.len != 0)
+	{
+		param.msg.paramSeq = conn->nextParamSeq;
 		sendAckWithParam(&param);
+	}
 }
 
 /*
@@ -2981,7 +2986,10 @@ handleCachedPackets(void)
 
 				ic_statistics.recvPktNum++;
 				if (param.msg.len != 0)
+				{
+					param.msg.paramSeq = cachedConn->nextParamSeq;
 					sendAckWithParam(&param);
+				}
 
 				cachedConn->pkt_q[j] = NULL;
 			}
@@ -3130,6 +3138,8 @@ SetupUDPIFCInterconnect_Internal(SliceTable *sliceTable)
 				conn->route = i;
 
 				conn->conn_info.seq = 1;
+				conn->paramEOSSeq = -1;
+				conn->nextParamSeq = -1;
 				conn->stillActive = true;
 				conn->remapper = CreateTupleRemapper();
 
@@ -4331,12 +4341,24 @@ handleAcks(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntr
 
 				if (paramContext != NULL)
 				{
-					memcpy(&d, (char *)pkt + sizeof(icpkthdr), sizeof(Datum));
-					prm = &(paramContext->ecxt_param_exec_vals[0]);
-					paramContext->ecxt_param_exec_vals[0].isnull = false;
-					paramContext->paramSeq = pkt->extraSeq;
-					elog(NOTICE, "param value is %d", prm->value);
-					prm->value = d;
+					/* need some logic here that will check if I have gotten this param before from this receiver
+					 * If I have and I haven't sent EOS, do nothing (could this happen?)
+					 * If I have and I have EOS'd it, do nothing? (should resend EOS),
+					 * If I have not, add it to the paramcontext */
+					if (pkt->paramSeq <= paramContext->paramSeq)
+					{
+						/* do nothing ? does it hurt to do it again? will it initiate another rescan? */
+					}
+					else
+					{
+						memcpy(&d, (char *)pkt + sizeof(icpkthdr), sizeof(Datum));
+						prm = &(paramContext->ecxt_param_exec_vals[0]);
+						paramContext->ecxt_param_exec_vals[0].isnull = false;
+						paramContext->paramSeq = pkt->paramSeq;
+						paramContext->parameter_content_id = pkt->dstContentId;
+						prm->value = d;
+						elog(NOTICE, "param value is %d, it's the %d parameter from content %d", DatumGetInt32(prm->value), paramContext->paramSeq, paramContext->parameter_content_id);
+					}
 				}
 			}
 
@@ -5537,11 +5559,20 @@ SendEosUDPIFC(ChunkTransportState *transportStates,
 			prepareXmit(conn);
 
 			icBufferListAppend(&conn->sndQueue, conn->curBuff);
-			if (conn->conn_info.dstContentId != paramContext->paramSeq)
+			/* check if same receiver */
+			if(conn->conn_info.dstContentId == paramContext->parameter_content_id)
 			{
-				/* don't send EOS to this receiver? */
-				//continue;
-				elog(NOTICE, "dstContentId is %d. paramContext paramSeq is %d", conn->conn_info.dstContentId, paramContext->paramSeq);
+				/* this EOS we will send is for the specific param whose seq was in our param context */
+				conn->paramEOSSeq = paramContext->paramSeq;
+				conn->conn_info.paramSeq = paramContext->paramSeq; /* do I also need to do anything to the
+									   packet paramSeq? [I don't think so] */
+
+				elog(NOTICE,
+					 "dstContentId is %d. paramContext paramSeq is %d. conn paramEOSSeq is %d. conn info paramSeq is %d",
+					 conn->conn_info.dstContentId,
+					 paramContext->paramSeq,
+					 conn->paramEOSSeq,
+					 conn->conn_info.paramSeq);
 			}
 			sendBuffers(transportStates, pEntry, conn);
 
@@ -5959,8 +5990,33 @@ handleDataPacket(MotionConn *conn, icpkthdr *pkt, struct sockaddr_storage *peer,
 				!(pkt->flags & UDPIC_FLAGS_EOS))
 				write_log("stop requested but no stop flag on return packet ?!");
 
+			/* is this in the right place? I want it to be where we are receiving EOS as receiver */
 		if (pkt->flags & UDPIC_FLAGS_EOS)
+		{
 			conn->conn_info.flags |= UDPIC_FLAGS_EOS;
+			/* check if same receiver */
+			if (conn->conn_info.dstContentId == conn->paramEOSContentId)
+			{
+				/* if we are getting EOS for last seen param */
+				if (conn->conn_info.paramSeq == conn->paramEOSSeq)
+				{
+					/* time to send a new param, increment next param seq */
+					conn->nextParamSeq++;
+				}
+				/* if we are getting EOS for an older param to send than what has already been EOS'd */
+				else if (conn->conn_info.paramSeq < conn->paramEOSSeq)
+				{
+					/* do nothing, it is a retry EOS */
+				}
+				/* if we are getting EOS for a newer param than last seen */
+				else if (conn->conn_info.paramSeq > conn->paramEOSSeq)
+				{
+					/* last seen param packet update */
+					conn->paramEOSSeq = conn->conn_info.paramSeq;
+				}
+
+			}
+		}
 
 		if (conn->conn_info.seq < pkt->seq)
 			conn->conn_info.seq = pkt->seq; /* note here */
@@ -6347,12 +6403,7 @@ rxThreadFunc(void *arg)
 			 */
 			if (param.msg.len != 0)
 			{
-				/* I am assuming if it is going to be resent it will already have this field set */
-				if (param.msg.extraSeq == 0)
-				{
-					param.msg.extraSeq = conn->conn_info.srcContentId;
-				}
-
+				param.msg.paramSeq = conn->nextParamSeq;
 				sendAckWithParam(&param);
 			}
 		}
