@@ -1163,7 +1163,7 @@ ExecInitMotion(Motion *node, EState *estate, int eflags)
 	int numParams = 2;
 	motionstate->ps.ps_ExprContext->ecxt_param_exec_vals = (ParamExecData *)
 		palloc0(numParams * sizeof(ParamExecData));
-	motionstate->parameter = 2;
+	motionstate->parameter = 5;
 
 	return motionstate;
 }

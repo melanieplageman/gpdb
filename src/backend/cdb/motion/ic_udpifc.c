@@ -5534,12 +5534,6 @@ SendEosUDPIFC(ChunkTransportState *transportStates,
 			if (pEntry->sendingEos)
 				conn->conn_info.flags |= UDPIC_FLAGS_EOS;
 
-
-			if (!conn->curBuff)
-			{
-				conn->curBuff = getSndBuffer(conn);
-				conn->pBuff = (uint8 *) conn->curBuff->pkt;
-			}
 			prepareXmit(conn);
 
 			icBufferListAppend(&conn->sndQueue, conn->curBuff);
@@ -5579,7 +5573,8 @@ SendEosUDPIFC(ChunkTransportState *transportStates,
 		{
 			conn = pEntry->conns + i;
 
-			if (conn->stillActive && conn->state != mcsParamRecved)
+			if ((conn->stillActive && conn->state != mcsParamRecved) ||
+				(conn->state == mcsParamRecved && !conn->curBuff))
 			{
 				retry = 0;
 				ic_control_info.lastPacketSendTime = 0;
@@ -5614,8 +5609,19 @@ SendEosUDPIFC(ChunkTransportState *transportStates,
 				}
 
 				if (conn->state == mcsParamRecved)
+				{
+					if (!conn->curBuff)
+					{
+						conn->curBuff = getSndBuffer(conn);
+						if (conn->curBuff)
+						{
+							conn->pBuff = (uint8 *) conn->curBuff->pkt;
+							conn->tupleCount = 0;
+							conn->msgSize = sizeof(conn->conn_info);
+						}
+					}
 					continue;
-
+				}
 
 				if ((!conn->cdbProc) || (icBufferListLength(&conn->unackQueue) == 0 &&
 										 icBufferListLength(&conn->sndQueue) == 0))
