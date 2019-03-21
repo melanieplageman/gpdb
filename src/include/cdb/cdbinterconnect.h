@@ -95,7 +95,6 @@ typedef struct icpkthdr
      */
     uint32      seq;
     uint32      extraSeq;
-    uint32      paramSeq;
 } icpkthdr;
 
 typedef enum MotionConnState
@@ -260,15 +259,6 @@ struct MotionConn
 
 	/* packets with this seq or smaller seqs have been consumed */
 	uint32 consumedSeq;
-
-	/* sequence of the param which has had EOS sent for it by sender (used by receiver) */
-	int paramEOSSeq;
-
-	/* contentId of the receiver which has sent a param which had EOS sent for it by sender (used by receiver */
-	uint32 paramEOSContentId;
-
-	/* sequence number for next param packet */
-	int nextParamSeq;
 
 	uint64 rtt;
 	uint64 dev;
