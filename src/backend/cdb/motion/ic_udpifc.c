@@ -1835,6 +1835,7 @@ sendAck(MotionConn *conn, int32 flags, uint32 seq, uint32 extraSeq)
 static void
 sendParam(AckSendParam *param, int p)
 {
+	int static paramSeq = 0;
 	int size = sizeof(icpkthdr) + sizeof(Datum);
 	char *msg = malloc(size);
 	icpkthdr *msghdr = (icpkthdr*)msg;
@@ -1843,6 +1844,7 @@ sendParam(AckSendParam *param, int p)
 
 	msghdr->flags |= UDPIC_FLAGS_PARAM;
 	msghdr->len = size;
+	msghdr->paramSeq = paramSeq++;
 
 	Datum d = Int32GetDatum(p);
 	memcpy(msg+sizeof(icpkthdr), (char *) &d, sizeof(d));
@@ -4334,9 +4336,10 @@ handleAcks(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntr
 					memcpy(&d, (char *)pkt + sizeof(icpkthdr), sizeof(Datum));
 					prm = &(paramContext->ecxt_param_exec_vals[0]);
 					paramContext->ecxt_param_exec_vals[0].isnull = false;
-					paramContext->paramSeq = pkt->extraSeq;
-					elog(NOTICE, "param value is %d", prm->value);
+					paramContext->paramSeq = pkt->paramSeq;
+					paramContext->parameter_content_id = pkt->dstContentId;
 					prm->value = d;
+					elog(NOTICE, "param value is %d, it's the %d parameter from content %d", DatumGetInt32(prm->value), paramContext->paramSeq, paramContext->parameter_content_id);
 				}
 			}
 
@@ -6346,15 +6349,7 @@ rxThreadFunc(void *arg)
 			 * holding time.
 			 */
 			if (param.msg.len != 0)
-			{
-				/* I am assuming if it is going to be resent it will already have this field set */
-				if (param.msg.extraSeq == 0)
-				{
-					param.msg.extraSeq = conn->conn_info.srcContentId;
-				}
-
 				sendAckWithParam(&param);
-			}
 		}
 
 		/* pthread_yield(); */

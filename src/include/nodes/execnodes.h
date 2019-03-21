@@ -168,6 +168,7 @@ typedef struct ExprContext
 	uint64      grouping;
 	uint32      group_id;
 	uint32      paramSeq;
+	uint32      parameter_content_id;
 } ExprContext;
 
 /*

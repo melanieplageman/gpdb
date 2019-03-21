@@ -95,6 +95,7 @@ typedef struct icpkthdr
      */
     uint32      seq;
     uint32      extraSeq;
+    uint32      paramSeq;
 } icpkthdr;
 
 typedef enum MotionConnState
