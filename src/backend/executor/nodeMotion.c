@@ -435,25 +435,18 @@ execMotionUnsortedReceiver(MotionState *node)
 		if (!gotEOS)
 			continue;
 
-		node->parameter--;
-		if (node->parameter < 0)
-			return NULL;
 		updateParameterToSend(node->parameter);
-		if (node->parameter == 0)
+		ChunkTransportStateEntry *pEntry = NULL;
+		getChunkTransportState(node->ps.state->interconnect_context, motion->motionID, &pEntry);
+		for (size_t i = 0; i < pEntry->numConns; i++)
 		{
-			int i;
-			ChunkTransportStateEntry *pEntry = NULL;
-			getChunkTransportState(node->ps.state->interconnect_context, motion->motionID, &pEntry);
-			for (i = 0; i < pEntry->numConns; i++)
-			{
-				int16 route = pEntry->conns[i].route;
-				DeregisterReadInterest(node->ps.state->interconnect_context, motion->motionID, route,
-									   "end of stream");
-			}
-
-			return NULL;
+			int16 route = pEntry->conns[i].route;
+			DeregisterReadInterest(node->ps.state->interconnect_context, motion->motionID, route,
+								   "end of stream");
 		}
+
 		ResetEosRecved(node->ps.state->motionlayer_context, node->ps.state->interconnect_context, motion->motionID);
+		return NULL;
 	}
 
 	node->numTuplesFromAMS++;
@@ -1652,20 +1645,14 @@ ExecReScanMotion(MotionState *node)
 		case MOTIONSTATE_RECV:
 		{
 			Datum someParam = node->ps.ps_ExprContext->ecxt_param_exec_vals[0].value;
-			ChunkTransportState *transportStates = node->ps.state->interconnect_context;
-			ChunkTransportStateEntry *pEntry = NULL;
-			getChunkTransportState(transportStates, motion->motionID, &pEntry);
-			pEntry->conns->pBuff = palloc(Gp_max_packet_size);
-			pEntry->conns->msgSize = sizeof(pEntry->conns->conn_info);
-			MotionConn *conn = pEntry->conns;
-			TupleChunkListItem tcItem = (TupleChunkListItem) palloc(sizeof(TupleChunkListItemData));
-
-			tcItem->p_next = NULL;
-			tcItem->chunk_length = sizeof(Datum);
-			tcItem->inplace = (char *) (conn->msgPos + sizeof(Datum));
-			tcItem->chunk_data[0] = DatumGetInt8(someParam);
-
-			transportStates->SendChunk(transportStates, pEntry, conn, tcItem, motion->motionID);
+			node->parameter = DatumGetInt32(someParam);
+			// block until we know that IC has had a chance to get to sending the last param
+			// I recognize this is very inefficient and that we don't really need to fully lock this
+			// but just trying this out with idle loop -- beware soft-locking your CPU
+			while (!(parameterWasSent(node->parameter)));
+			updateParameterToSend(node->parameter);
+			ResetEosRecved(node->ps.state->motionlayer_context, node->ps.state->interconnect_context, motion->motionID);
+			indicateHaveParamDontSendEosAck();
 			break;
 		}
 		case MOTIONSTATE_SEND:
@@ -1673,9 +1660,7 @@ ExecReScanMotion(MotionState *node)
 			// hard-code this for now to only initiate the rescan if the child of the sender motion is an indexonly scan
 			if (IsA(node->ps.lefttree, IndexOnlyScanState))
 			{
-				ChunkTransportState *transportStates = node->ps.state->interconnect_context;
-				ChunkTransportStateEntry *pEntry = NULL;
-				getChunkTransportState(transportStates, motion->motionID, &pEntry);
+				// should this only happen once it gets a new param?
 				ExecReScanIndexOnlyScan((IndexOnlyScanState *) node->ps.lefttree);
 			}
 			break;

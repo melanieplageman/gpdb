@@ -325,6 +325,9 @@ extern void TeardownUDPIFCInterconnect(ChunkTransportState *transportStates,
 extern uint32 getActiveMotionConns(void);
 extern void updateParameterToSend(int param);
 extern void adjustMasterRouting(Slice *recvSlice);
+extern void indicateParamFinish(void);
+extern void indicateHaveParamDontSendEosAck(void);
+extern bool parameterWasSent(int parameterToTest);
 
 extern char *format_sockaddr(struct sockaddr_storage *sa, char *buf, size_t len);
 

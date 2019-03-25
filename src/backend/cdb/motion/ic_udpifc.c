@@ -438,6 +438,10 @@ struct ICGlobalControlInfo
 
 	/* Used by main thread to ask the background thread to exit. */
 	uint32		shutdown;
+
+	uint32 send_eos_ack;
+
+	int lastParameterValue;
 };
 
 static int parameter_to_send = 0;
@@ -4540,6 +4544,8 @@ sendOnce(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntry,
 xmit_retry:
 	n = sendto(pEntry->txfd, buf->pkt, buf->pkt->len, 0,
 			   (struct sockaddr *) &conn->peer, conn->peer_len);
+	if (buf->pkt->flags & UDPIC_FLAGS_EOS)
+			elog(NOTICE, "Sending EOS packet now");
 	if (n < 0)
 	{
 		if (errno == EINTR)
@@ -6296,7 +6302,9 @@ rxThreadFunc(void *arg)
 			AckSendParam param;
 
 			memset(&param, 0, sizeof(AckSendParam));
-
+			bool isEOSpkt = false;
+			if (pkt->flags & UDPIC_FLAGS_EOS)
+				isEOSpkt = true;
 			/*
 			 * Get the connection for the pkt.
 			 *
@@ -6348,6 +6356,19 @@ rxThreadFunc(void *arg)
 			 * real ack sending is after lock release to decrease the lock
 			 * holding time.
 			 */
+			// if send_eos_ack is 1, main thread has no more params
+			// so, when we get an EOS packet, set send_eos_ack to 2 to indicate we sent EOSAck
+			// and set parameter_to_send to 0, so we will send EOS Ack
+			// if send_eos_ack is 0, main thread has more params or is not ready for us to send EOS ack
+			// so, do nothing
+			pthread_mutex_lock(&ic_control_info.lock);
+			if (isEOSpkt && ic_control_info.send_eos_ack == 1)
+			{
+				parameter_to_send = 0;
+				ic_control_info.send_eos_ack = 2;
+			}
+			pthread_mutex_unlock(&ic_control_info.lock);
+			// should it also check if it has already sent this param? (e.g. look at contentid and paramSeq to see if it is a new param?)
 			if (param.msg.len != 0)
 				sendAckWithParam(&param);
 		}
@@ -6368,6 +6389,31 @@ rxThreadFunc(void *arg)
 	return NULL;
 }
 
+void indicateParamFinish()
+{
+	pthread_mutex_lock(&ic_control_info.lock);
+	if (ic_control_info.send_eos_ack == 0)
+		ic_control_info.send_eos_ack = 1;
+	pthread_mutex_unlock(&ic_control_info.lock);
+	return;
+
+}
+
+void indicateHaveParamDontSendEosAck()
+{
+	pthread_mutex_lock(&ic_control_info.lock);
+	ic_control_info.send_eos_ack = 0;
+	pthread_mutex_unlock(&ic_control_info.lock);
+	return;
+}
+
+bool parameterWasSent(int parameterToTest)
+{
+	pthread_mutex_lock(&ic_control_info.lock);
+	bool paramSent = ic_control_info.lastParameterValue == parameterToTest;
+	pthread_mutex_unlock(&ic_control_info.lock);
+	return paramSent;
+}
 /*
  * handleMismatch
  * 		If the mismatched packet is from an old connection, we may need to
