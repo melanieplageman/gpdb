@@ -541,6 +541,7 @@ SetupInterconnect(EState *estate)
 	MemoryContextSwitchTo(oldContext);
 
 	h->interconnect_context = estate->interconnect_context;
+	updateParameterToSend(0, 0);
 }
 
 /*

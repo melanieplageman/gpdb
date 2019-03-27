@@ -1115,16 +1115,19 @@ addChunkToSorter(MotionLayerState *mlStates,
 			/* Mark the state as "end of stream." */
 			chunkSorterEntry->end_of_stream = true;
 			pMNEntry->num_stream_ends_recvd++;
+			elog(NOTICE, "eos received:%d", pMNEntry->num_stream_ends_recvd);
 
 			if (pMNEntry->num_stream_ends_recvd == pMNEntry->num_senders)
 				pMNEntry->moreNetWork = false;
 
+#if 0
 			/*
 			 * Since we received an end-of-stream.	Then we no longer need
 			 * read interest in the interconnect.
 			 */
 			DeregisterReadInterest(transportStates, motNodeID, srcRoute,
 								   "end of stream");
+#endif
 			break;
 
 		default:

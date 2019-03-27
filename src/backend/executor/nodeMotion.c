@@ -397,7 +397,6 @@ execMotionUnsortedReceiver(MotionState *node)
 		return NULL;
 	}
 
-	updateParameterToSend(node->parameter);
 
 	for(;;)
 	{
@@ -435,14 +434,11 @@ execMotionUnsortedReceiver(MotionState *node)
 		if (!gotEOS)
 			continue;
 
-		node->parameter--;
-		if (node->parameter < 0)
-			return NULL;
-		updateParameterToSend(node->parameter);
-		if (node->parameter == 0)
+		if (node->parameter <= 0)
 		{
 			int i;
 			ChunkTransportStateEntry *pEntry = NULL;
+			updateParameterToSend(0/*whatever*/, -1);
 			getChunkTransportState(node->ps.state->interconnect_context, motion->motionID, &pEntry);
 			for (i = 0; i < pEntry->numConns; i++)
 			{
@@ -453,7 +449,10 @@ execMotionUnsortedReceiver(MotionState *node)
 
 			return NULL;
 		}
+		elog(NOTICE, "new parameter:%d, seq:%d", node->parameter, node->parameter_seq);
+		updateParameterToSend(node->parameter, node->parameter_seq++);
 		ResetEosRecved(node->ps.state->motionlayer_context, node->ps.state->interconnect_context, motion->motionID);
+		node->parameter--;
 	}
 
 	node->numTuplesFromAMS++;
@@ -1163,7 +1162,17 @@ ExecInitMotion(Motion *node, EState *estate, int eflags)
 	int numParams = 2;
 	motionstate->ps.ps_ExprContext->ecxt_param_exec_vals = (ParamExecData *)
 		palloc0(numParams * sizeof(ParamExecData));
-	motionstate->parameter = 5;
+
+	if (IsA(node->plan.lefttree, IndexOnlyScan))
+	{
+		motionstate->parameter = 5;
+		motionstate->parameter_seq = 1;
+	}
+	else
+	{
+		motionstate->parameter = 0;
+		motionstate->parameter_seq = -1;
+	}
 
 	return motionstate;
 }

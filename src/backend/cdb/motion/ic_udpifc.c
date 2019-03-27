@@ -438,9 +438,10 @@ struct ICGlobalControlInfo
 
 	/* Used by main thread to ask the background thread to exit. */
 	uint32		shutdown;
+	int parameter_to_send;
+	int parameter_seq;
 };
 
-static int parameter_to_send = 0;
 /*
  * Shared control information that is used by senders, receivers and background thread.
  */
@@ -734,7 +735,7 @@ static void *rxThreadFunc(void *arg);
 
 static bool handleMismatch(icpkthdr *pkt, struct sockaddr_storage *peer, int peer_len);
 static void handleAckedPacket(MotionConn *ackConn, ICBuffer *buf, uint64 now);
-static bool handleAcks(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntry, ExprContext *paramContext, bool *hasNewParam);
+static bool handleAcks(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntry, bool *hasNewParam);
 static void handleStopMsgs(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntry, int16 motionId);
 static void handleDisorderPacket(MotionConn *conn, int pos, uint32 tailSeq, icpkthdr *pkt);
 static bool handleDataPacket(MotionConn *conn, icpkthdr *pkt, struct sockaddr_storage *peer, socklen_t *peerlen, AckSendParam *param, bool *wakeup_mainthread);
@@ -768,7 +769,7 @@ static inline void logPkt(char *prefix, icpkthdr *pkt);
 static void aggregateStatistics(ChunkTransportStateEntry *pEntry);
 
 static inline bool pollAcks(ChunkTransportState *transportStates, int fd, int timeout);
-static void sendParam(AckSendParam *param, int p);
+static void sendParam(AckSendParam *param, int p, int seq);
 
 /* #define TRANSFER_PROTOCOL_STATS */
 
@@ -1360,6 +1361,8 @@ InitMotionUDPIFC(int *listenerSocketFd, uint16 *listenerPort)
 #endif
 
 	/* Initialize global ic control data. */
+	ic_control_info.parameter_to_send = 0;
+	ic_control_info.parameter_seq = 0;
 	ic_control_info.eno = 0;
 	ic_control_info.isSender = false;
 	ic_control_info.socketSendBufferSize = 2 * 1024 * 1024;
@@ -1782,8 +1785,13 @@ setAckSendParam(AckSendParam *param, MotionConn *conn, int32 flags, uint32 seq, 
 static inline void
 sendAckWithParam(AckSendParam *param)
 {
-	if ((param->msg.flags & UDPIC_FLAGS_EOS) && parameter_to_send != 0)
-		sendParam(param, parameter_to_send);
+	if (param->msg.flags & UDPIC_FLAGS_EOS) 
+	{
+		if (ic_control_info.parameter_seq == -1)
+			sendControlMessage(&param->msg, UDP_listenerFd, (struct sockaddr *) &param->peer, param->peer_len);
+		else if (param->msg.paramSeq < ic_control_info.parameter_seq)
+			sendParam(param, ic_control_info.parameter_to_send, ic_control_info.parameter_seq);
+	}
 	else
 		sendControlMessage(&param->msg, UDP_listenerFd, (struct sockaddr *) &param->peer, param->peer_len);
 }
@@ -1808,6 +1816,8 @@ sendAck(MotionConn *conn, int32 flags, uint32 seq, uint32 extraSeq)
 	write_log("sendack: flags 0x%x node %d route %d seq %d extraSeq %d",
 			  msg.flags, msg.motNodeId, conn->route, msg.seq, msg.extraSeq);
 #endif
+	//TODO:
+#if 0
 	if ((msg.flags & UDPIC_FLAGS_EOS) && parameter_to_send != 0)
 	{
 		int size = sizeof(icpkthdr) + sizeof(Datum);
@@ -1829,13 +1839,13 @@ sendAck(MotionConn *conn, int32 flags, uint32 seq, uint32 extraSeq)
 	}
 	else
 		sendControlMessage(&msg, UDP_listenerFd, (struct sockaddr *) &conn->peer, conn->peer_len);
+#endif
 
 }
 
 static void
-sendParam(AckSendParam *param, int p)
+sendParam(AckSendParam *param, int p, int seq)
 {
-	int static paramSeq = 0;
 	int size = sizeof(icpkthdr) + sizeof(Datum);
 	char *msg = malloc(size);
 	icpkthdr *msghdr = (icpkthdr*)msg;
@@ -1844,7 +1854,7 @@ sendParam(AckSendParam *param, int p)
 
 	msghdr->flags |= UDPIC_FLAGS_PARAM;
 	msghdr->len = size;
-	msghdr->paramSeq = paramSeq++;
+	msghdr->paramSeq = seq; 
 
 	Datum d = Int32GetDatum(p);
 	memcpy(msg+sizeof(icpkthdr), (char *) &d, sizeof(d));
@@ -4213,9 +4223,8 @@ handleAckedPacket(MotionConn *ackConn, ICBuffer *buf, uint64 now)
  * if we receive a stop message, return true (caller will clean up).
  */
 static bool
-handleAcks(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntry, ExprContext *paramContext, bool *hasNewParam)
+handleAcks(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntry, bool *hasNewParam)
 {
-
 	bool		ret = false;
 	MotionConn *ackConn = NULL;
 	int			n;
@@ -4324,24 +4333,35 @@ handleAcks(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntr
 
 			if (pkt->flags & UDPIC_FLAGS_PARAM)
 			{
-				ParamExecData *prm;
 				Datum d;
 
-				ackConn->state = mcsParamRecved;
-				if (hasNewParam != NULL)
-					*hasNewParam = true;
-
-				if (paramContext != NULL)
+				if (pkt->paramSeq > ackConn->conn_info.paramSeq)
 				{
+					elog(NOTICE, "sender %d accept param from receiver %d. seq %d param seq %d, current param seq %d", pkt->srcContentId, pkt->dstContentId, pkt->seq, pkt->paramSeq, ackConn->conn_info.paramSeq);
 					memcpy(&d, (char *)pkt + sizeof(icpkthdr), sizeof(Datum));
-					prm = &(paramContext->ecxt_param_exec_vals[0]);
-					paramContext->ecxt_param_exec_vals[0].isnull = false;
-					paramContext->paramSeq = pkt->paramSeq;
-					paramContext->parameter_content_id = pkt->dstContentId;
-					prm->value = d;
-					elog(NOTICE, "param value is %d, it's the %d parameter from content %d", DatumGetInt32(prm->value), paramContext->paramSeq, paramContext->parameter_content_id);
+
+					ackConn->state = mcsParamRecved;
+					ackConn->param = d;
+					ackConn->param_valid = true;
+					ackConn->conn_info.paramSeq = pkt->paramSeq;
+
+					*hasNewParam = true;
 				}
+				else if (*hasNewParam)
+				{
+					ackConn->state = mcsParamRecved;
+					elog(NOTICE, "sender %d ignore duplicate param from receiver %d. seq %d param seq %d, current param seq %d", pkt->srcContentId, pkt->dstContentId, pkt->seq, pkt->paramSeq, ackConn->conn_info.paramSeq);
+				}
+				else
+				{
+					elog(NOTICE, "sender %d ignore duplicate param from receiver %d. seq %d param seq %d, current param seq %d", pkt->srcContentId, pkt->dstContentId, pkt->seq, pkt->paramSeq, ackConn->conn_info.paramSeq);
+					continue;
+				}
+
 			}
+			else
+				elog(NOTICE, "sender %d get eos from receiver %d. seq %d, extra seq %d", pkt->srcContentId, pkt->dstContentId, pkt->seq, pkt->extraSeq);
+
 
 			while (true)
 			{
@@ -4663,7 +4683,7 @@ handleStopMsgs(ChunkTransportState *transportStates, ChunkTransportStateEntry *p
 		{
 			if (pollAcks(transportStates, pEntry->txfd, 0))
 			{
-				if (handleAcks(transportStates, pEntry, NULL, NULL))
+				if (handleAcks(transportStates, pEntry, NULL))
 				{
 					/* more stops found, loop again. */
 					i = 0;
@@ -5429,7 +5449,7 @@ SendChunkUDPIFC(ChunkTransportState *transportStates,
 
 		if (pollAcks(transportStates, pEntry->txfd, timeout))
 		{
-			if (handleAcks(transportStates, pEntry, NULL, NULL))
+			if (handleAcks(transportStates, pEntry, NULL))
 			{
 				/*
 				 * We make sure that we deal with the stop messages only after
@@ -5468,6 +5488,31 @@ SendChunkUDPIFC(ChunkTransportState *transportStates,
 	return true;
 }
 
+static bool 
+getAvailableParam(ChunkTransportStateEntry *pEntry, ExprContext *paramContext)
+{
+	int i;
+	MotionConn *conn;
+	ParamExecData *prm;
+	for (i = 0; i < pEntry->numConns; i++)
+	{
+		conn = &pEntry->conns[i];
+		if (conn->param_valid)
+		{
+			prm = &(paramContext->ecxt_param_exec_vals[0]);
+			paramContext->ecxt_param_exec_vals[0].isnull = false;
+			paramContext->paramSeq = conn->conn_info.paramSeq;
+			paramContext->parameter_content_id = conn->conn_info.dstContentId;
+			prm->value = conn->param;
+			conn->param_valid = false;
+			elog(NOTICE, "sender %d get param from %d, seq %d, param seq %d", conn->conn_info.srcContentId, conn->conn_info.dstContentId, conn->conn_info.seq, conn->conn_info.paramSeq);
+			return true;
+		}
+	}
+
+	elog(NOTICE, "sender %d no param", pEntry->conns[0].conn_info.srcContentId);
+	return false;
+}
 /*
  * SendEosUDPIFC
  * 		broadcast eos messages to receivers.
@@ -5487,7 +5532,7 @@ SendEosUDPIFC(ChunkTransportState *transportStates,
 	int			retry = 0;
 	int			activeCount = 0;
 	int			timeout = 0;
-	bool        retval = false;
+	bool hasNewParam = false;
 
 	if (!transportStates)
 	{
@@ -5510,6 +5555,9 @@ SendEosUDPIFC(ChunkTransportState *transportStates,
 		elog(DEBUG1, "Interconnect seg%d slice%d sending end-of-stream to slice%d",
 			 GpIdentity.segindex, motNodeID, pEntry->recvSlice->sliceIndex);
 
+	hasNewParam = getAvailableParam(pEntry, paramContext);
+	if (hasNewParam)
+		return true;
 	/*
 	 * we want to add our tcItem onto each of the outgoing buffers -- this is
 	 * guaranteed to leave things in a state where a flush is *required*.
@@ -5539,13 +5587,11 @@ SendEosUDPIFC(ChunkTransportState *transportStates,
 
 			prepareXmit(conn);
 
+
+			icpkthdr *hdr = (icpkthdr*)conn->pBuff;
+			elog(NOTICE, "sender %d send eos to content %d, seq:%d, paramseq:%d", hdr->srcContentId, hdr->dstContentId, hdr->seq, hdr->paramSeq);
 			icBufferListAppend(&conn->sndQueue, conn->curBuff);
-			if (conn->conn_info.dstContentId != paramContext->paramSeq)
-			{
-				/* don't send EOS to this receiver? */
-				//continue;
-				elog(NOTICE, "dstContentId is %d. paramContext paramSeq is %d", conn->conn_info.dstContentId, paramContext->paramSeq);
-			}
+
 			sendBuffers(transportStates, pEntry, conn);
 
 			conn->tupleCount = 0;
@@ -5596,13 +5642,9 @@ SendEosUDPIFC(ChunkTransportState *transportStates,
 
 					if (pollAcks(transportStates, pEntry->txfd, timeout))
 					{
-						bool hasNewParam = false;
-						handleAcks(transportStates, pEntry, paramContext, &hasNewParam);
-						if (hasNewParam)
-						{
-							retval = true;
+						handleAcks(transportStates, pEntry, &hasNewParam);
+						if (conn->state == mcsParamRecved)
 							break;
-						}
 					}
 
 					checkExceptions(transportStates, pEntry, conn, retry++, timeout);
@@ -5622,6 +5664,8 @@ SendEosUDPIFC(ChunkTransportState *transportStates,
 							conn->tupleCount = 0;
 							conn->msgSize = sizeof(conn->conn_info);
 						}
+						else
+							activeCount++;
 					}
 					continue;
 				}
@@ -5631,6 +5675,7 @@ SendEosUDPIFC(ChunkTransportState *transportStates,
 				{
 					conn->state = mcsEosSent;
 					conn->stillActive = false;
+					elog(NOTICE, "sender %d to %d finished", conn->conn_info.srcContentId, conn->conn_info.dstContentId);
 				}
 				else
 					activeCount++;
@@ -5638,7 +5683,13 @@ SendEosUDPIFC(ChunkTransportState *transportStates,
 		}
 	}
 
-	return retval;
+	if (hasNewParam)
+	{
+		hasNewParam = getAvailableParam(pEntry, paramContext);
+		Assert(hasNewParam);
+	}
+
+	return hasNewParam;
 }
 
 /*
@@ -5931,6 +5982,11 @@ handleDataPacket(MotionConn *conn, icpkthdr *pkt, struct sockaddr_storage *peer,
 		if (DEBUG3 >= log_min_messages)
 			write_log("received packet with EOS motid %d route %d seq %d",
 					  pkt->motNodeId, conn->route, pkt->seq);
+		if (pkt->paramSeq < ic_control_info.parameter_seq)
+		{
+			setAckSendParam(param, conn, UDPIC_FLAGS_EOS | UDPIC_FLAGS_ACK | UDPIC_FLAGS_CAPACITY | conn->conn_info.flags, pkt->seq, conn->conn_info.extraSeq);
+			return false;
+		}
 	}
 
 	/*
@@ -5975,7 +6031,7 @@ handleDataPacket(MotionConn *conn, icpkthdr *pkt, struct sockaddr_storage *peer,
 		{
 			if (DEBUG2 >= log_min_messages)
 				write_log("stop requested and acknowledged by sending peer");
-			//conn->stillActive = false;
+			conn->stillActive = false;
 		}
 
 		return false;
@@ -5994,8 +6050,9 @@ handleDataPacket(MotionConn *conn, icpkthdr *pkt, struct sockaddr_storage *peer,
 		return false;
 	}
 
+
 	/* sequence number is correct */
-	if (!conn->stillActive && parameter_to_send == 0)
+	if (!conn->stillActive && ic_control_info.parameter_seq == -1)
 	{
 		/* peer may have dropped ack */
 		if (gp_log_interconnect >= GPVARS_VERBOSITY_VERBOSE &&
@@ -6976,7 +7033,8 @@ getActiveMotionConns(void)
 }
 
 void
-updateParameterToSend(int param)
+updateParameterToSend(int param, int paramSeq)
 {
-	parameter_to_send = param;
+	ic_control_info.parameter_seq = paramSeq;
+	ic_control_info.parameter_to_send = param;
 }

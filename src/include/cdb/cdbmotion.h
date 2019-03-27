@@ -21,7 +21,7 @@
 #include "nodes/execnodes.h"
 
 /* Define this if you want tons of logs! */
-#undef AMS_VERBOSE_LOGGING
+#define AMS_VERBOSE_LOGGING
 
 
 typedef enum SendReturnCode

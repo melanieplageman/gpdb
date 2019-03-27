@@ -356,6 +356,8 @@ struct MotionConn
 	 */
 	TupleRemapper	*remapper;
 	ChunkTransportStateEntry *tsEntry;
+	Datum param;
+	bool param_valid;
 };
 
 /* ChunkTransportState array initial size */

@@ -2887,6 +2887,7 @@ typedef struct MotionState
 	bool		isExplictGatherMotion;
 	uint32 		EOSseq;
 	int      parameter;
+	int      parameter_seq;
 } MotionState;
 
 /*zx
