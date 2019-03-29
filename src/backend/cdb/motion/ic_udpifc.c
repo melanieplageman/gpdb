@@ -748,10 +748,8 @@ static bool handleAckForDisorderPkt(ChunkTransportState *transportStates, ChunkT
 static inline void prepareXmit(MotionConn *conn);
 static inline void addCRC(icpkthdr *pkt);
 static inline bool checkCRC(icpkthdr *pkt);
-static void sendBuffers(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntry, MotionConn *conn,
-					   uint32 currentParamSeq);
-static void sendOnce(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntry, ICBuffer *buf, MotionConn *conn,
-					 uint32 currentParamSeq);
+static void sendBuffers(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntry, MotionConn *conn);
+static void sendOnce(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntry, ICBuffer *buf, MotionConn *conn);
 static inline uint64 computeExpirationPeriod(MotionConn *conn, uint32 retry);
 
 static ICBuffer *getSndBuffer(MotionConn *conn);
@@ -774,7 +772,7 @@ static inline void logPkt(char *prefix, icpkthdr *pkt);
 static void aggregateStatistics(ChunkTransportStateEntry *pEntry);
 
 static inline bool pollAcks(ChunkTransportState *transportStates, int fd, int timeout);
-static void sendParam(AckSendParam *param, int p, uint32 lastParamSeq);
+static void sendParam(AckSendParam *param, int p);
 
 /* #define TRANSFER_PROTOCOL_STATS */
 
@@ -1789,7 +1787,7 @@ static inline void
 sendAckWithParam(AckSendParam *param)
 {
 	if ((param->msg.flags & UDPIC_FLAGS_EOS) && parameter_to_send != 0)
-		sendParam(param, parameter_to_send, 0);
+		sendParam(param, parameter_to_send);
 	else
 		sendControlMessage(&param->msg, UDP_listenerFd, (struct sockaddr *) &param->peer, param->peer_len);
 }
@@ -1839,7 +1837,7 @@ sendAck(MotionConn *conn, int32 flags, uint32 seq, uint32 extraSeq)
 }
 
 static void
-sendParam(AckSendParam *param, int p, uint32 lastParamSeq)
+sendParam(AckSendParam *param, int p)
 {
 	int static paramSeq = 0;
 	int size = sizeof(icpkthdr) + sizeof(Datum);
@@ -1850,17 +1848,7 @@ sendParam(AckSendParam *param, int p, uint32 lastParamSeq)
 
 	msghdr->flags |= UDPIC_FLAGS_PARAM;
 	msghdr->len = size;
-	if (lastParamSeq <= paramSeq)
-	{
-		msghdr->paramSeq = paramSeq++;
-	}
-	else
-	{
-		// do what? this is not greater than the paramSeq which was set in the EOS packet which we had before
-		// so our last param sent to that sender has not been acknowledged
-		// so, probably, we should not send another param
-		// probably leave paramSeq same as it was before?
-	}
+	msghdr->paramSeq = paramSeq++;
 
 	Datum d = Int32GetDatum(p);
 	memcpy(msg+sizeof(icpkthdr), (char *) &d, sizeof(d));
@@ -4452,7 +4440,7 @@ handleAcks(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntr
 			 * in EOS sending logic and will not check stop message.
 			 */
 			if (shouldSendBuffers)
-				sendBuffers(transportStates, pEntry, ackConn, 0);
+				sendBuffers(transportStates, pEntry, ackConn);
 		}
 		else if (DEBUG1 >= log_min_messages)
 			write_log("handleAck: not the ack we're looking for (flags 0x%x)...mot(%d) content(%d:%d) srcpid(%d:%d) dstpid(%d) srcport(%d:%d) dstport(%d) sess(%d:%d) cmd(%d:%d)",
@@ -4539,14 +4527,9 @@ prepareXmit(MotionConn *conn)
  * 		Send a packet.
  */
 static void
-sendOnce(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntry, ICBuffer *buf, MotionConn *conn,
-		 uint32 currentParamSeq)
+sendOnce(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntry, ICBuffer *buf, MotionConn *conn)
 {
 	int32		n;
-	bool isEOSpkt = false;
-	if (buf->pkt->flags & UDPIC_FLAGS_EOS)
-		isEOSpkt = true;
-
 
 #ifdef USE_ASSERT_CHECKING
 	if (testmode_inject_fault(gp_udpic_dropxmit_percent))
@@ -4559,16 +4542,10 @@ sendOnce(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntry,
 #endif
 
 xmit_retry:
-	if (isEOSpkt && buf->pkt->paramSeq == currentParamSeq)
-	{
-		elog(NOTICE, "not sending EOS to receiver because currentParamSeq in paramcontext is %d and pkt paramSeq is %d", currentParamSeq, buf->pkt->paramSeq);
-		return;
-	}
 	n = sendto(pEntry->txfd, buf->pkt, buf->pkt->len, 0,
 			   (struct sockaddr *) &conn->peer, conn->peer_len);
-	if (isEOSpkt)
-		elog(NOTICE, "Sending EOS packet now");
-
+	if (buf->pkt->flags & UDPIC_FLAGS_EOS)
+			elog(NOTICE, "Sending EOS packet now");
 	if (n < 0)
 	{
 		if (errno == EINTR)
@@ -4723,8 +4700,7 @@ handleStopMsgs(ChunkTransportState *transportStates, ChunkTransportStateEntry *p
  * the corresponding queue in the unack queue ring.
  */
 static void
-sendBuffers(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntry, MotionConn *conn,
-			uint32 currentParamSeq)
+sendBuffers(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntry, MotionConn *conn)
 {
 	if (!conn->stillActive)
 		return;
@@ -4778,7 +4754,7 @@ sendBuffers(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEnt
 		updateStats(TPE_DATA_PKT_SEND, conn, buf->pkt);
 #endif
 
-		sendOnce(transportStates, pEntry, buf, conn, currentParamSeq);
+		sendOnce(transportStates, pEntry, buf, conn);
 		ic_statistics.sndPktNum++;
 
 #ifdef AMS_VERBOSE_LOGGING
@@ -4940,7 +4916,7 @@ handleAckForDisorderPkt(ChunkTransportState *transportStates,
 			updateStats(TPE_DATA_PKT_SEND, conn, buf->pkt);
 #endif
 
-			sendOnce(transportStates, pEntry, buf, buf->conn, 0);
+			sendOnce(transportStates, pEntry, buf, buf->conn);
 
 #ifdef AMS_VERBOSE_LOGGING
 			write_log("RESEND a buffer for DISORDER: seq %d", buf->pkt->seq);
@@ -5118,7 +5094,7 @@ checkExpiration(ChunkTransportState *transportStates,
 			updateStats(TPE_DATA_PKT_SEND, curBuf->conn, curBuf->pkt);
 #endif
 
-			sendOnce(transportStates, pEntry, curBuf, curBuf->conn, 0);
+			sendOnce(transportStates, pEntry, curBuf, curBuf->conn);
 
 			retransmits++;
 			ic_statistics.retransmits++;
@@ -5293,7 +5269,7 @@ checkExpirationCapacityFC(ChunkTransportState *transportStates,
 		ICBufferLink *bufLink = icBufferListFirst(&conn->unackQueue);
 		ICBuffer   *buf = GET_ICBUFFER_FROM_PRIMARY(bufLink);
 
-		sendOnce(transportStates, pEntry, buf, buf->conn, 0);
+		sendOnce(transportStates, pEntry, buf, buf->conn);
 		buf->nRetry++;
 		ic_control_info.lastPacketSendTime = now;
 
@@ -5431,7 +5407,7 @@ SendChunkUDPIFC(ChunkTransportState *transportStates,
 	prepareXmit(conn);
 
 	icBufferListAppend(&conn->sndQueue, conn->curBuff);
-	sendBuffers(transportStates, pEntry, conn, 0);
+	sendBuffers(transportStates, pEntry, conn);
 
 	uint64		now = getCurrentTime();
 
@@ -5570,10 +5546,13 @@ SendEosUDPIFC(ChunkTransportState *transportStates,
 			prepareXmit(conn);
 
 			icBufferListAppend(&conn->sndQueue, conn->curBuff);
-
-			elog(NOTICE, "dstContentId is %d. paramContext paramSeq is %d", conn->conn_info.dstContentId, paramContext->paramSeq);
-
-			sendBuffers(transportStates, pEntry, conn, paramContext->paramSeq);
+			if (conn->conn_info.dstContentId != paramContext->paramSeq)
+			{
+				/* don't send EOS to this receiver? */
+				//continue;
+				elog(NOTICE, "dstContentId is %d. paramContext paramSeq is %d", conn->conn_info.dstContentId, paramContext->paramSeq);
+			}
+			sendBuffers(transportStates, pEntry, conn);
 
 			conn->tupleCount = 0;
 			conn->msgSize = sizeof(conn->conn_info);
@@ -5653,8 +5632,8 @@ SendEosUDPIFC(ChunkTransportState *transportStates,
 					continue;
 				}
 
-				if (((!conn->cdbProc) || (icBufferListLength(&conn->unackQueue) == 0 &&
-										 icBufferListLength(&conn->sndQueue) == 0)) && !haveMoreParams())
+				if ((!conn->cdbProc) || (icBufferListLength(&conn->unackQueue) == 0 &&
+										 icBufferListLength(&conn->sndQueue) == 0))
 				{
 					conn->state = mcsEosSent;
 					conn->stillActive = false;
@@ -5923,11 +5902,6 @@ handleDataPacket(MotionConn *conn, icpkthdr *pkt, struct sockaddr_storage *peer,
 #endif
 		uint32		seq = conn->conn_info.seq > 0 ? conn->conn_info.seq - 1 : 0;
 		uint32		extraSeq = conn->stopRequested ? seq : conn->conn_info.extraSeq;
-		if (conn->conn_info.paramSeq != pkt->paramSeq)
-		{
-			// this is not EOS for the right param if it is an eos
-			// what should we do in this case?
-		}
 
 		setAckSendParam(param, conn, UDPIC_FLAGS_CAPACITY | UDPIC_FLAGS_ACK | conn->conn_info.flags, seq, extraSeq);
 
@@ -6395,7 +6369,6 @@ rxThreadFunc(void *arg)
 			}
 			pthread_mutex_unlock(&ic_control_info.lock);
 			// should it also check if it has already sent this param? (e.g. look at contentid and paramSeq to see if it is a new param?)
-			// should only send param to senders which have sent EOS for this param
 			if (param.msg.len != 0)
 				sendAckWithParam(&param);
 		}
@@ -6440,15 +6413,6 @@ bool parameterWasSent(int parameterToTest)
 	bool paramSent = ic_control_info.lastParameterValue == parameterToTest;
 	pthread_mutex_unlock(&ic_control_info.lock);
 	return paramSent;
-}
-
-bool haveMoreParams()
-{
-	pthread_mutex_lock(&ic_control_info.lock);
-	/* 0 means we potentially have more params */
-	bool moreParams = ic_control_info.send_eos_ack == 0;
-	pthread_mutex_unlock(&ic_control_info.lock);
-	return moreParams;
 }
 /*
  * handleMismatch
