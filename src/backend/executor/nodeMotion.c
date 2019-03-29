@@ -321,9 +321,9 @@ execMotionSender(MotionState *node)
 		if (TupIsNull(outerTupleSlot))
 		{
 			bool hasNewParam = doSendEndOfStream(motion, node);
-	//		if (!hasNewParam)
-	//			done = true;
-	//		else
+			if (!hasNewParam)
+				done = true;
+			else
 				ExecReScan(outerNode);
 		}
 		else if (node->isExplictGatherMotion &&
