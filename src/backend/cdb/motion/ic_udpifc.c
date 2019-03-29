@@ -1816,31 +1816,8 @@ sendAck(MotionConn *conn, int32 flags, uint32 seq, uint32 extraSeq)
 	write_log("sendack: flags 0x%x node %d route %d seq %d extraSeq %d",
 			  msg.flags, msg.motNodeId, conn->route, msg.seq, msg.extraSeq);
 #endif
-	//TODO:
-#if 0
-	if ((msg.flags & UDPIC_FLAGS_EOS) && parameter_to_send != 0)
-	{
-		int size = sizeof(icpkthdr) + sizeof(Datum);
-		char *parammsg = malloc(size);
-		icpkthdr *msghdr = (icpkthdr*)parammsg;
-		msghdr->flags = flags | UDPIC_FLAGS_PARAM;
-		msghdr->seq = seq;
-		msghdr->extraSeq = extraSeq;
-		msghdr->len = size;
-
-		Datum d = Int32GetDatum(parameter_to_send);
-		memcpy(parammsg+sizeof(icpkthdr), (char *) &d, sizeof(d));
-
-		/* Add CRC for the control message. */
-		if (gp_interconnect_full_crc)
-			addCRC(msghdr);
-		sendto(UDP_listenerFd, msghdr, msghdr->len, 0, (struct sockaddr *) &conn->peer, conn->peer_len);
-		free(parammsg);
-	}
-	else
-		sendControlMessage(&msg, UDP_listenerFd, (struct sockaddr *) &conn->peer, conn->peer_len);
-#endif
-
+	sendControlMessage(&msg, UDP_listenerFd, (struct sockaddr *) &conn->peer, conn->peer_len);
+	//TODO: handle mismatch packet
 }
 
 static void
@@ -5982,11 +5959,13 @@ handleDataPacket(MotionConn *conn, icpkthdr *pkt, struct sockaddr_storage *peer,
 		if (DEBUG3 >= log_min_messages)
 			write_log("received packet with EOS motid %d route %d seq %d",
 					  pkt->motNodeId, conn->route, pkt->seq);
+		/*
 		if (pkt->paramSeq < ic_control_info.parameter_seq)
 		{
 			setAckSendParam(param, conn, UDPIC_FLAGS_EOS | UDPIC_FLAGS_ACK | UDPIC_FLAGS_CAPACITY | conn->conn_info.flags, pkt->seq, conn->conn_info.extraSeq);
 			return false;
 		}
+		*/
 	}
 
 	/*
@@ -7037,4 +7016,25 @@ updateParameterToSend(int param, int paramSeq)
 {
 	ic_control_info.parameter_seq = paramSeq;
 	ic_control_info.parameter_to_send = param;
+}
+
+void
+indicateParamFinish(PlanState *node)
+{
+	if (!IsA(node, MotionState))
+		return;
+
+	MotionState *motionstate = (MotionState *)node;
+
+	updateParameterToSend(0, -1);
+	Motion *motion = (Motion *) motionstate->ps.plan;
+	ChunkTransportStateEntry *pEntry = NULL;
+	getChunkTransportState(motionstate->ps.state->interconnect_context, motion->motionID, &pEntry);
+	for (size_t i = 0; i < pEntry->numConns; i++)
+	{
+	  int16 route = pEntry->conns[i].route;
+	  DeregisterReadInterest(motionstate->ps.state->interconnect_context, motion->motionID, route,
+			  "end of stream");
+  }
+	return;
 }

@@ -434,6 +434,8 @@ execMotionUnsortedReceiver(MotionState *node)
 		if (!gotEOS)
 			continue;
 
+		return NULL;
+#if 0
 		if (node->parameter <= 0)
 		{
 			int i;
@@ -453,6 +455,7 @@ execMotionUnsortedReceiver(MotionState *node)
 		updateParameterToSend(node->parameter, node->parameter_seq++);
 		ResetEosRecved(node->ps.state->motionlayer_context, node->ps.state->interconnect_context, motion->motionID);
 		node->parameter--;
+#endif
 	}
 
 	node->numTuplesFromAMS++;
@@ -1164,15 +1167,9 @@ ExecInitMotion(Motion *node, EState *estate, int eflags)
 		palloc0(numParams * sizeof(ParamExecData));
 
 	if (IsA(node->plan.lefttree, IndexOnlyScan))
-	{
-		motionstate->parameter = 5;
-		motionstate->parameter_seq = 1;
-	}
+		motionstate->parameter_seq = 0;
 	else
-	{
-		motionstate->parameter = 0;
 		motionstate->parameter_seq = -1;
-	}
 
 	return motionstate;
 }
@@ -1661,20 +1658,13 @@ ExecReScanMotion(MotionState *node)
 		case MOTIONSTATE_RECV:
 		{
 			Datum someParam = node->ps.ps_ExprContext->ecxt_param_exec_vals[0].value;
-			ChunkTransportState *transportStates = node->ps.state->interconnect_context;
-			ChunkTransportStateEntry *pEntry = NULL;
-			getChunkTransportState(transportStates, motion->motionID, &pEntry);
-			pEntry->conns->pBuff = palloc(Gp_max_packet_size);
-			pEntry->conns->msgSize = sizeof(pEntry->conns->conn_info);
-			MotionConn *conn = pEntry->conns;
-			TupleChunkListItem tcItem = (TupleChunkListItem) palloc(sizeof(TupleChunkListItemData));
-
-			tcItem->p_next = NULL;
-			tcItem->chunk_length = sizeof(Datum);
-			tcItem->inplace = (char *) (conn->msgPos + sizeof(Datum));
-			tcItem->chunk_data[0] = DatumGetInt8(someParam);
-
-			transportStates->SendChunk(transportStates, pEntry, conn, tcItem, motion->motionID);
+			node->parameter = DatumGetInt32(someParam);
+			// block until we know that IC has had a chance to get to sending the last param
+			// I recognize this is very inefficient and that we don't really need to fully lock this
+			// but just trying this out with idle loop -- beware soft-locking your CPU
+			//while (!(parameterWasSent(node->parameter)));
+			updateParameterToSend(node->parameter, node->parameter_seq++);
+			ResetEosRecved(node->ps.state->motionlayer_context, node->ps.state->interconnect_context, motion->motionID);
 			break;
 		}
 		case MOTIONSTATE_SEND:

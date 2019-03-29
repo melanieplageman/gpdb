@@ -28,6 +28,7 @@
 #include "optimizer/clauses.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
+#include "cdb/ml_ipc.h"
 
 static void splitJoinQualExpr(NestLoopState *nlstate);
 static void extractFuncExprArgs(FuncExprState *fstate, List **lclauses, List **rclauses);
@@ -165,6 +166,7 @@ ExecNestLoop_guts(NestLoopState *node)
 			if (TupIsNull(outerTupleSlot))
 			{
 				ENL1_printf("no outer tuple, ending join");
+				indicateParamFinish(innerPlan);
 				return NULL;
 			}
 

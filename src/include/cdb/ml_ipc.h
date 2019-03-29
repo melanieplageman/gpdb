@@ -324,6 +324,8 @@ extern void TeardownUDPIFCInterconnect(ChunkTransportState *transportStates,
 
 extern uint32 getActiveMotionConns(void);
 extern void updateParameterToSend(int param, int paramSeq);
+extern void indicateParamFinish(PlanState *node);
+
 extern void adjustMasterRouting(Slice *recvSlice);
 
 extern char *format_sockaddr(struct sockaddr_storage *sa, char *buf, size_t len);
