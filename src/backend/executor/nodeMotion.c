@@ -324,7 +324,13 @@ execMotionSender(MotionState *node)
 			if (!hasNewParam)
 				done = true;
 			else
+			{
+				ParamExecData paramExecData = node->ps.ps_ExprContext->ecxt_param_exec_vals[0];
+				IndexOnlyScanState *idxScanState = (IndexOnlyScanState *)outerNode;
+				idxScanState->ss.ps.ps_ExprContext->ecxt_param_exec_vals[0] = paramExecData;
+
 				ExecReScan(outerNode);
+			}
 		}
 		else if (node->isExplictGatherMotion &&
 				 GpIdentity.segindex != (gp_session_id % numsegments))

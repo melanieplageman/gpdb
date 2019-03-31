@@ -196,6 +196,13 @@ ExecNestLoop_guts(NestLoopState *node)
 				/* Flag parameter value as changed */
 				innerPlan->chgParam = bms_add_member(innerPlan->chgParam,
 													 paramno);
+				if (IsA(innerPlan, MotionState))
+				{
+					ParamExecData *motionParam;
+					MotionState *motionState = (MotionState *)innerPlan;
+					motionParam = &(motionState->ps.ps_ExprContext->ecxt_param_exec_vals[paramno]);
+					motionParam->value = prm->value;
+				}
 			}
 
 			/*

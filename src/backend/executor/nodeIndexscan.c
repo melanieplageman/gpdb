@@ -237,6 +237,7 @@ ExecIndexEvalRuntimeKeys(ExprContext *econtext,
 								 econtext,
 								 &isNull,
 								 NULL);
+		elog(NOTICE, "scanvalue is %d", DatumGetInt32(scanvalue));
 		if (isNull)
 		{
 			scan_key->sk_argument = scanvalue;
