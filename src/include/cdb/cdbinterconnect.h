@@ -227,6 +227,7 @@ typedef struct ChunkTransportStateEntry
 	bool		sendingEos;
 
 	int			numEOPRecved;
+	int			currentParamSeq;
 
 	/* Statistics info for this motion on the interconnect level */
 	uint64 stat_total_ack_time;

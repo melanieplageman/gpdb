@@ -1112,22 +1112,26 @@ addChunkToSorter(MotionLayerState *mlStates,
 								srcRoute, motNodeID)));
 			}
 
-			/* Mark the state as "end of stream." */
-			chunkSorterEntry->end_of_stream = true;
-			pMNEntry->num_stream_ends_recvd++;
-			elog(NOTICE, "eos received:%d", pMNEntry->num_stream_ends_recvd);
+			/* update num_stream_ends_recvd when the EOS is for the current parameter */
+			if (conn->conn_info.paramSeq == pEntry->currentParamSeq)
+			{
+				/* Mark the state as "end of stream." */
+				chunkSorterEntry->end_of_stream = true;
+				pMNEntry->num_stream_ends_recvd++;
+				elog(NOTICE, "eos received:%d", pMNEntry->num_stream_ends_recvd);
 
-			if (pMNEntry->num_stream_ends_recvd == pMNEntry->num_senders)
-				pMNEntry->moreNetWork = false;
+				if (pMNEntry->num_stream_ends_recvd == pMNEntry->num_senders)
+					pMNEntry->moreNetWork = false;
 
 #if 0
-			/*
-			 * Since we received an end-of-stream.	Then we no longer need
-			 * read interest in the interconnect.
-			 */
-			DeregisterReadInterest(transportStates, motNodeID, srcRoute,
-								   "end of stream");
+				/*
+				 * Since we received an end-of-stream.	Then we no longer need
+				 * read interest in the interconnect.
+				 */
+				DeregisterReadInterest(transportStates, motNodeID, srcRoute,
+						"end of stream");
 #endif
+			}
 			break;
 
 		default:
@@ -1266,7 +1270,7 @@ UpdateSentRecordCache(MotionConn *conn)
 void
 ResetEosRecved(MotionLayerState *mlStates,
 			  ChunkTransportState *transportStates,
-			  int16 motNodeID)
+			  int16 motNodeID, int seq)
 {
 	int i;
 	ChunkTransportStateEntry *pEntry = NULL;
@@ -1282,4 +1286,5 @@ ResetEosRecved(MotionLayerState *mlStates,
 		ChunkSorterEntry *chunkSorterEntry = getChunkSorterEntry(mlStates, pMNEntry, route);
 		chunkSorterEntry->end_of_stream = false;
 	}
+	pEntry->currentParamSeq = seq;
 }

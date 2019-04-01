@@ -2885,6 +2885,7 @@ setupOutgoingUDPConnection(ChunkTransportState *transportStates, ChunkTransportS
 	conn->conn_info.len = 0;
 	conn->conn_info.flags = 0;
 	conn->conn_info.motNodeId = pEntry->motNodeId;
+	conn->conn_info.paramSeq = 0;
 
 	conn->conn_info.recvSliceIndex = pEntry->recvSlice->sliceIndex;
 	conn->conn_info.sendSliceIndex = pEntry->sendSlice->sliceIndex;
@@ -4311,27 +4312,26 @@ handleAcks(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntr
 			if (pkt->flags & UDPIC_FLAGS_PARAM)
 			{
 				Datum d;
+				memcpy(&d, (char *)pkt + sizeof(icpkthdr), sizeof(Datum));
 
 				if (pkt->paramSeq > ackConn->conn_info.paramSeq)
 				{
-					elog(NOTICE, "sender %d accept param from receiver %d. seq %d param seq %d, current param seq %d", pkt->srcContentId, pkt->dstContentId, pkt->seq, pkt->paramSeq, ackConn->conn_info.paramSeq);
-					memcpy(&d, (char *)pkt + sizeof(icpkthdr), sizeof(Datum));
-
 					ackConn->state = mcsParamRecved;
 					ackConn->param = d;
 					ackConn->param_valid = true;
 					ackConn->conn_info.paramSeq = pkt->paramSeq;
 
 					*hasNewParam = true;
+					elog(NOTICE, "sender %d accept param from receiver %d. value %d, seq %d param seq %d, current param seq %d", pkt->srcContentId, pkt->dstContentId, DatumGetInt32(d), pkt->seq, pkt->paramSeq, ackConn->conn_info.paramSeq);
 				}
 				else if (*hasNewParam)
 				{
 					ackConn->state = mcsParamRecved;
-					elog(NOTICE, "sender %d ignore duplicate param from receiver %d. seq %d param seq %d, current param seq %d", pkt->srcContentId, pkt->dstContentId, pkt->seq, pkt->paramSeq, ackConn->conn_info.paramSeq);
+					elog(NOTICE, "sender %d ignore duplicate param from receiver %d. value %d, seq %d param seq %d, current param seq %d", pkt->srcContentId, pkt->dstContentId, DatumGetInt32(d), pkt->seq, pkt->paramSeq, ackConn->conn_info.paramSeq);
 				}
 				else
 				{
-					elog(NOTICE, "sender %d ignore duplicate param from receiver %d. seq %d param seq %d, current param seq %d", pkt->srcContentId, pkt->dstContentId, pkt->seq, pkt->paramSeq, ackConn->conn_info.paramSeq);
+					elog(NOTICE, "sender %d ignore duplicate param from receiver %d. value %d, seq %d param seq %d, current param seq %d", pkt->srcContentId, pkt->dstContentId, DatumGetInt32(d), pkt->seq, pkt->paramSeq, ackConn->conn_info.paramSeq);
 					continue;
 				}
 
@@ -5959,13 +5959,10 @@ handleDataPacket(MotionConn *conn, icpkthdr *pkt, struct sockaddr_storage *peer,
 		if (DEBUG3 >= log_min_messages)
 			write_log("received packet with EOS motid %d route %d seq %d",
 					  pkt->motNodeId, conn->route, pkt->seq);
-		/*
-		if (pkt->paramSeq < ic_control_info.parameter_seq)
-		{
-			setAckSendParam(param, conn, UDPIC_FLAGS_EOS | UDPIC_FLAGS_ACK | UDPIC_FLAGS_CAPACITY | conn->conn_info.flags, pkt->seq, conn->conn_info.extraSeq);
-			return false;
-		}
-		*/
+
+		/* update the latest EOSed parameter */
+		if (conn->conn_info.paramSeq < pkt->paramSeq)
+			conn->conn_info.paramSeq = pkt->paramSeq;
 	}
 
 	/*
@@ -7035,6 +7032,6 @@ indicateParamFinish(PlanState *node)
 	  int16 route = pEntry->conns[i].route;
 	  DeregisterReadInterest(motionstate->ps.state->interconnect_context, motion->motionID, route,
 			  "end of stream");
-  }
+	}
 	return;
 }

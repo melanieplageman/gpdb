@@ -135,5 +135,5 @@ extern void UpdateMotionExpectedReceivers(MotionLayerState *mlStates,
  */
 extern TupleChunkListItem get_eos_tuplechunklist(void);
 
-extern void ResetEosRecved(MotionLayerState *mlStates, ChunkTransportState *transportStates, int16 motNodeID);
+extern void ResetEosRecved(MotionLayerState *mlStates, ChunkTransportState *transportStates, int16 motNodeID, int seq);
 #endif   /* CDBMOTION_H */

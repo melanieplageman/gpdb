@@ -441,27 +441,6 @@ execMotionUnsortedReceiver(MotionState *node)
 			continue;
 
 		return NULL;
-#if 0
-		if (node->parameter <= 0)
-		{
-			int i;
-			ChunkTransportStateEntry *pEntry = NULL;
-			updateParameterToSend(0/*whatever*/, -1);
-			getChunkTransportState(node->ps.state->interconnect_context, motion->motionID, &pEntry);
-			for (i = 0; i < pEntry->numConns; i++)
-			{
-				int16 route = pEntry->conns[i].route;
-				DeregisterReadInterest(node->ps.state->interconnect_context, motion->motionID, route,
-									   "end of stream");
-			}
-
-			return NULL;
-		}
-		elog(NOTICE, "new parameter:%d, seq:%d", node->parameter, node->parameter_seq);
-		updateParameterToSend(node->parameter, node->parameter_seq++);
-		ResetEosRecved(node->ps.state->motionlayer_context, node->ps.state->interconnect_context, motion->motionID);
-		node->parameter--;
-#endif
 	}
 
 	node->numTuplesFromAMS++;
@@ -1173,7 +1152,9 @@ ExecInitMotion(Motion *node, EState *estate, int eflags)
 		palloc0(numParams * sizeof(ParamExecData));
 
 	if (IsA(node->plan.lefttree, IndexOnlyScan))
-		motionstate->parameter_seq = 0;
+		/* the seq start from 1, because sender will send eos with paramSeq start with 0,
+		 * in this way it will trigger sendParam in sendAckWithParam */
+		motionstate->parameter_seq = 1;
 	else
 		motionstate->parameter_seq = -1;
 
@@ -1669,8 +1650,9 @@ ExecReScanMotion(MotionState *node)
 			// I recognize this is very inefficient and that we don't really need to fully lock this
 			// but just trying this out with idle loop -- beware soft-locking your CPU
 			//while (!(parameterWasSent(node->parameter)));
-			updateParameterToSend(node->parameter, node->parameter_seq++);
-			ResetEosRecved(node->ps.state->motionlayer_context, node->ps.state->interconnect_context, motion->motionID);
+			updateParameterToSend(node->parameter, node->parameter_seq);
+			ResetEosRecved(node->ps.state->motionlayer_context, node->ps.state->interconnect_context, motion->motionID, node->parameter_seq);
+			node->parameter_seq++;
 			break;
 		}
 		case MOTIONSTATE_SEND:
