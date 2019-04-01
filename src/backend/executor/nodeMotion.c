@@ -291,13 +291,10 @@ execMotionSender(MotionState *node)
 
 	ChunkTransportStateEntry *pEntry = NULL;
 	getChunkTransportState(node->ps.state->interconnect_context, motion->motionID, &pEntry);
-#define UDPIC_FLAGS_PARAM				(256)
 
 	while (!done && !node->stopRequested)
 	{
 		outerNode = outerPlanState(node);
-		elog(DEBUG3, "Melanie: in ExecMotionSender. Preparing to exec_proc_node outer. Current ecxt_param_exec_vals[0].value is %d. Segment id %d", DatumGetInt8(node->ps.ps_ExprContext->ecxt_param_exec_vals[0].value), GpIdentity.segindex);
-		/* grab TupleTableSlot from our child. */
 		outerTupleSlot = ExecProcNode(outerNode);
 
 #ifdef MEASURE_MOTION_TIME
@@ -406,25 +403,10 @@ execMotionUnsortedReceiver(MotionState *node)
 
 	for(;;)
 	{
-		bool gotEOS = false;
-
-		// how do I start the sending of params?
-
-		// try to receive a tuple
-		// if all senders have sent EOS:
-			// if the EOS is for the param which is being processed and I have more params
-				// send the next param
-			// if the EOS is for the param which is being processed and I have no more params
-				// send EOSAck
-			// if the EOS is for a different param
-				// send the same param as before
-		// if all senders have not sent EOS:
-			// retry
-			//  TODO: check if the EOS is the right EOS
 		tuple = RecvTupleFrom(node->ps.state->motionlayer_context,
 							  node->ps.state->interconnect_context,
-							  motion->motionID, ANY_ROUTE, &gotEOS
-							  );
+							  motion->motionID,
+							  ANY_ROUTE);
 
 		if (tuple)
 			break;
@@ -435,11 +417,6 @@ execMotionUnsortedReceiver(MotionState *node)
 		Assert(node->numTuplesFromAMS == node->numTuplesToParent);
 		Assert(node->numTuplesFromChild == 0);
 		Assert(node->numTuplesToAMS == 0);
-
-		// haven't get EOS from all senders
-		if (!gotEOS)
-			continue;
-
 		return NULL;
 	}
 
@@ -557,13 +534,11 @@ motion_mkhp_read(void *vpctxt, MKEntry *a)
 
 	MemSet(a, 0, sizeof(MKEntry));
 
-	bool EOSseq = false;
-
 	/* Receive the successor of the tuple that we returned last time. */
 	inputTuple = RecvTupleFrom(node->ps.state->motionlayer_context,
 							   node->ps.state->interconnect_context,
 							   motion->motionID,
-							   ctxt->srcRoute, &EOSseq);
+							   ctxt->srcRoute);
 
 	if (inputTuple)
 	{
@@ -718,12 +693,12 @@ execMotionSortedReceiver(MotionState *node)
 	{
 		/* Old element is still at the head of the pq. */
 		Assert(DatumGetInt32(binaryheap_first(hp)) == node->routeIdNext);
-		bool EOSseq = false;
+
 		/* Receive the successor of the tuple that we returned last time. */
 		inputTuple = RecvTupleFrom(node->ps.state->motionlayer_context,
 								   node->ps.state->interconnect_context,
 								   motion->motionID,
-								   node->routeIdNext, &EOSseq);
+								   node->routeIdNext);
 
 		/* Substitute it in the pq for its predecessor. */
 		if (inputTuple)
@@ -851,10 +826,9 @@ execMotionSortedReceiverFirstTime(MotionState *node)
 		 * another place where we are mapping segid space to routeid space. so
 		 * route[x] = inputSegIdx[x] now.
 		 */
-		bool EOSseq = false;
 		inputTuple = RecvTupleFrom(node->ps.state->motionlayer_context,
 								   node->ps.state->interconnect_context,
-								   motion->motionID, iSegIdx, &EOSseq);
+								   motion->motionID, iSegIdx);
 
 		if (inputTuple)
 		{
@@ -994,7 +968,6 @@ ExecInitMotion(Motion *node, EState *estate, int eflags)
 		{
 			/* this is recv */
 			motionstate->mstype = MOTIONSTATE_RECV;
-			motionstate->EOSseq = 0;
 		}
 		else if (LocallyExecutingSliceIndex(estate) == sendSlice->sliceIndex)
 		{
@@ -1646,10 +1619,6 @@ ExecReScanMotion(MotionState *node)
 		{
 			Datum someParam = node->ps.ps_ExprContext->ecxt_param_exec_vals[0].value;
 			node->parameter = DatumGetInt32(someParam);
-			// block until we know that IC has had a chance to get to sending the last param
-			// I recognize this is very inefficient and that we don't really need to fully lock this
-			// but just trying this out with idle loop -- beware soft-locking your CPU
-			//while (!(parameterWasSent(node->parameter)));
 			updateParameterToSend(node->parameter, node->parameter_seq);
 			ResetEosRecved(node->ps.state->motionlayer_context, node->ps.state->interconnect_context, motion->motionID, node->parameter_seq);
 			node->parameter_seq++;
@@ -1672,7 +1641,6 @@ ExecReScanMotion(MotionState *node)
 		default:
 			elog(ERROR, "your motion type is neither recv or send, skeeeeetch");
 	}
-
 	return;
 }
 

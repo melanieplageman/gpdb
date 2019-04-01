@@ -18,7 +18,6 @@
 #include "cdb/cdbselect.h"
 #include "cdb/cdbinterconnect.h"
 #include "cdb/ml_ipc.h"
-#include "nodes/execnodes.h"
 
 /* Define this if you want tons of logs! */
 #define AMS_VERBOSE_LOGGING
@@ -118,7 +117,7 @@ SendEndOfStream(MotionLayerState       *mlStates,
 extern GenericTuple RecvTupleFrom(MotionLayerState *mlStates,
 								  ChunkTransportState *transportStates,
 								  int16 motNodeID,
-								  int16 srcRoute, bool *gotEOS);
+								  int16 srcRoute);
 
 extern void SendStopMessage(MotionLayerState *mlStates,
 							ChunkTransportState *transportStates,

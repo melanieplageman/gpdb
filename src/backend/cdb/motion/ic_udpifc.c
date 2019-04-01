@@ -1816,6 +1816,7 @@ sendAck(MotionConn *conn, int32 flags, uint32 seq, uint32 extraSeq)
 	write_log("sendack: flags 0x%x node %d route %d seq %d extraSeq %d",
 			  msg.flags, msg.motNodeId, conn->route, msg.seq, msg.extraSeq);
 #endif
+
 	sendControlMessage(&msg, UDP_listenerFd, (struct sockaddr *) &conn->peer, conn->peer_len);
 	//TODO: handle mismatch packet
 }
@@ -1842,7 +1843,6 @@ sendParam(AckSendParam *param, int p, int seq)
 	sendto(UDP_listenerFd, msghdr, msghdr->len, 0, (struct sockaddr *) &param->peer, param->peer_len);
 	free(msg);
 }
-
 
 /*
  * sendDisorderAck
@@ -3699,10 +3699,10 @@ receiveChunksUDPIFC(ChunkTransportState *pTransportStates, ChunkTransportStateEn
 		if (rx_control_info.mainWaitingState.reachRoute != ANY_ROUTE)
 		{
 			rxconn = pEntry->conns + rx_control_info.mainWaitingState.reachRoute;
-			//elog(DEBUG3, "Melanie: in receiveChunksUDPIFC. motion node id is %d, send slice idx is %d, recv slice idx is %d, src content id is %d, dst content id is %d ", motNodeID, conn->conn_info.sendSliceIndex, conn->conn_info.recvSliceIndex, conn->conn_info.srcContentId, conn->conn_info.dstContentId);
+
 			prepareRxConnForRead(rxconn);
 
-			//elog(DEBUG3, "receiveChunksUDPIFC: non-directed rx woke on route %d. MotionConn state is %d", rx_control_info.mainWaitingState.reachRoute, conn->state);
+			elog(DEBUG2, "receiveChunksUDPIFC: non-directed rx woke on route %d", rx_control_info.mainWaitingState.reachRoute);
 			resetMainThreadWaiting(&rx_control_info.mainWaitingState);
 		}
 
@@ -3848,7 +3848,6 @@ RecvTupleChunkFromAnyUDPIFC_Internal(ChunkTransportState *transportStates,
 		if (conn->pkt_q_size > 0)
 		{
 			found = true;
-			//elog(DEBUG3, "Melanie: in RecvTupleChunkFromAnyUDPIFC_Internal. motion node id is %d, send slice idx is %d, recv slice idx is %d, src content id is %d, dst content id is %d ", motNodeID, conn->conn_info.sendSliceIndex, conn->conn_info.recvSliceIndex, conn->conn_info.srcContentId, conn->conn_info.dstContentId);
 			prepareRxConnForRead(conn);
 			break;
 		}
@@ -3970,7 +3969,6 @@ RecvTupleChunkFromUDPIFC_Internal(ChunkTransportState *transportStates,
 
 	if (conn->pkt_q[conn->pkt_q_head] != NULL)
 	{
-		//elog(DEBUG3, "Melanie: in RecvTupleChunkFromUDPIFC_Internal. motion node id is %d, send slice idx is %d, recv slice idx is %d, src content id is %d, dst content id is %d ", motNodeID, conn->conn_info.sendSliceIndex, conn->conn_info.recvSliceIndex, conn->conn_info.srcContentId, conn->conn_info.dstContentId);
 		prepareRxConnForRead(conn);
 
 		pthread_mutex_unlock(&ic_control_info.lock);
@@ -4203,6 +4201,7 @@ handleAckedPacket(MotionConn *ackConn, ICBuffer *buf, uint64 now)
 static bool
 handleAcks(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntry, bool *hasNewParam)
 {
+
 	bool		ret = false;
 	MotionConn *ackConn = NULL;
 	int			n;
@@ -5568,7 +5567,6 @@ SendEosUDPIFC(ChunkTransportState *transportStates,
 			icpkthdr *hdr = (icpkthdr*)conn->pBuff;
 			elog(NOTICE, "sender %d send eos to content %d, seq:%d, paramseq:%d", hdr->srcContentId, hdr->dstContentId, hdr->seq, hdr->paramSeq);
 			icBufferListAppend(&conn->sndQueue, conn->curBuff);
-
 			sendBuffers(transportStates, pEntry, conn);
 
 			conn->tupleCount = 0;
@@ -5768,8 +5766,6 @@ doSendStopMessageUDPIFC(ChunkTransportState *transportStates, int16 motNodeID)
 	pthread_mutex_unlock(&ic_control_info.lock);
 }
 
-
-
 /*
  * dispatcherAYT
  * 		Check the connection from the dispatcher to verify that it is still there.
@@ -5914,6 +5910,7 @@ static bool
 handleDataPacket(MotionConn *conn, icpkthdr *pkt, struct sockaddr_storage *peer, socklen_t *peerlen,
 				 AckSendParam *param, bool *wakeup_mainthread)
 {
+
 	if ((pkt->len == sizeof(icpkthdr)) && (pkt->flags & UDPIC_FLAGS_CAPACITY))
 	{
 		if (DEBUG1 >= log_min_messages)
@@ -6025,7 +6022,6 @@ handleDataPacket(MotionConn *conn, icpkthdr *pkt, struct sockaddr_storage *peer,
 
 		return false;
 	}
-
 
 	/* sequence number is correct */
 	if (!conn->stillActive && ic_control_info.parameter_seq == -1)
@@ -7000,7 +6996,6 @@ send_error:
 		closesocket(sockfd);
 	return;
 }
-
 
 uint32
 getActiveMotionConns(void)

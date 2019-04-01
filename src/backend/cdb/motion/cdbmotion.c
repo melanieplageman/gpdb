@@ -561,7 +561,7 @@ GenericTuple
 RecvTupleFrom(MotionLayerState *mlStates,
 			  ChunkTransportState *transportStates,
 			  int16 motNodeID,
-			  int16 srcRoute, bool *gotEOS)
+			  int16 srcRoute)
 {
 	MotionNodeEntry *pMNEntry;
 	ChunkSorterEntry *pCSEntry;
@@ -580,8 +580,6 @@ RecvTupleFrom(MotionLayerState *mlStates,
 		pCSEntry = NULL;
 
 		ReadyList = pMNEntry->ready_tuples;
-		if(pMNEntry->num_stream_ends_recvd == pMNEntry->num_senders)
-			*gotEOS = true;
 	}
 	else
 	{
@@ -1122,15 +1120,6 @@ addChunkToSorter(MotionLayerState *mlStates,
 
 				if (pMNEntry->num_stream_ends_recvd == pMNEntry->num_senders)
 					pMNEntry->moreNetWork = false;
-
-#if 0
-				/*
-				 * Since we received an end-of-stream.	Then we no longer need
-				 * read interest in the interconnect.
-				 */
-				DeregisterReadInterest(transportStates, motNodeID, srcRoute,
-						"end of stream");
-#endif
 			}
 			break;
 

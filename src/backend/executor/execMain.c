@@ -2898,7 +2898,6 @@ ExecEndPlan(PlanState *planstate, EState *estate)
  * user can see it
  * ----------------------------------------------------------------
  */
-
 static void
 ExecutePlan(EState *estate,
 			PlanState *planstate,

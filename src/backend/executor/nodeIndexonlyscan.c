@@ -34,9 +34,6 @@
 #include "utils/memutils.h"
 #include "utils/rel.h"
 
-#include  "optimizer/clauses.h"
-#include "nodes/makefuncs.h"
-#include "catalog/pg_operator.h"
 
 static TupleTableSlot *IndexOnlyNext(IndexOnlyScanState *node);
 static void StoreIndexTuple(TupleTableSlot *slot, IndexTuple itup,

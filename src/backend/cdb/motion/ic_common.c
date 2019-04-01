@@ -859,7 +859,6 @@ cleanup_interconnect_handle(interconnect_handle_t *h)
 		destroy_interconnect_handle(h);
 		return;
 	}
-	elog(NOTICE, "Melanie: forceEOS is true");
 	TeardownInterconnect(h->interconnect_context, true /* force EOS */, true);
 }
 

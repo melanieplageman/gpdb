@@ -232,7 +232,6 @@ ExecIndexEvalRuntimeKeys(ExprContext *econtext,
 		 * avoid repeat detoastings each time the value is examined by an
 		 * index support function.
 		 */
-
 		scanvalue = ExecEvalExpr(key_expr,
 								 econtext,
 								 &isNull,
@@ -242,7 +241,6 @@ ExecIndexEvalRuntimeKeys(ExprContext *econtext,
 		{
 			scan_key->sk_argument = scanvalue;
 			scan_key->sk_flags |= SK_ISNULL;
-
 		}
 		else
 		{
@@ -253,7 +251,6 @@ ExecIndexEvalRuntimeKeys(ExprContext *econtext,
 		}
 		scan_key->sk_argument = scanvalue;
 		scan_key->sk_flags &= ~SK_ISNULL;
-
 	}
 
 	MemoryContextSwitchTo(oldContext);
