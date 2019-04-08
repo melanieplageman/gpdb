@@ -765,7 +765,7 @@ add_path(RelOptInfo *parent_rel, Path *new_path)
 				{
 					IndexOnlyScan *pIndexOnlyScan = (IndexOnlyScan *)new_path;
 					if (pIndexOnlyScan->indexqual)
-						elog(NOTICE, "525600 minutes");
+						elog(LOG, "525600 minutes");
 				}
 				insert_after = p1;
 			}

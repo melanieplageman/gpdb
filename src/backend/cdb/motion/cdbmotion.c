@@ -1116,7 +1116,7 @@ addChunkToSorter(MotionLayerState *mlStates,
 				/* Mark the state as "end of stream." */
 				chunkSorterEntry->end_of_stream = true;
 				pMNEntry->num_stream_ends_recvd++;
-				elog(NOTICE, "eos received:%d", pMNEntry->num_stream_ends_recvd);
+				elog(LOG, "eos received:%d", pMNEntry->num_stream_ends_recvd);
 
 				if (pMNEntry->num_stream_ends_recvd == pMNEntry->num_senders)
 					pMNEntry->moreNetWork = false;

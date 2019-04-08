@@ -4321,22 +4321,22 @@ handleAcks(ChunkTransportState *transportStates, ChunkTransportStateEntry *pEntr
 					ackConn->conn_info.paramSeq = pkt->paramSeq;
 
 					*hasNewParam = true;
-					elog(NOTICE, "sender %d accept param from receiver %d. value %d, seq %d param seq %d, current param seq %d", pkt->srcContentId, pkt->dstContentId, DatumGetInt32(d), pkt->seq, pkt->paramSeq, ackConn->conn_info.paramSeq);
+					elog(LOG, "sender %d accept param from receiver %d. value %d, seq %d param seq %d, current param seq %d", pkt->srcContentId, pkt->dstContentId, DatumGetInt32(d), pkt->seq, pkt->paramSeq, ackConn->conn_info.paramSeq);
 				}
 				else if (*hasNewParam)
 				{
 					ackConn->state = mcsParamRecved;
-					elog(NOTICE, "sender %d ignore duplicate param from receiver %d. value %d, seq %d param seq %d, current param seq %d", pkt->srcContentId, pkt->dstContentId, DatumGetInt32(d), pkt->seq, pkt->paramSeq, ackConn->conn_info.paramSeq);
+					elog(LOG, "sender %d ignore duplicate param from receiver %d. value %d, seq %d param seq %d, current param seq %d", pkt->srcContentId, pkt->dstContentId, DatumGetInt32(d), pkt->seq, pkt->paramSeq, ackConn->conn_info.paramSeq);
 				}
 				else
 				{
-					elog(NOTICE, "sender %d ignore duplicate param from receiver %d. value %d, seq %d param seq %d, current param seq %d", pkt->srcContentId, pkt->dstContentId, DatumGetInt32(d), pkt->seq, pkt->paramSeq, ackConn->conn_info.paramSeq);
+					elog(LOG, "sender %d ignore duplicate param from receiver %d. value %d, seq %d param seq %d, current param seq %d", pkt->srcContentId, pkt->dstContentId, DatumGetInt32(d), pkt->seq, pkt->paramSeq, ackConn->conn_info.paramSeq);
 					continue;
 				}
 
 			}
 			else
-				elog(NOTICE, "sender %d get eos from receiver %d. seq %d, extra seq %d", pkt->srcContentId, pkt->dstContentId, pkt->seq, pkt->extraSeq);
+				elog(LOG, "sender %d get eos from receiver %d. seq %d, extra seq %d", pkt->srcContentId, pkt->dstContentId, pkt->seq, pkt->extraSeq);
 
 
 			while (true)
@@ -5481,12 +5481,12 @@ getAvailableParam(ChunkTransportStateEntry *pEntry, ExprContext *paramContext)
 			paramContext->parameter_content_id = conn->conn_info.dstContentId;
 			prm->value = conn->param;
 			conn->param_valid = false;
-			elog(NOTICE, "sender %d get param from %d, seq %d, param seq %d", conn->conn_info.srcContentId, conn->conn_info.dstContentId, conn->conn_info.seq, conn->conn_info.paramSeq);
+			elog(LOG, "sender %d get param from %d, seq %d, param seq %d", conn->conn_info.srcContentId, conn->conn_info.dstContentId, conn->conn_info.seq, conn->conn_info.paramSeq);
 			return true;
 		}
 	}
 
-	elog(NOTICE, "sender %d no param", pEntry->conns[0].conn_info.srcContentId);
+	elog(LOG, "sender %d no param", pEntry->conns[0].conn_info.srcContentId);
 	return false;
 }
 /*
@@ -5565,7 +5565,7 @@ SendEosUDPIFC(ChunkTransportState *transportStates,
 
 
 			icpkthdr *hdr = (icpkthdr*)conn->pBuff;
-			elog(NOTICE, "sender %d send eos to content %d, seq:%d, paramseq:%d", hdr->srcContentId, hdr->dstContentId, hdr->seq, hdr->paramSeq);
+			elog(LOG, "sender %d send eos to content %d, seq:%d, paramseq:%d", hdr->srcContentId, hdr->dstContentId, hdr->seq, hdr->paramSeq);
 			icBufferListAppend(&conn->sndQueue, conn->curBuff);
 			sendBuffers(transportStates, pEntry, conn);
 
@@ -5650,7 +5650,7 @@ SendEosUDPIFC(ChunkTransportState *transportStates,
 				{
 					conn->state = mcsEosSent;
 					conn->stillActive = false;
-					elog(NOTICE, "sender %d to %d finished", conn->conn_info.srcContentId, conn->conn_info.dstContentId);
+					elog(LOG, "sender %d to %d finished", conn->conn_info.srcContentId, conn->conn_info.dstContentId);
 				}
 				else
 					activeCount++;
