@@ -760,15 +760,7 @@ add_path(RelOptInfo *parent_rel, Path *new_path)
 		{
 			/* new belongs after this old path if it has cost >= old's */
 			if (new_path->total_cost > old_path->total_cost)
-			{
-				if (IsA(new_path, IndexOnlyScan))
-				{
-					IndexOnlyScan *pIndexOnlyScan = (IndexOnlyScan *)new_path;
-					if (pIndexOnlyScan->indexqual)
-						elog(LOG, "525600 minutes");
-				}
 				insert_after = p1;
-			}
 			/* p1_prev advances */
 			p1_prev = p1;
 		}
