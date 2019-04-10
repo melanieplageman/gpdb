@@ -1626,14 +1626,6 @@ ExecReScanMotion(MotionState *node)
 		}
 		case MOTIONSTATE_SEND:
 		{
-			// hard-code this for now to only initiate the rescan if the child of the sender motion is an indexonly scan
-			if (IsA(node->ps.lefttree, IndexOnlyScanState))
-			{
-				ChunkTransportState *transportStates = node->ps.state->interconnect_context;
-				ChunkTransportStateEntry *pEntry = NULL;
-				getChunkTransportState(transportStates, motion->motionID, &pEntry);
-				ExecReScanIndexOnlyScan((IndexOnlyScanState *) node->ps.lefttree);
-			}
 			break;
 		}
 		case MOTIONSTATE_NONE:

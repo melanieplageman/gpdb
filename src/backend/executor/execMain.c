@@ -2936,14 +2936,7 @@ ExecutePlan(EState *estate,
 		/*
 		 * Execute the plan and obtain a tuple
 		 */
-		if (IsA(planstate, MotionState))
-		{
-			MotionState *pMotionState = (MotionState *)planstate;
-			if (pMotionState->mstype == MOTIONSTATE_SEND)
-			{
-				ExecReScan(planstate);
-			}
-		}
+
 		slot = ExecProcNode(planstate);
 
 		/*
