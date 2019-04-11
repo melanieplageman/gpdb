@@ -3041,10 +3041,6 @@ create_nestloop_plan(PlannerInfo *root,
 	 * NOTE: materialize_finished_plan() does *almost* what we want -- except
 	 * we aren't finished.
 	 */
-#if 0
-	if (best_path->innerjoinpath->motionHazard ||
-		!best_path->innerjoinpath->rescannable)
-#endif
 	if (!best_path->innerjoinpath->rescannable)
 	{
 		Plan	   *p;
@@ -7053,5 +7049,6 @@ cdbpathtoplan_create_motion_plan(PlannerInfo *root,
 													 true /* resjunk */);
 	}
 
+	motion->dorescan = path->dorescan;
 	return motion;
 }								/* cdbpathtoplan_create_motion_plan */

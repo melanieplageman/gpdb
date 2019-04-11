@@ -2259,6 +2259,8 @@ _readMotion(void)
 
 	READ_INT_FIELD(segidColIdx);
 
+	READ_BOOL_FIELD(dorescan);
+
 	readPlanInfo((Plan *)local_node);
 
 	READ_DONE();

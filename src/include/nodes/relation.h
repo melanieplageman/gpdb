@@ -1140,6 +1140,7 @@ typedef struct CdbMotionPath
 {
 	Path		path;
     Path	   *subpath;
+	bool		dorescan;
 } CdbMotionPath;
 
 /*

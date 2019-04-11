@@ -1120,13 +1120,10 @@ ExecInitMotion(Motion *node, EState *estate, int eflags)
 						  &typisvarlena);
 	}
 #endif
-	int numParams = 2;
-	motionstate->ps.ps_ExprContext->ecxt_param_exec_vals = (ParamExecData *)
-		palloc0(numParams * sizeof(ParamExecData));
 
-	if (IsA(node->plan.lefttree, IndexOnlyScan))
-		/* the seq start from 1, because sender will send eos with paramSeq start with 0,
-		 * in this way it will trigger sendParam in sendAckWithParam */
+/* the param seq start from 1, because sender will send eos with paramSeq start with 0,
+ * in this way it will trigger sendParam in sendAckWithParam */
+	if (node->dorescan)
 		motionstate->parameter_seq = 1;
 	else
 		motionstate->parameter_seq = -1;

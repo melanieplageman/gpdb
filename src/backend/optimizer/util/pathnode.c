@@ -3086,6 +3086,12 @@ create_nestloop_path(PlannerInfo *root,
 		restrict_clauses = jclauses;
 	}
 
+	if(IsA(inner_path, CdbMotionPath) && inner_path->rescannable)
+	{
+		CdbMotionPath *motion_path = (CdbMotionPath * )inner_path;
+		motion_path->dorescan = true;
+	}
+
 
 	pathnode = makeNode(NestPath);
 	pathnode->path.pathtype = T_NestLoop;
