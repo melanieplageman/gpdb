@@ -118,6 +118,8 @@ static void doSendTuple(Motion *motion, MotionState *node, TupleTableSlot *outer
 /*=========================================================================
  */
 
+static ExprContext *getNodeExprContext(PlanState *pState);
+
 #ifdef CDB_MOTION_DEBUG
 static void
 formatTuple(StringInfo buf, HeapTuple tup, TupleDesc tupdesc, Oid *outputFunArray)
@@ -323,8 +325,8 @@ execMotionSender(MotionState *node)
 			else
 			{
 				ParamExecData paramExecData = node->ps.ps_ExprContext->ecxt_param_exec_vals[0];
-				IndexOnlyScanState *idxScanState = (IndexOnlyScanState *)outerNode;
-				idxScanState->ss.ps.ps_ExprContext->ecxt_param_exec_vals[0] = paramExecData;
+				ExprContext *childExprContext = getNodeExprContext(outerNode);
+				childExprContext->ecxt_param_exec_vals[0] = paramExecData;
 
 				ExecReScan(outerNode);
 			}
@@ -373,6 +375,28 @@ execMotionSender(MotionState *node)
 	Assert(node->stopRequested || node->numTuplesFromChild == node->numTuplesToAMS);
 
 	/* nothing else to send out, so we return NULL up the tree. */
+	return NULL;
+}
+
+static ExprContext *getNodeExprContext(PlanState *pstate)
+{
+	if(IsA(pstate, IndexOnlyScanState))
+	{
+		IndexOnlyScanState *idxOnlyScanState = (IndexOnlyScanState *)pstate;
+		return idxOnlyScanState->ss.ps.ps_ExprContext;
+	}
+	else if(IsA(pstate, IndexScanState))
+	{
+		IndexScanState *idxScanState = (IndexScanState *)pstate;
+		return idxScanState->ss.ps.ps_ExprContext;
+	}
+	else if (IsA(pstate, SeqScanState))
+	{
+		SeqScanState *seqScanState = (SeqScanState *)pstate;
+		return seqScanState->ss.ps.ps_ExprContext;
+	}
+	else
+		elog(ERROR, "Rescan motion only supported for index scan and sequential scan");
 	return NULL;
 }
 
