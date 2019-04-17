@@ -168,13 +168,6 @@ ExecMotion(MotionState *node)
 	Motion	   *motion = (Motion *) node->ps.plan;
 
 	/* sanity check */
- 	if (node->stopRequested)
- 		ereport(ERROR,
- 				(errcode(ERRCODE_INTERNAL_ERROR),
- 				 errmsg("unexpected internal error"),
- 				 errmsg("Already stopped motion node is executed again, data will lost"),
- 				 errhint("Likely motion node is incorrectly squelched earlier")));
-
 	/*
 	 * at the top here we basically decide: -- SENDER vs. RECEIVER and --
 	 * SORTED vs. UNSORTED
@@ -394,6 +387,10 @@ static ExprContext *getNodeExprContext(PlanState *pstate)
 	{
 		SeqScanState *seqScanState = (SeqScanState *)pstate;
 		return seqScanState->ss.ps.ps_ExprContext;
+	}
+	else if (IsA(pstate, LimitState)){
+	    SeqScanState *seqScanState = (SeqScanState *) outerPlanState(pstate);
+          return seqScanState->ss.ps.ps_ExprContext;
 	}
 	else
 		elog(ERROR, "Rescan motion only supported for index scan and sequential scan");
