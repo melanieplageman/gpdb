@@ -366,6 +366,39 @@ execMotionSender(MotionState *node)
 }
 
 
+/*
+ * General background on Sorted Motion:
+ * -----------------------------------
+ * NOTE: This function is only used for order-preserving motion.  There are
+ * only 2 types of motion that order-preserving makes sense for: FIXED and
+ * BROADCAST (HASH does not make sense). so we have:
+ *
+ * CASE 1:	 broadcast order-preserving fixed motion.  This should only be
+ *			 called for SENDERs.
+ *
+ * CASE 2:	 single-destination order-preserving fixed motion.	The SENDER
+ *			 side will act like Unsorted motion and won't call this. So only
+ *			 the RECEIVER should be called for this case.
+ *
+ *
+ * Sorted Receive Notes:
+ * --------------------
+ *
+ * The 1st time we execute, we need to pull a tuple from each of our source
+ * and store them in our tupleheap, this is what execMotionSortedFirstTime()
+ * does.  Once that is done, we can pick the lowest (or whatever the
+ * criterion is) value from amongst all the sources.  This works since each
+ * stream is sorted itself.
+ *
+ * We keep track of which one was selected, this will be slot we will need
+ * to fill during the next call.
+ *
+ * Subsequent calls to this function (after the 1st time) will start by
+ * trying to receive a tuple for the slot that was emptied the previous call.
+ * Then we again select the lowest value and return that tuple.
+ *
+ */
+
 static TupleTableSlot *
 execMotionUnsortedReceiver(MotionState *node)
 {
@@ -381,52 +414,24 @@ execMotionUnsortedReceiver(MotionState *node)
 	Assert(node->ps.state->motionlayer_context);
 	Assert(node->ps.state->interconnect_context);
 
-	if (node->stopRequested)
+	/*
+	 * GIANT COMMENT
+	 */
+
+	create_worker_pool();
+
+	while(tasks)
 	{
-		SendStopMessage(node->ps.state->motionlayer_context,
-						node->ps.state->interconnect_context,
-						motion->motionID);
-		return NULL;
+		/* where task is a param or other kind of message */
+		enqueue_task(global_queue_for_worker, task);
 	}
 
-	tuple = RecvTupleFrom(node->ps.state->motionlayer_context,
-						  node->ps.state->interconnect_context,
-						  motion->motionID, ANY_ROUTE);
 
-	if (!tuple)
-	{
-#ifdef CDB_MOTION_DEBUG
-		if (gp_log_interconnect >= GPVARS_VERBOSITY_DEBUG)
-			elog(DEBUG4, "motionID=%d saw end of stream", motion->motionID);
-#endif
-		Assert(node->numTuplesFromAMS == node->numTuplesToParent);
-		Assert(node->numTuplesFromChild == 0);
-		Assert(node->numTuplesToAMS == 0);
-		return NULL;
-	}
-
-	node->numTuplesFromAMS++;
-	node->numTuplesToParent++;
+	tuple = dequeue_tuple(global_queue_for_worker);
 
 	/* store it in our result slot and return this. */
 	slot = node->ps.ps_ResultTupleSlot;
 	slot = ExecStoreGenericTuple(tuple, slot, true /* shouldFree */ );
-
-#ifdef CDB_MOTION_DEBUG
-	if (node->numTuplesToParent <= 20)
-	{
-		StringInfoData buf;
-
-		initStringInfo(&buf);
-		appendStringInfo(&buf, "   motion%-3d rcv      %5d.",
-						 motion->motionID,
-						 node->numTuplesToParent);
-		formatTuple(&buf, tuple, ExecGetResultType(&node->ps),
-					node->outputFunArray);
-		elog(DEBUG3, buf.data);
-		pfree(buf.data);
-	}
-#endif
 
 	return slot;
 }

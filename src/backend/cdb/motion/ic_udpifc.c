@@ -6060,41 +6060,8 @@ rxThreadFunc(void *arg)
 
 		if (!skip_poll)
 		{
-			/* Do we have inbound traffic to handle ? */
-			nfd.fd = UDP_listenerFd;
-			nfd.events = POLLIN;
-
-			n = poll(&nfd, 1, RX_THREAD_POLL_TIMEOUT);
-
-			expected = 1;
-			if (pg_atomic_compare_exchange_u32((pg_atomic_uint32 *) &ic_control_info.shutdown, &expected, 0))
-			{
-				if (DEBUG1 >= log_min_messages)
-				{
-					write_log("udp-ic: rx-thread shutting down");
-				}
-				break;
-			}
-
-			if (n < 0)
-			{
-				if (errno == EINTR)
-					continue;
-
-				/*
-				 * ERROR case: if simply break out the loop here, there will
-				 * be a hung here, since main thread will never be waken up,
-				 * and senders will not get responses anymore.
-				 *
-				 * Thus, we set an error flag, and let main thread to report
-				 * an error.
-				 */
-				setRxThreadError(errno);
-				continue;
-			}
-
-			if (n == 0)
-				continue;
+			/* where task could be a param or a message */
+			task = dequeue_task(global_queue_for_worker);
 		}
 
 		if (skip_poll || (n == 1 && (nfd.events & POLLIN)))
@@ -6109,31 +6076,11 @@ rxThreadFunc(void *arg)
 			socklen_t	peerlen;
 
 			peerlen = sizeof(peer);
-			read_count = recvfrom(UDP_listenerFd, (char *) pkt, Gp_max_packet_size, 0,
-								  (struct sockaddr *) &peer, &peerlen);
 
-			expected = 1;
-			if (pg_atomic_compare_exchange_u32((pg_atomic_uint32 *) &ic_control_info.shutdown, &expected, 0))
-			{
-				if (DEBUG1 >= log_min_messages)
-				{
-					write_log("udp-ic: rx-thread shutting down");
-				}
-				break;
-			}
+			data = receive_data();
 
-			if (DEBUG5 >= log_min_messages)
-				write_log("received inbound len %d", read_count);
-
-			if (read_count < 0)
-			{
-				skip_poll = false;
-
-				if (errno == EWOULDBLOCK || errno == EINTR)
-					continue;
-
-				write_log("Interconnect error: recvfrom (%d)", errno);
-
+			tuple = handleData()
+			enqueue_data(tuple);
 				/*
 				 * ERROR case: if simply break out the loop here, there will
 				 * be a hung here, since main thread will never be waken up,
@@ -6146,54 +6093,7 @@ rxThreadFunc(void *arg)
 				continue;
 			}
 
-			if (read_count < sizeof(icpkthdr))
-			{
-				if (DEBUG1 >= log_min_messages)
-					write_log("Interconnect error: short conn receive (%d)", read_count);
-				continue;
-			}
 
-			/*
-			 * when we get a "good" recvfrom() result, we can skip poll()
-			 * until we get a bad one.
-			 */
-			skip_poll = true;
-
-			/* length must be >= 0 */
-			if (pkt->len < 0)
-			{
-				if (DEBUG3 >= log_min_messages)
-					write_log("received inbound with negative length");
-				continue;
-			}
-
-			if (pkt->len != read_count)
-			{
-				if (DEBUG3 >= log_min_messages)
-					write_log("received inbound packet [%d], short: read %d bytes, pkt->len %d", pkt->seq, read_count, pkt->len);
-				continue;
-			}
-
-			/*
-			 * check the CRC of the payload.
-			 */
-			if (gp_interconnect_full_crc)
-			{
-				if (!checkCRC(pkt))
-				{
-					pg_atomic_add_fetch_u32((pg_atomic_uint32 *) &ic_statistics.crcErrors, 1);
-					if (DEBUG2 >= log_min_messages)
-						write_log("received network data error, dropping bad packet, user data unaffected.");
-					continue;
-				}
-			}
-
-#ifdef AMS_VERBOSE_LOGGING
-			logPkt("GOT MESSAGE", pkt);
-#endif
-
-			bool		wakeup_mainthread = false;
-			AckSendParam param;
 
 			memset(&param, 0, sizeof(AckSendParam));
 
