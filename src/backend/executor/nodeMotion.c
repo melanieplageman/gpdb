@@ -25,13 +25,14 @@
 #include "executor/executor.h"
 #include "executor/execdebug.h"
 #include "executor/execUtils.h"
+#include "executor/nodeIndexonlyscan.h"
 #include "executor/nodeMotion.h"
 #include "lib/binaryheap.h"
+#include "optimizer/walkers.h"
 #include "utils/tuplesort.h"
 #include "utils/tuplesort_mk_details.h"
 #include "miscadmin.h"
 #include "utils/memutils.h"
-#include "executor/nodeIndexonlyscan.h"
 
 /* #define MEASURE_MOTION_TIME */
 
@@ -319,7 +320,12 @@ execMotionSender(MotionState *node)
 			{
 				ParamExecData paramExecData = node->ps.ps_ExprContext->ecxt_param_exec_vals[0];
 				ExprContext *childExprContext = getNodeExprContext(outerNode);
-				childExprContext->ecxt_param_exec_vals[0] = paramExecData;
+				if (childExprContext)
+				{
+					childExprContext->ecxt_param_exec_vals[0] = paramExecData;
+				}
+				else
+					elog(ERROR, "Could not find a valid scan to initialize with params");
 
 				ExecReScan(outerNode);
 			}
@@ -371,30 +377,53 @@ execMotionSender(MotionState *node)
 	return NULL;
 }
 
+typedef struct ExprContextFinderContext
+{
+	NodeTag type;
+	ExprContext *exprContext;
+} ExprContextFinderContext;
+
+static CdbVisitOpt
+exprContextFinderWalker(PlanState *node, void *context)
+{
+	Assert(ctx);
+	ExprContextFinderContext *ctx = ( ExprContextFinderContext *) context;
+	ctx->type = node->type;
+
+	if(IsA(node, IndexOnlyScanState))
+	{
+		IndexOnlyScanState *idxOnlyScanState = (IndexOnlyScanState *)node;
+		ctx->exprContext = idxOnlyScanState->ss.ps.ps_ExprContext;
+		return CdbVisit_Skip;
+	}
+	else if(IsA(node, IndexScanState))
+	{
+		IndexScanState *idxScanState = (IndexScanState *)node;
+		ctx->exprContext = idxScanState->ss.ps.ps_ExprContext;
+		return CdbVisit_Skip;
+	}
+	else if (IsA(node, SeqScanState))
+	{
+		SeqScanState *seqScanState = (SeqScanState *)node;
+		ctx->exprContext = seqScanState->ss.ps.ps_ExprContext;
+		return CdbVisit_Skip;
+	}
+	return CdbVisit_Walk;
+
+}
+
 static ExprContext *getNodeExprContext(PlanState *pstate)
 {
-	if(IsA(pstate, IndexOnlyScanState))
-	{
-		IndexOnlyScanState *idxOnlyScanState = (IndexOnlyScanState *)pstate;
-		return idxOnlyScanState->ss.ps.ps_ExprContext;
-	}
-	else if(IsA(pstate, IndexScanState))
-	{
-		IndexScanState *idxScanState = (IndexScanState *)pstate;
-		return idxScanState->ss.ps.ps_ExprContext;
-	}
-	else if (IsA(pstate, SeqScanState))
-	{
-		SeqScanState *seqScanState = (SeqScanState *)pstate;
-		return seqScanState->ss.ps.ps_ExprContext;
-	}
-	else if (IsA(pstate, LimitState)){
-	    SeqScanState *seqScanState = (SeqScanState *) outerPlanState(pstate);
-          return seqScanState->ss.ps.ps_ExprContext;
-	}
-	else
-		elog(ERROR, "Rescan motion only supported for index scan and sequential scan");
-	return NULL;
+	Assert(pstate);
+
+	ExprContextFinderContext ctx;
+	ctx.exprContext = NULL;
+	planstate_walk_node(pstate, exprContextFinderWalker, &ctx);
+
+	if(ctx.exprContext == NULL)
+		elog(ERROR, "Rescan motion only supported for index scan and sequential scan. Not %s", ctx.type);
+
+	return ctx.exprContext;
 }
 
 
