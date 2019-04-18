@@ -383,33 +383,98 @@ typedef struct ExprContextFinderContext
 	ExprContext *exprContext;
 } ExprContextFinderContext;
 
-static CdbVisitOpt
+static bool planStateWalker(PlanState *node, bool (*walker) (), void *context)
+{
+	if (node == NULL)
+		return false;
+
+	Assert(context);
+
+	check_stack_depth();
+
+	switch (nodeTag(node))
+	{
+		case T_LimitState:
+		{
+			LimitState *limitState = (LimitState *) node;
+			PlanState *ps = (PlanState *)limitState->ps.lefttree;
+			if (walker(ps, context))
+				return true;
+		}
+		break;
+		case T_SubqueryScanState:
+		{
+			SubqueryScanState *subqueryScanState = (SubqueryScanState *) node;
+			PlanState *ps = subqueryScanState->subplan->lefttree; /* is this right? */
+			if (walker(ps, context))
+				return true;
+		}
+		break;
+		case T_MotionState:
+		{
+			MotionState *motionState = (MotionState *) node;
+			if (motionState->mstype == MOTIONSTATE_RECV)
+			{
+				/* won't have children */
+				return true;
+			}
+			PlanState *ps = motionState->ps.lefttree;
+			if (walker(ps, context))
+				return true;
+		}
+		break;
+		case T_NestLoopState:
+		{
+			NestLoopState *nestLoopState = (NestLoopState *) node;
+			PlanState *ps = nestLoopState->js.ps.lefttree;
+			if (walker(ps, context))
+				return true;
+		}
+		break;
+		case T_SeqScanState:
+		case T_IndexScanState:
+		case T_IndexOnlyScanState:
+			if (walker(node, context))
+				return true;
+			break;
+
+		default:
+		{
+			elog(NOTICE, "what should i do");
+			return walker(node, context);
+		}
+	}
+	return false;
+}
+
+static bool
 exprContextFinderWalker(PlanState *node, void *context)
 {
-	Assert(ctx);
+	Assert(context);
 	ExprContextFinderContext *ctx = ( ExprContextFinderContext *) context;
-	ctx->type = node->type;
+	//ctx->type = node->type;
+	if(node == NULL)
+		return false;
 
 	if(IsA(node, IndexOnlyScanState))
 	{
 		IndexOnlyScanState *idxOnlyScanState = (IndexOnlyScanState *)node;
 		ctx->exprContext = idxOnlyScanState->ss.ps.ps_ExprContext;
-		return CdbVisit_Skip;
+		return true;
 	}
 	else if(IsA(node, IndexScanState))
 	{
 		IndexScanState *idxScanState = (IndexScanState *)node;
 		ctx->exprContext = idxScanState->ss.ps.ps_ExprContext;
-		return CdbVisit_Skip;
+		return true;
 	}
 	else if (IsA(node, SeqScanState))
 	{
 		SeqScanState *seqScanState = (SeqScanState *)node;
 		ctx->exprContext = seqScanState->ss.ps.ps_ExprContext;
-		return CdbVisit_Skip;
+		return true;
 	}
-	return CdbVisit_Walk;
-
+	return planStateWalker(node, exprContextFinderWalker, context);
 }
 
 static ExprContext *getNodeExprContext(PlanState *pstate)
@@ -418,10 +483,15 @@ static ExprContext *getNodeExprContext(PlanState *pstate)
 
 	ExprContextFinderContext ctx;
 	ctx.exprContext = NULL;
-	planstate_walk_node(pstate, exprContextFinderWalker, &ctx);
+	ctx.type = 0;
+	if (planStateWalker(pstate, exprContextFinderWalker, &ctx))
+	{
+		// do nothing
+	}
+
 
 	if(ctx.exprContext == NULL)
-		elog(ERROR, "Rescan motion only supported for index scan and sequential scan. Not %s", ctx.type);
+		elog(NOTICE, "Rescan motion only supported for index scan and sequential scan.");
 
 	return ctx.exprContext;
 }
