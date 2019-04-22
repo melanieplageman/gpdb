@@ -119,7 +119,11 @@ static void doSendTuple(Motion *motion, MotionState *node, TupleTableSlot *outer
 /*=========================================================================
  */
 
-static ExprContext *getNodeExprContext(PlanState *pState);
+static ExprContext *getNodeExprContext(PlanState *pstate);
+static int *getMotionStateNodeParamAddr(PlanState *pstate);
+static int getLeafNodeType(PlanState *pstate);
+
+
 
 #ifdef CDB_MOTION_DEBUG
 static void
@@ -318,15 +322,37 @@ execMotionSender(MotionState *node)
 				done = true;
 			else
 			{
+				/*
+				 *  get the param from the MotionState node's expression context
+				 */
 				ParamExecData paramExecData = node->ps.ps_ExprContext->ecxt_param_exec_vals[0];
-				ExprContext *childExprContext = getNodeExprContext(outerNode);
-				if (childExprContext)
-				{
-					childExprContext->ecxt_param_exec_vals[0] = paramExecData;
-				}
-				else
-					elog(ERROR, "Could not find a valid scan to initialize with params");
 
+				int leafNodeRC = getLeafNodeType(outerNode);
+				if (leafNodeRC == 0)
+					elog(ERROR, "unexpected leaf node type");
+				else if(leafNodeRC == 1)
+				{
+					/*
+					 * If our slice's part of the plan has a leaf which is a scan, get its exprcontext
+					 * and set the param from the motion sender in the scan's exprcontext
+					 */
+					ExprContext *childExprContext = getNodeExprContext(outerNode);
+					if (childExprContext)
+						childExprContext->ecxt_param_exec_vals[0] = paramExecData;
+				}
+				else if (leafNodeRC == 2)
+				{
+					/*
+					 *  if the plan in our slice has a leaf that is a motion receiver
+					 *  meaning it is on top of another motion, get the address of that
+					 *  node's parameter and set it to the value of the parameter
+					 */
+					int *motionStateParamAddr = getMotionStateNodeParamAddr(outerNode);
+					if (motionStateParamAddr)
+						*motionStateParamAddr = DatumGetInt32(paramExecData.value);
+					else
+						elog(ERROR, "Could not find a valid scan or motion receiver to initialize with params");
+				}
 				ExecReScan(outerNode);
 			}
 		}
@@ -379,9 +405,19 @@ execMotionSender(MotionState *node)
 
 typedef struct ExprContextFinderContext
 {
-	NodeTag type;
 	ExprContext *exprContext;
 } ExprContextFinderContext;
+
+typedef struct MotionStateParamSetterContext
+{
+  int *motionStateParam;
+} MotionStateParamSetterContext;
+
+typedef struct leafNodeTypeCheckerContext
+{
+	bool isScan;
+	bool isMotionRcv;
+} leafNodeTypeCheckerContext;
 
 static bool planStateWalker(PlanState *node, bool (*walker) (), void *context)
 {
@@ -448,11 +484,62 @@ static bool planStateWalker(PlanState *node, bool (*walker) (), void *context)
 }
 
 static bool
+motionStateParamSetterWalker(PlanState *node, void *context)
+{
+	Assert(context);
+	MotionStateParamSetterContext *ctx = (MotionStateParamSetterContext *) context;
+	if (node == NULL)
+		return false;
+	if (IsA(node, MotionState))
+	{
+		MotionState *motionState = (MotionState *)node;
+		if (motionState->mstype == MOTIONSTATE_RECV)
+		{
+			ctx->motionStateParam = &motionState->parameter;
+			return true;
+		}
+	}
+	return planStateWalker(node, motionStateParamSetterWalker, context);
+}
+
+
+static bool
+leafNodeTypeCheckerWalker(PlanState *node, void *context)
+{
+	Assert(context);
+	leafNodeTypeCheckerContext *ctx = (leafNodeTypeCheckerContext *) context;
+	if (node == NULL)
+		return false;
+	switch(nodeTag(node))
+	{
+		case T_MotionState:
+		{
+			MotionState *motionState = (MotionState *)node;
+			if (motionState->mstype == MOTIONSTATE_RECV)
+			{
+				ctx->isScan = false;
+				ctx->isMotionRcv = true;
+				return true;
+			}
+		}
+		case T_IndexOnlyScanState:
+		case T_IndexScanState:
+		case T_SeqScanState:
+		{
+			ctx->isScan = true;
+			ctx->isMotionRcv = false;
+			return true;
+		}
+	}
+	return planStateWalker(node, leafNodeTypeCheckerWalker, context);
+}
+
+static bool
 exprContextFinderWalker(PlanState *node, void *context)
 {
 	Assert(context);
 	ExprContextFinderContext *ctx = ( ExprContextFinderContext *) context;
-	//ctx->type = node->type;
+
 	if(node == NULL)
 		return false;
 
@@ -477,18 +564,32 @@ exprContextFinderWalker(PlanState *node, void *context)
 	return planStateWalker(node, exprContextFinderWalker, context);
 }
 
+static int *getMotionStateNodeParamAddr(PlanState *pstate)
+{
+
+	Assert(pstate);
+	MotionStateParamSetterContext ctx;
+	ctx.motionStateParam = NULL;
+	if (planStateWalker(pstate, motionStateParamSetterWalker, &ctx))
+	{
+
+	}
+
+	if (ctx.motionStateParam == NULL)
+		elog(NOTICE, "Couldn't find receiver motion leaf");
+	return ctx.motionStateParam;
+}
+
 static ExprContext *getNodeExprContext(PlanState *pstate)
 {
 	Assert(pstate);
 
 	ExprContextFinderContext ctx;
 	ctx.exprContext = NULL;
-	ctx.type = 0;
 	if (planStateWalker(pstate, exprContextFinderWalker, &ctx))
 	{
-		// do nothing
-	}
 
+	}
 
 	if(ctx.exprContext == NULL)
 		elog(NOTICE, "Rescan motion only supported for index scan and sequential scan.");
@@ -496,6 +597,24 @@ static ExprContext *getNodeExprContext(PlanState *pstate)
 	return ctx.exprContext;
 }
 
+static int getLeafNodeType(PlanState *pstate)
+{
+	Assert(pstate);
+
+	leafNodeTypeCheckerContext ctx;
+	ctx.isMotionRcv = false;
+	ctx.isScan = false;
+	if (planStateWalker(pstate, leafNodeTypeCheckerWalker, &ctx))
+	{
+
+	}
+	if (ctx.isScan)
+		return 1;
+	if (ctx.isMotionRcv)
+		return 2;
+	else
+		return 0;
+}
 
 static TupleTableSlot *
 execMotionUnsortedReceiver(MotionState *node)
