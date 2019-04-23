@@ -21,6 +21,7 @@
                       'gpinitstandby',
                       'gpactivatestandby'] %}
 {% set MM_2_suites = ['analyzedb',
+                      'reindexdb',
                       'gpperfmon',
                       'gpinitsystem'] %}
 {% set aa_Test_suites = ['Planner_centos6',
