@@ -15,6 +15,7 @@
 #include "catalog/pg_type.h"
 #include "commands/sequence.h"
 #include "commands/trigger.h"
+#include "executor/execHHashagg.h"
 #include "executor/executor.h"
 #include "executor/spi.h"
 #include "port/atomics.h"
@@ -1126,4 +1127,193 @@ wait_pid(PG_FUNCTION_ARGS)
 		elog(ERROR, "could not check PID %d liveness: %m", pid);
 
 	PG_RETURN_VOID();
+}
+
+typedef struct DupeInt128AggState
+{
+	bool   calcSumX2;        /* if true, calculate sumX2 */
+	int64  N;                /* count of processed numbers */
+	int128 sumX;            /* sum of processed numbers */
+	int128 sumX2;            /* sum of squares of processed numbers */
+	char _[1UL<<17];
+} DupeInt128AggState;
+
+/*
+ * Prepare state data for a 128-bit aggregate function that needs to compute
+ * sum, count and optionally sum of squares of the input.
+ */
+static DupeInt128AggState *
+makeDupePolyNumAggState_palloc(FunctionCallInfo fcinfo, bool calcSumX2)
+{
+	DupeInt128AggState *state;
+	MemoryContext agg_context;
+	MemoryContext old_context;
+
+	if (!(AggCheckCallContext(fcinfo, &agg_context)))
+		elog(ERROR, "aggregate function called in non-aggregate context");
+
+	old_context = MemoryContextSwitchTo(agg_context);
+
+	state = (DupeInt128AggState *) palloc0(sizeof(DupeInt128AggState));
+	state->calcSumX2 = calcSumX2;
+
+	MemoryContextSwitchTo(old_context);
+
+	return state;
+}
+/*
+ * Prepare state data for a 128-bit aggregate function that needs to compute
+ * sum, count and optionally sum of squares of the input.
+ */
+static DupeInt128AggState *
+makeDupePolyNumAggState_mpool(FunctionCallInfo fcinfo, bool calcSumX2)
+{
+	DupeInt128AggState *state;
+	MemoryContext agg_context;
+	MemoryContext old_context;
+	int agg_type;
+
+	if (!(agg_type = AggCheckCallContext(fcinfo, &agg_context)))
+		elog(ERROR, "aggregate function called in non-aggregate context");
+
+	old_context = MemoryContextSwitchTo(agg_context);
+
+	AggState *aggstate = (AggState *)fcinfo->context;
+	if (agg_type == AGG_CONTEXT_AGGREGATE && aggstate->hhashtable)
+	{
+		state = (DupeInt128AggState *) mpool_alloc(aggstate->hhashtable->group_buf, sizeof(DupeInt128AggState));
+		MemSet(state, 0, sizeof(DupeInt128AggState));
+	}
+	else
+	{
+		state = (DupeInt128AggState *) palloc0(sizeof(DupeInt128AggState));
+	}
+	state->calcSumX2 = calcSumX2;
+
+	MemoryContextSwitchTo(old_context);
+
+	return state;
+}
+
+PG_FUNCTION_INFO_V1(leaky_int8_avg_combine);
+PG_FUNCTION_INFO_V1(good_int8_avg_combine);
+
+/*
+ * Combine function for DupeInt128AggState for aggregates which don't require
+ * sumX2
+ */
+Datum
+leaky_int8_avg_combine(PG_FUNCTION_ARGS)
+{
+	DupeInt128AggState *state1;
+	DupeInt128AggState *state2;
+	MemoryContext   agg_context;
+	MemoryContext   old_context;
+
+	if (!AggCheckCallContext(fcinfo, &agg_context))
+		elog(ERROR, "aggregate function called in non-aggregate context");
+
+	state1 = PG_ARGISNULL(0) ? NULL : (DupeInt128AggState *) PG_GETARG_POINTER(0);
+	state2 = PG_ARGISNULL(1) ? NULL : (DupeInt128AggState *) PG_GETARG_POINTER(1);
+
+	if (state2 == NULL)
+		PG_RETURN_POINTER(state1);
+
+	/* manually copy all fields from state2 to state1 */
+	if (state1 == NULL)
+	{
+		old_context = MemoryContextSwitchTo(agg_context);
+
+		state1 = makeDupePolyNumAggState_palloc(fcinfo, false);
+		state1->N = state2->N;
+
+#ifdef HAVE_INT128
+		state1->sumX = state2->sumX;
+#else
+		init_var(&state1->sumX);
+			set_var_from_var(&state2->sumX, &state1->sumX);
+#endif
+		MemoryContextSwitchTo(old_context);
+
+		PG_RETURN_POINTER(state1);
+	}
+
+	if (state2->N > 0)
+	{
+		state1->N += state2->N;
+
+#ifdef HAVE_INT128
+		state1->sumX += state2->sumX;
+#else
+		/* The rest of this needs to work in the aggregate context */
+			old_context = MemoryContextSwitchTo(agg_context);
+
+			/* Accumulate sums */
+			add_var(&(state1->sumX), &(state2->sumX), &(state1->sumX));
+
+			MemoryContextSwitchTo(old_context);
+#endif
+
+	}
+	PG_RETURN_POINTER(state1);
+}
+
+/*
+ * Combine function for DupeInt128AggState for aggregates which don't require
+ * sumX2
+ */
+Datum
+good_int8_avg_combine(PG_FUNCTION_ARGS)
+{
+	DupeInt128AggState *state1;
+	DupeInt128AggState *state2;
+	MemoryContext   agg_context;
+	MemoryContext   old_context;
+
+	if (!AggCheckCallContext(fcinfo, &agg_context))
+		elog(ERROR, "aggregate function called in non-aggregate context");
+
+	state1 = PG_ARGISNULL(0) ? NULL : (DupeInt128AggState *) PG_GETARG_POINTER(0);
+	state2 = PG_ARGISNULL(1) ? NULL : (DupeInt128AggState *) PG_GETARG_POINTER(1);
+
+	if (state2 == NULL)
+		PG_RETURN_POINTER(state1);
+
+	/* manually copy all fields from state2 to state1 */
+	if (state1 == NULL)
+	{
+		old_context = MemoryContextSwitchTo(agg_context);
+
+		state1 = makeDupePolyNumAggState_mpool(fcinfo, false);
+		state1->N = state2->N;
+
+#ifdef HAVE_INT128
+		state1->sumX = state2->sumX;
+#else
+		init_var(&state1->sumX);
+			set_var_from_var(&state2->sumX, &state1->sumX);
+#endif
+		MemoryContextSwitchTo(old_context);
+
+		PG_RETURN_POINTER(state1);
+	}
+
+	if (state2->N > 0)
+	{
+		state1->N += state2->N;
+
+#ifdef HAVE_INT128
+		state1->sumX += state2->sumX;
+#else
+		/* The rest of this needs to work in the aggregate context */
+			old_context = MemoryContextSwitchTo(agg_context);
+
+			/* Accumulate sums */
+			add_var(&(state1->sumX), &(state2->sumX), &(state1->sumX));
+
+			MemoryContextSwitchTo(old_context);
+#endif
+
+	}
+	PG_RETURN_POINTER(state1);
 }

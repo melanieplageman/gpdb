@@ -1,0 +1,40 @@
+CREATE SCHEMA make_it_leak;
+SET search_path TO make_it_leak;
+
+CREATE FUNCTION leaky_int8_avg_combine(internal, internal)
+    RETURNS internal
+AS '@libdir@/regress@DLSUFFIX@', 'leaky_int8_avg_combine'
+    LANGUAGE C IMMUTABLE;
+
+CREATE FUNCTION good_int8_avg_combine(internal, internal)
+    RETURNS internal
+AS '@libdir@/regress@DLSUFFIX@', 'good_int8_avg_combine'
+    LANGUAGE C IMMUTABLE;
+
+CREATE AGGREGATE leaky_sum(int8) (
+SFUNC = int8_avg_accum,
+STYPE = internal,
+FINALFUNC = numeric_poly_sum,
+COMBINEFUNC = leaky_int8_avg_combine,
+SERIALFUNC = int8_avg_serialize,
+DESERIALFUNC = int8_avg_deserialize
+);
+
+CREATE AGGREGATE good_sum(int8) (
+    SFUNC = int8_avg_accum,
+    STYPE = internal,
+    FINALFUNC = numeric_poly_sum,
+    COMBINEFUNC = good_int8_avg_combine,
+    SERIALFUNC = int8_avg_serialize,
+    DESERIALFUNC = int8_avg_deserialize
+    );
+
+CREATE TABLE foo (a int, b int8, c int);
+
+INSERT INTO foo SELECT 0, i, i FROM generate_series(1, 6144) i;
+SET statement_mem TO '48MB';
+-- need to lower gp_vmem_protect_limit with gpconfig
+-- gpconfig -c gp_vmem_protect_limit -v 256
+-- gpstop -ar
+EXPLAIN (ANALYZE, COSTS OFF) SELECT good_sum(b) FROM foo GROUP BY c;
+EXPLAIN (ANALYZE, COSTS OFF) SELECT leaky_sum(b) FROM foo GROUP BY c;
