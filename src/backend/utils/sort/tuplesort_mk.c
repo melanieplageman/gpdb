@@ -432,7 +432,7 @@ LACKMEM_WITH_ESTIMATE(Tuplesortstate_mk *state)
 	 */
 	Assert(state->status == TSS_INITIAL);
 
-	return MemoryContextGetCurrentSpace(state->sortcontext) + state->mkctxt.estimatedExtraForPrep > state->memAllowed;
+	return MemoryContextMemAllocated(state->sortcontext, true) + state->mkctxt.estimatedExtraForPrep > state->memAllowed;
 }
 
 /*
@@ -1029,7 +1029,7 @@ tuplesort_end_mk(Tuplesortstate_mk *state)
 	if (state->tapeset)
 		spaceUsed = LogicalTapeSetBlocks(state->tapeset) * (BLCKSZ / 1024);
 	else
-		spaceUsed = (MemoryContextGetCurrentSpace(state->sortcontext) + 1024) / 1024;
+		spaceUsed = (MemoryContextMemAllocated(state->sortcontext, true) + 1024) / 1024;
 
 	/*
 	 * Call before state->tapeset is closed.
@@ -1078,8 +1078,7 @@ tuplesort_finalize_stats_mk(Tuplesortstate_mk *state)
 {
 	if (state->instrument && state->instrument->need_cdb && !state->statsFinalized)
 	{
-		Size		maxSpaceUsedOnSort = MemoryContextGetPeakSpace(state->sortcontext);
-
+		Size		maxSpaceUsedOnSort = state->sortcontext->allBytesAlloc;
 		/* Report executor memory used by our memory context. */
 		state->instrument->execmemused += (double) maxSpaceUsedOnSort;
 
@@ -1256,10 +1255,10 @@ grow_unsorted_array(Tuplesortstate_mk *state)
 	 * possible under the current memory limit by considering both metadata
 	 * and tuple size.
 	 */
-	if (state->memAllowed < MemoryContextGetCurrentSpace(state->sortcontext))
+	if (state->memAllowed < MemoryContextMemAllocated(state->sortcontext, true))
 		return false;
 
-	uint64		availMem = state->memAllowed - MemoryContextGetCurrentSpace(state->sortcontext);
+	uint64		availMem = state->memAllowed - MemoryContextMemAllocated(state->sortcontext, true);
 	uint64		avgTupSize = (uint64) (((double) state->totalTupleBytes) / ((double) state->totalNumTuples));
 	uint64		avgExtraForPrep = (uint64) (((double) state->mkctxt.estimatedExtraForPrep) / ((double) state->totalNumTuples));
 
@@ -1340,7 +1339,7 @@ puttuple_common(Tuplesortstate_mk *state, MKEntry *e)
 					Assert(state->mkheap == NULL);
 					Assert(state->entry_count > 0);
 					state->arraySizeBeforeSpill = state->entry_allocsize;
-					state->memUsedBeforeSpill = MemoryContextGetPeakSpace(state->sortcontext);
+					state->memUsedBeforeSpill = MemoryContextMemAllocated(state->sortcontext, true); // is this right?
 					inittapes_mk(state, is_sortstate_rwfile(state) ? state->tapeset_file_prefix : NULL);
 					Assert(state->status == TSS_BUILDRUNS);
 				}
@@ -2724,7 +2723,7 @@ tuplesort_get_stats_mk(Tuplesortstate_mk* state,
 	else
 	{
 		*spaceType = "Memory";
-		*spaceUsed = (MemoryContextGetCurrentSpace(state->sortcontext) + 1024) / 1024;
+		*spaceUsed = (MemoryContextMemAllocated(state->sortcontext, true) + 1024) / 1024;
 	}
 
 	switch (state->status)

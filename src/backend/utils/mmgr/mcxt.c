@@ -521,65 +521,8 @@ MemoryContextIsEmpty(MemoryContext context)
 }
 
 
-/*
- * MemoryContextNoteAlloc
- *		Update lifetime cumulative statistics upon allocation from host mem mgr.
- *
- * Called by the context-type-specific memory manager upon successfully
- * obtaining a block of size 'nbytes' from its lower-level source (e.g. malloc).
- */
-void
-MemoryContextNoteAlloc(MemoryContext context, Size nbytes)
-{
-    Size            held;
 
-    AssertArg(MemoryContextIsValid(context));
 
-    for (;;)
-    {
-        Assert(context->allBytesAlloc >= context->allBytesFreed);
-        Assert(context->allBytesAlloc - context->allBytesFreed < SIZE_MAX - nbytes);
-
-        context->allBytesAlloc += nbytes;
-
-        held = (Size)(context->allBytesAlloc - context->allBytesFreed);
-        if (context->maxBytesHeld < held)
-            context->maxBytesHeld = held;
-
-        if (!context->parent)
-            break;
-        context = context->parent;
-    }
-}                               /* MemoryContextNoteAlloc */
-
-/*
- * MemoryContextNoteFree
- *		Update lifetime cumulative statistics upon free to host memory manager.
- *
- * Called by the context-type-specific memory manager upon relinquishing a
- * block of size 'nbytes' back to its lower-level source (e.g. free()).
- */
-void
-MemoryContextNoteFree(MemoryContext context, Size nbytes)
-{
-    Size    held;
-
-	AssertArg(MemoryContextIsValid(context));
-
-    while (context)
-    {
-        Assert(context->allBytesAlloc >= context->allBytesFreed + nbytes);
-        Assert(context->allBytesFreed + nbytes >= context->allBytesFreed);
-
-        context->allBytesFreed += nbytes;
-
-        held = (Size)(context->allBytesAlloc - context->allBytesFreed);
-        if (context->localMinHeld > held)
-            context->localMinHeld = held;
-
-        context = context->parent;
-    }
-}                               /* MemoryContextNoteFree */
 
 /*
  * MemoryContextError
@@ -650,65 +593,49 @@ MemoryContextError(int errorcode, MemoryContext context,
 }                               /* MemoryContextError */
 
 
-/*
- * MemoryContextGetCurrentSpace
- *		Return the number of bytes currently occupied by the memory context.
- *
- * This is the amount of space obtained from the lower-level source of the
- * memory (e.g. malloc) and not yet released back to that source.  Includes
- * overhead and free space held and managed within this context by the
- * context-type-specific memory manager.
- */
-Size
-MemoryContextGetCurrentSpace(MemoryContext context)
-{
-	AssertArg(MemoryContextIsValid(context));
-    Assert(context->allBytesAlloc >= context->allBytesFreed);
-    Assert(context->allBytesAlloc - context->allBytesFreed < SIZE_MAX);
+//*
+// * MemoryContextGetCurrentSpace
+// *		Return the number of bytes currently occupied by the memory context.
+// *
+// * This is the amount of space obtained from the lower-level source of the
+// * memory (e.g. malloc) and not yet released back to that source.  Includes
+// * overhead and free space held and managed within this context by the
+// * context-type-specific memory manager.
+// */
+//Size
+//MemoryContextGetCurrentSpace(MemoryContext context)
+//{
+//	AssertArg(MemoryContextIsValid(context));
+//	Assert(context->allBytesAlloc >= context->allBytesFreed);
+//	Assert(context->allBytesAlloc - context->allBytesFreed < SIZE_MAX);
+//
+//	return (Size)(context->allBytesAlloc - context->allBytesFreed);
+//}                               /* MemoryContextGetCurrentSpace */
 
-    return (Size)(context->allBytesAlloc - context->allBytesFreed);
-}                               /* MemoryContextGetCurrentSpace */
-
-/*
- * MemoryContextGetPeakSpace
- *		Return the peak number of bytes occupied by the memory context.
- *
- * This is the maximum value reached by MemoryContextGetCurrentSpace() since
- * the context was created, or since reset by MemoryContextSetPeakSpace().
- */
-Size
-MemoryContextGetPeakSpace(MemoryContext context)
-{
-	AssertArg(MemoryContextIsValid(context));
-    return context->maxBytesHeld;
-}                               /* MemoryContextGetPeakSpace */
 
 /*
- * MemoryContextSetPeakSpace
- *		Resets the peak space statistic to the space currently occupied or
- *      the specified value, whichever is greater.  Returns the former peak
- *      space value.
- *
- * Can be used to observe local maximum usage over an interval and then to
- * restore the overall maximum.
+ * Find the memory allocated to blocks for this memory context. If recurse is
+ * true, also include children.
  */
-Size
-MemoryContextSetPeakSpace(MemoryContext context, Size nbytes)
+int64
+MemoryContextMemAllocated(MemoryContext context, bool recurse)
 {
-    Size    held;
-    Size    oldpeak;
+	int64 total = context->allBytesAlloc;
 
 	AssertArg(MemoryContextIsValid(context));
-    Assert(context->allBytesAlloc >= context->allBytesFreed);
-    Assert(context->allBytesAlloc - context->allBytesFreed < SIZE_MAX);
 
-    oldpeak = context->maxBytesHeld;
+	if (recurse)
+	{
+		MemoryContext child = context->firstchild;
+		for (child = context->firstchild;
+		     child != NULL;
+		     child = child->nextchild)
+			total += MemoryContextMemAllocated(child, true);
+	}
 
-    held = (Size)(context->allBytesAlloc - context->allBytesFreed);
-    context->maxBytesHeld = Max(held, nbytes);
+	return total;
+}
 
-    return oldpeak;
-}                               /* MemoryContextSetPeakSpace */
 
 
 /*

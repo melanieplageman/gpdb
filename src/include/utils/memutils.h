@@ -211,9 +211,8 @@ extern MemoryContext MemoryContextGetParent(MemoryContext context);
 extern bool MemoryContextIsEmpty(MemoryContext context);
 
 /* Statistics */
-extern Size MemoryContextGetCurrentSpace(MemoryContext context);
+extern int64 MemoryContextMemAllocated(MemoryContext context, bool recurse);
 extern Size MemoryContextGetPeakSpace(MemoryContext context);
-extern Size MemoryContextSetPeakSpace(MemoryContext context, Size nbytes);
 extern char *MemoryContextName(MemoryContext context, MemoryContext relativeTo,
                                char *buf, int bufsize);
 

@@ -839,8 +839,7 @@ cdbexplain_collectSliceStats(PlanState *planstate,
 	EState	   *estate = planstate->state;
 
 	/* Max bytes malloc'ed under executor's per-query memory context. */
-	out_worker->peakmemused =
-		(double) MemoryContextGetPeakSpace(estate->es_query_cxt);
+	out_worker->peakmemused = estate->es_query_cxt->allBytesAlloc;
 
 	out_worker->vmem_reserved = (double) VmemTracker_GetMaxReservedVmemBytes();
 

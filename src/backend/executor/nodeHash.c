@@ -1571,8 +1571,7 @@ ExecHashTableExplainEnd(PlanState *planstate, struct StringInfoData *buf)
 		ExecHashTableExplainBatchEnd(hashState, hashtable);
 
 		/* Report executor memory used by our memory context. */
-		jinstrument->execmemused +=
-				(double)MemoryContextGetPeakSpace(hashtable->hashCxt);
+		jinstrument->execmemused += hashtable->hashCxt->allBytesAlloc;
 	}
 	else
 	{

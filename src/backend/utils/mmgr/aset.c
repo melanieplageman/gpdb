@@ -373,7 +373,7 @@ static void dump_mc_for(FILE *file, MemoryContext mc)
 
 	AllocSet set = (AllocSet) mc;
 	fprintf(file, "%p|%p|%d|%s|"UINT64_FORMAT"|"UINT64_FORMAT"|%zu|%zu|%zu|%zu", mc, mc->parent, mc->type, mc->name,
-			mc->allBytesAlloc, mc->allBytesFreed, mc->maxBytesHeld,
+			mc->allBytesAlloc, (long unsigned int)0, (long unsigned int)0,
 			set->initBlockSize, set->maxBlockSize, set->nextBlockSize);
 
 #ifdef CDB_PALLOC_CALLER_ID
@@ -904,7 +904,7 @@ AllocSetContextCreate(MemoryContext parent,
 		/* Mark block as not to be released at reset time */
 		set->keeper = block;
 
-        MemoryContextNoteAlloc(&set->header, blksize);              /*CDB*/
+		set->header.allBytesAlloc += blksize;
         /*
          * We are allocating new memory in this block, but we are not accounting
          * for this. The concept of memory accounting is to track the actual
@@ -1059,7 +1059,8 @@ AllocSetReset(MemoryContext context)
 			size_t freesz = UserPtr_GetUserPtrSize(block);
 
 			/* Normal case, release the block */
-            MemoryContextNoteFree(&set->header, freesz);
+			(&set->header)->allBytesAlloc -= freesz;
+
 
 #ifdef CLOBBER_FREED_MEMORY
 			wipe_mem(block, block->freeptr - ((char *) block));
@@ -1107,7 +1108,7 @@ AllocSetDelete(MemoryContext context)
 	{
 		AllocBlock	next = block->next;
 		size_t freesz = UserPtr_GetUserPtrSize(block);
-        MemoryContextNoteFree(&set->header, freesz);
+		(&set->header)->allBytesAlloc -= freesz;
 
 #ifdef CLOBBER_FREED_MEMORY
 		wipe_mem(block, block->freeptr - ((char *) block));
@@ -1207,8 +1208,7 @@ AllocSetAllocImpl(MemoryContext context, Size size, bool isHeader)
 			set->blocks = block;
 		}
 
-        MemoryContextNoteAlloc(&set->header, blksize);              /*CDB*/
-
+		context->allBytesAlloc += blksize;
 		AllocAllocInfo(set, chunk, isHeader);
 
 		/*
@@ -1395,7 +1395,7 @@ AllocSetAllocImpl(MemoryContext context, Size size, bool isHeader)
 		if (block->next)
 			block->next->prev = block;
 		set->blocks = block;
-        MemoryContextNoteAlloc(&set->header, blksize);              /*CDB*/
+		context->allBytesAlloc += blksize;
 	}
 
 	/*
@@ -1533,7 +1533,7 @@ AllocSetFreeImpl(MemoryContext context, void *pointer, bool isHeader)
 #ifdef CLOBBER_FREED_MEMORY
 		wipe_mem(block, block->freeptr - ((char *) block));
 #endif
-		MemoryContextNoteFree(&set->header, freesz);
+		(&set->header)->allBytesAlloc -= freesz;
 		gp_free(block);
 	}
 	else
@@ -1760,7 +1760,7 @@ AllocSetRealloc(MemoryContext context, void *pointer, Size size)
 
 		AllocAllocInfo(set, chunk, false /* We should never require realloc for shared header */);
 
-		MemoryContextNoteAlloc(&set->header, blksize - oldblksize); /*CDB*/
+		context->allBytesAlloc += blksize - oldblksize;
 		return pointer;
 	}
 	else
@@ -1879,9 +1879,9 @@ AllocSet_GetStats(MemoryContext context, uint64 *nBlocks, uint64 *nChunks,
     *nBlocks = 0;
     *nChunks = 0;
     *currentAvailable = 0;
-    *allAllocated = set->header.allBytesAlloc;
-    *allFreed = set->header.allBytesFreed;
-    *maxHeld = set->header.maxBytesHeld;
+    *allAllocated = set->header.allBytesAlloc; // ? does this affect the tuplesort experiment?
+    *allFreed = 0;
+    *maxHeld = 0;
 
     /* Total space obtained from host's memory manager */
     for (block = set->blocks; block != NULL; block = block->next)

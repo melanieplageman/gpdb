@@ -1012,7 +1012,6 @@ ExecSetParamPlan(SubPlanState *node, ExprContext *econtext, QueryDesc *queryDesc
 	ListCell   *l;
 	bool		found = false;
 	ArrayBuildState *astate pg_attribute_unused() = NULL;
-	Size		savepeakspace = MemoryContextGetPeakSpace(planstate->state->es_query_cxt);
 
 	bool		needDtxTwoPhase;
 	bool		shouldDispatch = false;
@@ -1026,11 +1025,7 @@ ExecSetParamPlan(SubPlanState *node, ExprContext *econtext, QueryDesc *queryDesc
 
 	planstate->state->currentSubplanLevel++;
 
-	/*
-	 * Reset memory high-water mark so EXPLAIN ANALYZE can report each
-	 * root slice's usage separately.
-	 */
-	MemoryContextSetPeakSpace(planstate->state->es_query_cxt, 0);
+
 
 	/*
 	 * Need a try/catch block here so that if an ereport is called from
@@ -1311,8 +1306,7 @@ PG_CATCH();
 		}
 	}
 
-	/* Restore memory high-water mark for root slice of main query. */
-	MemoryContextSetPeakSpace(planstate->state->es_query_cxt, savepeakspace);
+
 
 	/*
 	 * Request any commands still executing on qExecs to stop.
@@ -1348,8 +1342,6 @@ PG_END_TRY();
 	if (Gp_role == GP_ROLE_DISPATCH && planstate->instrument && planstate->instrument->need_cdb)
 		cdbexplain_localExecStats(planstate, econtext->ecxt_estate->showstatctx);
 
-	/* Restore memory high-water mark for root slice of main query. */
-	MemoryContextSetPeakSpace(planstate->state->es_query_cxt, savepeakspace);
 
 	MemoryContextSwitchTo(oldcontext);
 

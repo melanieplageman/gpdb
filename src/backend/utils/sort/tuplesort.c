@@ -1576,7 +1576,7 @@ puttuple_common(Tuplesortstate *state, SortTuple *tuple)
 			if (state->memtupcount < state->memtupsize && !LACKMEM(state))
 				return;
 
-			state->memUsedBeforeSpill = MemoryContextGetPeakSpace(state->sortcontext);
+			state->memUsedBeforeSpill = MemoryContextMemAllocated(state->sortcontext, true); // is this right?
 
 			/*
 			 * Nope; time to switch to tape-based operation.
@@ -4480,13 +4480,12 @@ tuplesort_finalize_stats(Tuplesortstate *state)
 
         /* How close did we come to the work_mem limit? */
         FREEMEM(state, 0);              /* update low-water mark */
-        workmemused = MemoryContextGetPeakSpace(state->sortcontext);
+        workmemused = state->sortcontext->allBytesAlloc;
         if (state->instrument->workmemused < workmemused)
             state->instrument->workmemused = workmemused;
 
         /* Report executor memory used by our memory context. */
-        state->instrument->execmemused +=
-            (double)MemoryContextGetPeakSpace(state->sortcontext);
+        state->instrument->execmemused += state->sortcontext->allBytesAlloc;
 
 		state->statsFinalized = true;
 		tuplesort_get_stats(state,

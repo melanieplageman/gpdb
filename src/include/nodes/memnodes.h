@@ -67,9 +67,6 @@ typedef struct MemoryContextData
 	char	   *name;			/* context name (just for debugging) */
     /* CDB: Lifetime cumulative stats for this context and all descendants */
     uint64      allBytesAlloc;  /* bytes allocated from lower level mem mgr */
-    uint64      allBytesFreed;  /* bytes returned to lower level mem mgr */
-    Size        maxBytesHeld;   /* high-water mark for total bytes held */
-    Size        localMinHeld;   /* low-water mark since last increase in hwm */
 #ifdef CDB_PALLOC_CALLER_ID
     const char *callerFile;     /* __FILE__ of most recent caller */
     int         callerLine;     /* __LINE__ of most recent caller */

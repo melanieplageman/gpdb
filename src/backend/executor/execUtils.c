@@ -1717,8 +1717,8 @@ void mppExecutorCleanup(QueryDesc *queryDesc)
 void ResetExprContext(ExprContext *econtext)
 {
 	MemoryContext memctxt = econtext->ecxt_per_tuple_memory;
-	if(memctxt->allBytesAlloc - memctxt->allBytesFreed > 50000)
-		MemoryContextReset(memctxt);
+	//if(memctxt->allBytesAlloc - memctxt->allBytesFreed > 50000)
+	MemoryContextReset(memctxt);
 }
 
 /**
