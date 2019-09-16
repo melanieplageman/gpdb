@@ -1127,8 +1127,12 @@ MemoryContextCreate(NodeTag tag, Size size,
 		parent->firstchild = node;
 		/* inherit allowInCritSection flag from parent */
 		node->allowInCritSection = parent->allowInCritSection;
+		node->level = parent->level + 1;
 	}
+	else
+		node->level = 1;
 
+	elog(NOTICE, "level %i", node->level);
 	VALGRIND_CREATE_MEMPOOL(node, 0, false);
 
 	/* Return to type-specific creation routine to finish up */
