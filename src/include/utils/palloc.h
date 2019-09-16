@@ -180,10 +180,8 @@ STATIC_IF_INLINE MemoryContext
 MemoryContextSwitchTo(MemoryContext context)
 {
 	MemoryContext old = CurrentMemoryContext;
-	elog(NOTICE, "%s", old);
 
 	CurrentMemoryContext = context;
-	elog(NOTICE, "%s", context);
 	return old;
 }
 #endif   /* PG_USE_INLINE || MCXT_INCLUDE_DEFINITIONS */
