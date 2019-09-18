@@ -1128,7 +1128,7 @@ MemoryContextCreate(NodeTag tag, Size size,
 		/* inherit allowInCritSection flag from parent */
 		node->allowInCritSection = parent->allowInCritSection;
 		node->level = parent->level + 1;
-		if (node->level >= 60)
+		if (node->level >= 10)
 		{
 			fprintf(stderr, "RANDOM_STUFF\n");
 			fprintf(stderr, "name = %s, level %d\n", node->name, node->level);

@@ -82,7 +82,6 @@ test: vacuum_stats
 # Believe it or not, select creates a table, subsequent
 # tests need.
 # ----------
-test: errors
 test: select
 ignore: random
 
