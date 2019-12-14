@@ -1366,3 +1366,13 @@ COPY foo FROM PROGRAM 'cat /tmp/gpcopyenvtest' ESCAPE 'OFF';
 COPY foo FROM PROGRAM '/usr/bin/env bash -c ''echo -E database in COPY FROM: $GP_DATABASE''' ESCAPE 'OFF';
 
 select * from foo;
+
+-- when the tupleDescriptor for the inserted tuple does not match the tupleDescriptor of the leaf partition, the slot will get recreated
+-- ensure that the new slot is made in the per-query (not per-tuple) MemoryContext so that when COPY resets its buffer (large tuples or lots of data)
+-- the slot is not freed, if the slot is made in per-tuple context the below copy from statement will crash.
+CREATE TABLE copy_memory_context( a text, b TEXT[], c TEXT[]) DISTRIBUTED BY (a)
+PARTITION BY LIST(a)(PARTITION num_one VALUES ('a'));
+
+ALTER TABLE copy_memory_context ADD DEFAULT PARTITION default_partition;
+COPY copy_memory_context FROM '@abs_srcdir@/data/copy_memory_context.data' CSV DELIMITER '|';
+SELECT COUNT(*) FROM copy_memory_context;

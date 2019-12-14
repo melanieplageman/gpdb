@@ -5489,9 +5489,9 @@ retry:
 		resultRelInfo = targetid_get_partition(frame.relid, estate, true);
 		estate->es_result_relation_info = resultRelInfo;
 
-		MemoryContextSwitchTo(oldcontext);
-
 		slot = reconstructMatchingTupleSlot(baseSlot, resultRelInfo);
+
+		MemoryContextSwitchTo(oldcontext);
 
 		/* since resultRelInfo has changed, refresh these values */
 		tupDesc = RelationGetDescr(resultRelInfo->ri_RelationDesc);

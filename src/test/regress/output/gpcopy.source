@@ -1642,3 +1642,18 @@ select * from foo;
  database in COPY TO: funny copy"db'with\\quotes
 (3 rows)
 
+-- when the tupleDescriptor for the inserted tuple does not match the tupleDescriptor of the leaf partition, the slot will get recreated
+-- ensure that the new slot is made in the per-query (not per-tuple) MemoryContext so that when COPY resets its buffer (large tuples or lots of data)
+-- the slot is not freed, if the slot is made in per-tuple context the below copy from statement will crash.
+CREATE TABLE copy_memory_context( a text, b TEXT[], c TEXT[]) DISTRIBUTED BY (a)
+PARTITION BY LIST(a)(PARTITION num_one VALUES ('a'));
+NOTICE:  CREATE TABLE will create partition "copy_memory_context_1_prt_num_one" for table "copy_memory_context"
+ALTER TABLE copy_memory_context ADD DEFAULT PARTITION default_partition;
+NOTICE:  CREATE TABLE will create partition "copy_memory_context_1_prt_default_partition" for table "copy_memory_context"
+COPY copy_memory_context FROM '@abs_srcdir@/data/copy_memory_context.data' CSV DELIMITER '|';
+SELECT COUNT(*) FROM copy_memory_context;
+ count 
+-------
+     2
+(1 row)
+
