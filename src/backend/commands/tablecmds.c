@@ -191,6 +191,7 @@ typedef struct AlteredTableInfo
 	List	   *newvals;		/* List of NewColumnValue */
 	bool		new_notnull;	/* T if we added new NOT NULL constraints */
 	bool		rewrite;		/* T if a rewrite is forced */
+	bool		aocs_can_optimize_rewrite; /* T if AOCS and only the AT_PASS_ADD_COL subcmd is populated */
 	bool		dist_opfamily_changed; /* T if changing datatype of distribution key column and new opclass is in different opfamily than old one */
 	Oid			new_opclass;		/* new opclass, if changing a distribution key column */
 	Oid			newTableSpace;	/* new tablespace; 0 means no change */
@@ -5768,21 +5769,8 @@ ATRewriteTables(List **wqueue, LOCKMODE lockmode)
 		}
 		heap_close(OldHeap, NoLock);
 
-		if (tab->newvals && relstorage == RELSTORAGE_AOCOLS)
-		{
-			/*
-			 * ADD COLUMN for CO can be optimized only if it is the
-			 * only subcommand being performed.
-			 */
-			bool canOptimize = true;
-			for (int i=0; i < AT_NUM_PASSES && canOptimize; ++i)
-			{
-				if (i != AT_PASS_ADD_COL && tab->subcmds[i])
-					canOptimize = false;
-			}
-			if (canOptimize && ATAocsNoRewrite(tab))
-				continue;
-		}
+		if (ATAocsNoRewrite(tab))
+			continue;
 		/*
 		 * We only need to rewrite the table if at least one column needs to
 		 * be recomputed, or we are removing the OID column.
@@ -5983,8 +5971,8 @@ ATAocsWriteNewColumns(
 							if(!ExecQual(con->qualstate, econtext, true))
 								ereport(ERROR,
 										(errcode(ERRCODE_CHECK_VIOLATION),
-										 errmsg("check constraint \"%s\" is "
-												"violated",	con->name)));
+										 errmsg("check constraint \"%s\" is violated by some row",
+											con->name)));
 							break;
 						case CONSTR_FOREIGN:
 							/* Nothing to do */
@@ -6087,12 +6075,10 @@ ATAocsNoRewrite(AlteredTableInfo *tab)
 	int32 scancol; /* chosen column number to scan from */
 	ListCell *l;
 	Snapshot snapshot;
+	int addcols;
 
-	/*
-	 * only ADD COLUMN subcommand is supported at this time
-	 */
-	List *addColCmds = tab->subcmds[AT_PASS_ADD_COL];
-	if (addColCmds == NULL)
+	/* Currently only set for ADD COLUMN */
+	if (!tab->aocs_can_optimize_rewrite)
 		return false;
 
 	snapshot = RegisterSnapshot(GetCatalogSnapshot(InvalidOid));
@@ -6115,6 +6101,7 @@ ATAocsNoRewrite(AlteredTableInfo *tab)
 					 (int) con->contype);
 		}
 	}
+	Assert(tab->newvals);
 	foreach(l, tab->newvals)
 	{
 		newval = lfirst(l);
@@ -6122,6 +6109,7 @@ ATAocsNoRewrite(AlteredTableInfo *tab)
 	}
 
 	rel = heap_open(tab->relid, NoLock);
+	Assert(rel->rd_rel->relstorage == RELSTORAGE_AOCOLS);
 	segInfos = GetAllAOCSFileSegInfo(rel, snapshot, &nseg);
 	basepath = relpathbackend(rel->rd_node, rel->rd_backend, MAIN_FORKNUM);
 	if (nseg > 0)
@@ -6163,7 +6151,14 @@ ATAocsNoRewrite(AlteredTableInfo *tab)
 			   RelationGetDescr(rel)->natts * sizeof(bool));
 
 		sdesc = aocs_begin_headerscan(rel, scancol);
-		idesc = aocs_addcol_init(rel, list_length(addColCmds));
+		addcols = RelationGetDescr(rel)->natts - tab->oldDesc->natts;
+		/*
+		 * Protect against potential negative number here.
+		 * Note that natts is not decremented to reflect dropped columns,
+		 * so this should be safe
+		 */
+		Assert(addcols > 0);
+		idesc = aocs_addcol_init(rel, addcols);
 
 		/* Loop over all appendonly segments */
 		for (segi = 0; segi < nseg; ++segi)
@@ -7421,6 +7416,8 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 	ListCell   *child;
 	AclResult	aclresult;
 
+	bool	aocs_can_optimize_rewrite;
+
 	/* At top level, permission check was done in ATPrepCmd, else do it */
 	if (recursing)
 		ATSimplePermissions(rel, ATT_TABLE);
@@ -7776,6 +7773,22 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 		colDef->is_local = false;
 	}
 
+	/* This must be a parent rel */
+	if (tab->newvals)
+	{
+		/*
+		 * ADD COLUMN for CO can be optimized only if it is the
+		 * only subcommand being performed.
+		 */
+		aocs_can_optimize_rewrite = true;
+		for (int i = 0; i < AT_NUM_PASSES && aocs_can_optimize_rewrite; ++i)
+		{
+			if (i != AT_PASS_ADD_COL && tab->subcmds[i])
+				aocs_can_optimize_rewrite = false;
+		}
+		if (rel->rd_rel->relstorage == RELSTORAGE_AOCOLS)
+			tab->aocs_can_optimize_rewrite = aocs_can_optimize_rewrite;
+	}
 	foreach(child, children)
 	{
 		Oid			childrelid = lfirst_oid(child);
@@ -7788,6 +7801,8 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 
 		/* Find or create work queue entry for this table */
 		childtab = ATGetQueueEntry(wqueue, childrel);
+		if (childrel->rd_rel->relstorage == RELSTORAGE_AOCOLS)
+			childtab->aocs_can_optimize_rewrite = aocs_can_optimize_rewrite;
 
 		/* Recurse to child */
 		ATExecAddColumn(wqueue, childtab, childrel,

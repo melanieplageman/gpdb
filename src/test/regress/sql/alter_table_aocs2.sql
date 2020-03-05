@@ -490,3 +490,79 @@ alter table nonbulk_rle_tab add column b int default round(random()*100);
 insert into nonbulk_rle_tab values (-1,-5);
 ANALYZE nonbulk_rle_tab; -- To avoid NOTICE about missing stats with ORCA.
 update nonbulk_rle_tab set b = b + 3 where a = -1;
+
+
+-- ADD COLUMN for AOCO partition children should not trigger full table rewrite
+
+CREATE OR REPLACE FUNCTION compare_relfilenodes(table_relfilenode oid, tablename text)
+RETURNS TEXT AS
+$$
+DECLARE
+	result text;
+BEGIN
+	SELECT CASE
+		   WHEN relfilenode = table_relfilenode THEN 'optimized rewrite occurred'
+		   ELSE 'full table rewrite occurred'
+		   END INTO result
+	FROM gp_dist_random('pg_class') WHERE gp_segment_id = 0 AND relname = tablename;
+RETURN result;
+END;
+$$
+LANGUAGE 'plpgsql' IMMUTABLE;
+
+-- Scenario 1: Parent is AOCO, 1 child is AO, 1 child is heap. Heap and AO children require full table rewrite
+CREATE TABLE rewrite_optimization_aoco_parent(a int, b int, c int)
+WITH (APPENDONLY = true, ORIENTATION = column)
+DISTRIBUTED BY (a)
+    PARTITION BY RANGE (b)
+        (START (0) END (1) EVERY (1) WITH (APPENDONLY = true),
+        START (1) END (2) EVERY (1) WITH (APPENDONLY = false));
+
+INSERT INTO rewrite_optimization_aoco_parent SELECT i, i % 2, i FROM generate_series(1,10)i;
+
+SELECT relfilenode AS relfilenode_parent_aoco FROM gp_dist_random('pg_class') where gp_segment_id = 0 and relname = 'rewrite_optimization_aoco_parent'
+\gset
+SELECT relfilenode AS relfilenode_child_ao FROM gp_dist_random('pg_class') where gp_segment_id = 0 and relname = 'rewrite_optimization_aoco_parent_1_prt_1'
+\gset
+SELECT relfilenode AS relfilenode_child_heap FROM gp_dist_random('pg_class') where gp_segment_id = 0 and relname = 'rewrite_optimization_aoco_parent_1_prt_2'
+\gset
+
+ALTER TABLE rewrite_optimization_aoco_parent ADD COLUMN new_col int DEFAULT 1;
+
+SELECT * FROM rewrite_optimization_aoco_parent;
+
+SELECT compare_relfilenodes(:'relfilenode_parent_aoco', 'rewrite_optimization_aoco_parent') AS aoco_parent;
+SELECT compare_relfilenodes(:'relfilenode_child_ao', 'rewrite_optimization_aoco_parent_1_prt_1') AS ao_child;
+SELECT compare_relfilenodes(:'relfilenode_child_heap', 'rewrite_optimization_aoco_parent_1_prt_2') AS heap_child;
+
+-- ADD COLUMN for AOCO partition children should not trigger full table rewrite
+-- Scenario 2: Parent is heap, 1 child is AO, 1 child is AOCO. AO child requires full table rewrite. AOCO child does not.
+CREATE TABLE rewrite_optimization_heap_parent(a int, b int, c int) DISTRIBUTED BY (a)
+    PARTITION BY RANGE (b)
+        (START (0) END (1) EVERY (1) WITH (APPENDONLY = true),
+        START (1) END (2) EVERY (1) WITH (APPENDONLY = true, ORIENTATION = column));
+
+INSERT INTO rewrite_optimization_heap_parent SELECT i, i % 2, i FROM generate_series(1,10)i;
+
+SELECT relfilenode AS relfilenode_parent_heap FROM gp_dist_random('pg_class') where gp_segment_id = 0 and relname = 'rewrite_optimization_heap_parent'
+\gset
+SELECT relfilenode AS relfilenode_child_ao FROM gp_dist_random('pg_class') where gp_segment_id = 0 and relname = 'rewrite_optimization_heap_parent_1_prt_1'
+\gset
+SELECT relfilenode AS relfilenode_child_aoco FROM gp_dist_random('pg_class') where gp_segment_id = 0 and relname = 'rewrite_optimization_heap_parent_1_prt_2'
+\gset
+
+ALTER TABLE rewrite_optimization_heap_parent ADD COLUMN new_col int DEFAULT 1;
+
+SELECT * FROM rewrite_optimization_heap_parent;
+
+SELECT compare_relfilenodes(:'relfilenode_parent_heap', 'rewrite_optimization_heap_parent') AS heap_parent;
+SELECT compare_relfilenodes(:'relfilenode_child_ao', 'rewrite_optimization_heap_parent_1_prt_1') AS ao_child;
+SELECT compare_relfilenodes(:'relfilenode_child_aoco', 'rewrite_optimization_heap_parent_1_prt_2') AS aoco_child;
+
+ALTER TABLE rewrite_optimization_heap_parent ADD COLUMN new_col2 int DEFAULT 1, ALTER COLUMN c TYPE bigint;
+
+SELECT * FROM rewrite_optimization_heap_parent;
+
+SELECT compare_relfilenodes(:'relfilenode_parent_heap', 'rewrite_optimization_heap_parent') AS heap_parent;
+SELECT compare_relfilenodes(:'relfilenode_child_ao', 'rewrite_optimization_heap_parent_1_prt_1') AS ao_child;
+SELECT compare_relfilenodes(:'relfilenode_child_aoco', 'rewrite_optimization_heap_parent_1_prt_2') AS aoco_child;
