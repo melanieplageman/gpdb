@@ -358,10 +358,10 @@ static void ATExecCmd(List **wqueue, AlteredTableInfo *tab, Relation *rel_p,
 static void ATRewriteTables(AlterTableStmt *parsetree,
 				List **wqueue, LOCKMODE lockmode);
 static void ATRewriteTable(AlteredTableInfo *tab, Oid OIDNewHeap, LOCKMODE lockmode);
-static void ATAocsWriteNewColumns(
+static void ATAocsWriteSegFileNewColumns(
 		AOCSAddColumnDesc idesc, AOCSHeaderScanDesc sdesc,
 		AlteredTableInfo *tab, ExprContext *econtext, TupleTableSlot *slot);
-static bool ATAocsNoRewrite(AlteredTableInfo *tab);
+static void ATAocsWriteNewColumns(AlteredTableInfo *tab);
 static AlteredTableInfo *ATGetQueueEntry(List **wqueue, Relation rel);
 static void ATSimplePermissions(Relation rel, int allowed_targets);
 static void ATWrongRelkindError(Relation rel, int allowed_targets);
@@ -5762,8 +5762,11 @@ ATRewriteTables(AlterTableStmt *parsetree, List **wqueue, LOCKMODE lockmode)
 		}
 		heap_close(OldHeap, NoLock);
 
-		if ((tab->rewrite & AT_REWRITE_OPTIMIZE_AOCS) && ATAocsNoRewrite(tab))
+		if (tab->rewrite & AT_REWRITE_NEW_COLUMNS_ONLY_AOCS)
+		{
+			ATAocsWriteNewColumns(tab);
 			continue;
+		}
 		/*
 		 * We only need to rewrite the table if at least one column needs to
 		 * be recomputed, we are adding/removing the OID column, or we are
@@ -5933,7 +5936,7 @@ ATRewriteTables(AlterTableStmt *parsetree, List **wqueue, LOCKMODE lockmode)
  * each for new columns.  newvals is a list of NewColumnValue items.
  */
 static void
-ATAocsWriteNewColumns(
+ATAocsWriteSegFileNewColumns(
 		AOCSAddColumnDesc idesc, AOCSHeaderScanDesc sdesc,
 		AlteredTableInfo *tab, ExprContext *econtext, TupleTableSlot *slot)
 {
@@ -6092,12 +6095,9 @@ column_to_scan(AOCSFileSegInfo **segInfos, int nseg, int natts, Relation aocsrel
 
 /*
  * ATAocsNoRewrite: Leverage column orientation to avoid rewrite.
- *
- * Return true if rewrite can be avoided for this command.  Return
- * false to go the usual ATRewriteTable way.
  */
-static bool
-ATAocsNoRewrite(AlteredTableInfo *tab)
+static void
+ATAocsWriteNewColumns(AlteredTableInfo *tab)
 {
 	AOCSFileSegInfo **segInfos;
 	AOCSHeaderScanDesc sdesc;
@@ -6115,6 +6115,25 @@ ATAocsNoRewrite(AlteredTableInfo *tab)
 	ListCell *l;
 	Snapshot snapshot;
 	int addcols;
+
+	if (Gp_role == GP_ROLE_DISPATCH)
+	{
+		/*
+		 * We remove the hash entry for this relation even though
+		 * there is no rewrite because we may have dropped some
+		 * segfiles that were in AOSEG_STATE_AWAITING_DROP state in
+		 * column_to_scan(). The cost of recreating the entry later on
+		 * is cheap so this should be fine. If we don't remove the
+		 * hash entry and we had done any segfile drops, master will
+		 * continue to see those segfiles as unavailable for use.
+		 *
+		 * Note that ALTER already took an exclusive lock on the
+		 * relation so we are guaranteed to not drop the hash
+		 * entry from under any concurrent operation.
+		 */
+		AORelRemoveHashEntry(tab->relid);
+		return;
+	}
 
 	snapshot = RegisterSnapshot(GetCatalogSnapshot(InvalidOid));
 
@@ -6237,17 +6256,17 @@ ATAocsNoRewrite(AlteredTableInfo *tab)
 			aocs_addcol_newsegfile(idesc, segInfos[segi],
 								   basepath, rnode);
 
-			ATAocsWriteNewColumns(idesc, sdesc, tab, econtext, slot);
+			ATAocsWriteSegFileNewColumns(idesc, sdesc, tab, econtext, slot);
 		}
 		aocs_end_headerscan(sdesc);
 		aocs_addcol_finish(idesc);
 		ExecDropSingleTupleTableSlot(slot);
 	}
 
+
 	FreeExecutorState(estate);
 	heap_close(rel, NoLock);
 	UnregisterSnapshot(snapshot);
-	return true;
 }
 
 /*
@@ -7440,8 +7459,6 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 	AclResult	aclresult;
 	ObjectAddress address;
 
-	bool	aocs_can_optimize_rewrite;
-
 	/* At top level, permission check was done in ATPrepCmd, else do it */
 	if (recursing)
 		ATSimplePermissions(rel, ATT_TABLE | ATT_FOREIGN_TABLE);
@@ -7803,6 +7820,7 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 		colDef->is_local = false;
 	}
 
+	bool	aocs_write_new_columns_only;
 	/* This must be a parent rel */
 	if (tab->newvals)
 	{
@@ -7810,14 +7828,17 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 		 * ADD COLUMN for CO can be optimized only if it is the
 		 * only subcommand being performed.
 		 */
-		aocs_can_optimize_rewrite = true;
-		for (int i = 0; i < AT_NUM_PASSES && aocs_can_optimize_rewrite; ++i)
+		aocs_write_new_columns_only = true;
+		for (int i = 0; i < AT_NUM_PASSES; ++i)
 		{
 			if (i != AT_PASS_ADD_COL && tab->subcmds[i])
-				aocs_can_optimize_rewrite = false;
+			{
+				aocs_write_new_columns_only = false;
+				break;
+			}
 		}
-		if (rel->rd_rel->relstorage == RELSTORAGE_AOCOLS && aocs_can_optimize_rewrite)
-			tab->rewrite |= AT_REWRITE_OPTIMIZE_AOCS;
+		if (rel->rd_rel->relstorage == RELSTORAGE_AOCOLS && aocs_write_new_columns_only)
+			tab->rewrite |= AT_REWRITE_NEW_COLUMNS_ONLY_AOCS;
 	}
 	foreach(child, children)
 	{
@@ -7831,8 +7852,8 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 
 		/* Find or create work queue entry for this table */
 		childtab = ATGetQueueEntry(wqueue, childrel);
-		if (childrel->rd_rel->relstorage == RELSTORAGE_AOCOLS && aocs_can_optimize_rewrite)
-			childtab->rewrite |= AT_REWRITE_OPTIMIZE_AOCS;
+		if (childrel->rd_rel->relstorage == RELSTORAGE_AOCOLS && aocs_write_new_columns_only)
+			childtab->rewrite |= AT_REWRITE_NEW_COLUMNS_ONLY_AOCS;
 
 		/* Recurse to child; return value is ignored */
 		ATExecAddColumn(wqueue, childtab, childrel,

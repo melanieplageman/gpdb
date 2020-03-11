@@ -494,7 +494,7 @@ update nonbulk_rle_tab set b = b + 3 where a = -1;
 
 -- ADD COLUMN for AOCO partition children should not trigger full table rewrite
 
-CREATE OR REPLACE FUNCTION compare_relfilenodes(table_relfilenode oid, tablename text)
+CREATE OR REPLACE FUNCTION compare_relfilenodes(table_relfilenode oid, tablename regclass)
 RETURNS TEXT AS
 $$
 DECLARE
@@ -504,11 +504,11 @@ BEGIN
 		   WHEN relfilenode = table_relfilenode THEN 'optimized rewrite occurred'
 		   ELSE 'full table rewrite occurred'
 		   END INTO result
-	FROM gp_dist_random('pg_class') WHERE gp_segment_id = 0 AND relname = tablename;
+	FROM gp_dist_random('pg_class') WHERE gp_segment_id = 0 AND oid = tablename;
 RETURN result;
 END;
 $$
-LANGUAGE 'plpgsql' IMMUTABLE;
+LANGUAGE 'plpgsql' STABLE;
 
 -- Scenario 1: Parent is AOCO, 1 child is AO, 1 child is heap. Heap and AO children require full table rewrite
 CREATE TABLE rewrite_optimization_aoco_parent(a int, b int, c int)
