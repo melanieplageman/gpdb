@@ -6116,25 +6116,6 @@ ATAocsWriteNewColumns(AlteredTableInfo *tab)
 	Snapshot snapshot;
 	int addcols;
 
-	if (Gp_role == GP_ROLE_DISPATCH)
-	{
-		/*
-		 * We remove the hash entry for this relation even though
-		 * there is no rewrite because we may have dropped some
-		 * segfiles that were in AOSEG_STATE_AWAITING_DROP state in
-		 * column_to_scan(). The cost of recreating the entry later on
-		 * is cheap so this should be fine. If we don't remove the
-		 * hash entry and we had done any segfile drops, master will
-		 * continue to see those segfiles as unavailable for use.
-		 *
-		 * Note that ALTER already took an exclusive lock on the
-		 * relation so we are guaranteed to not drop the hash
-		 * entry from under any concurrent operation.
-		 */
-		AORelRemoveHashEntry(tab->relid);
-		return;
-	}
-
 	snapshot = RegisterSnapshot(GetCatalogSnapshot(InvalidOid));
 
 	estate = CreateExecutorState();
