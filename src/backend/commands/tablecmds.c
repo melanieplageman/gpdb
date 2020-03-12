@@ -7801,10 +7801,11 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 		colDef->is_local = false;
 	}
 
-	bool	aocs_write_new_columns_only;
 	/* This must be a parent rel */
-	if (tab->newvals)
+	if (!recursing)
 	{
+		bool	aocs_write_new_columns_only;
+		List *all_inheritors = find_all_inheritors(tab->relid, AccessShareLock, NULL);
 		/*
 		 * ADD COLUMN for CO can be optimized only if it is the
 		 * only subcommand being performed.
@@ -7818,9 +7819,20 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 				break;
 			}
 		}
-		if (rel->rd_rel->relstorage == RELSTORAGE_AOCOLS && aocs_write_new_columns_only)
-			tab->rewrite |= AT_REWRITE_NEW_COLUMNS_ONLY_AOCS;
+		ListCell *lc;
+		foreach(lc, all_inheritors)
+		{
+			Oid r = lfirst_oid(lc);
+			Relation rel = heap_open(r, AccessShareLock);
+			AlteredTableInfo *childtab;
+			childtab = ATGetQueueEntry(wqueue, rel);
+
+			if (rel->rd_rel->relstorage == RELSTORAGE_AOCOLS && aocs_write_new_columns_only)
+				childtab->rewrite |= AT_REWRITE_NEW_COLUMNS_ONLY_AOCS;
+			heap_close(rel, AccessShareLock);
+		}
 	}
+
 	foreach(child, children)
 	{
 		Oid			childrelid = lfirst_oid(child);
@@ -7833,8 +7845,6 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 
 		/* Find or create work queue entry for this table */
 		childtab = ATGetQueueEntry(wqueue, childrel);
-		if (childrel->rd_rel->relstorage == RELSTORAGE_AOCOLS && aocs_write_new_columns_only)
-			childtab->rewrite |= AT_REWRITE_NEW_COLUMNS_ONLY_AOCS;
 
 		/* Recurse to child; return value is ignored */
 		ATExecAddColumn(wqueue, childtab, childrel,
