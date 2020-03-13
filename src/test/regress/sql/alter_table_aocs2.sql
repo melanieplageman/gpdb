@@ -510,6 +510,18 @@ END;
 $$
 LANGUAGE 'plpgsql' STABLE;
 
+CREATE FUNCTION descendants_of(rel regclass) RETURNS TABLE(descendant regclass)
+SET gp_recursive_cte=ON
+LANGUAGE SQL STABLE AS $fn$
+WITH RECURSIVE w AS (
+  SELECT rel AS descendant
+  UNION ALL
+  SELECT inhrelid
+  FROM pg_inherits JOIN w ON inhparent = descendant
+)
+SELECT * FROM w;
+$fn$;
+
 -- Scenario 1: Parent is AOCO, 1 child is AO, 1 child is heap. Heap and AO children require full table rewrite
 CREATE TABLE rewrite_optimization_aoco_parent(a int, b int, c int)
 WITH (APPENDONLY = true, ORIENTATION = column)
@@ -517,23 +529,41 @@ DISTRIBUTED BY (a)
     PARTITION BY RANGE (b)
         (START (0) END (1) EVERY (1) WITH (APPENDONLY = true),
         START (1) END (2) EVERY (1) WITH (APPENDONLY = false));
+SELECT $$
+SELECT -1 AS segno, oid::regclass AS rel, relfilenode
+FROM pg_class
+WHERE oid IN (SELECT descendant FROM descendants_of(:'ROOT_PARTITION_UNDER_TEST'))
+UNION ALL
+SELECT gp_segment_id, oid::regclass, relfilenode
+FROM gp_dist_random('pg_class')
+WHERE oid IN (SELECT descendant FROM descendants_of(:'ROOT_PARTITION_UNDER_TEST'))
+$$ AS qry \gset
+
+SELECT $$
+SELECT t.segno,
+       t.rel,
+       CASE
+           WHEN table_relfilenode.segno IS NULL THEN 'full table rewritten'
+           ELSE 'ADD COLUMN optimized for columnar table' END AS aoco_add_col_optimized
+FROM (:qry) t(segno, rel, relfilenode)
+         LEFT JOIN table_relfilenode USING (segno, rel, relfilenode)
+WHERE t.segno IN (-1, 0)
+ORDER BY 1, 2;
+$$ AS chk_co_opt_qry \gset
+
+\set ROOT_PARTITION_UNDER_TEST rewrite_optimization_aoco_parent
+CREATE MATERIALIZED VIEW table_relfilenode (segno, rel, relfilenode)
+AS
+:qry
+;
 
 INSERT INTO rewrite_optimization_aoco_parent SELECT i, i % 2, i FROM generate_series(1,10)i;
-
-SELECT relfilenode AS relfilenode_parent_aoco FROM gp_dist_random('pg_class') where gp_segment_id = 0 and relname = 'rewrite_optimization_aoco_parent'
-\gset
-SELECT relfilenode AS relfilenode_child_ao FROM gp_dist_random('pg_class') where gp_segment_id = 0 and relname = 'rewrite_optimization_aoco_parent_1_prt_1'
-\gset
-SELECT relfilenode AS relfilenode_child_heap FROM gp_dist_random('pg_class') where gp_segment_id = 0 and relname = 'rewrite_optimization_aoco_parent_1_prt_2'
-\gset
 
 ALTER TABLE rewrite_optimization_aoco_parent ADD COLUMN new_col int DEFAULT 1;
 
 SELECT * FROM rewrite_optimization_aoco_parent;
 
-SELECT compare_relfilenodes(:'relfilenode_parent_aoco', 'rewrite_optimization_aoco_parent') AS aoco_parent;
-SELECT compare_relfilenodes(:'relfilenode_child_ao', 'rewrite_optimization_aoco_parent_1_prt_1') AS ao_child;
-SELECT compare_relfilenodes(:'relfilenode_child_heap', 'rewrite_optimization_aoco_parent_1_prt_2') AS heap_child;
+:chk_co_opt_qry;
 
 -- ADD COLUMN for AOCO partition children should not trigger full table rewrite
 -- Scenario 2: Parent is heap, 1 child is AO, 1 child is AOCO. AO child requires full table rewrite. AOCO child does not.
@@ -542,30 +572,27 @@ CREATE TABLE rewrite_optimization_heap_parent(a int, b int, c int) DISTRIBUTED B
         (START (0) END (1) EVERY (1) WITH (APPENDONLY = true),
         START (1) END (2) EVERY (1) WITH (APPENDONLY = true, ORIENTATION = column));
 
-INSERT INTO rewrite_optimization_heap_parent SELECT i, i % 2, i FROM generate_series(1,10)i;
+\set ROOT_PARTITION_UNDER_TEST rewrite_optimization_heap_parent
+DROP MATERIALIZED VIEW table_relfilenode;
+CREATE MATERIALIZED VIEW table_relfilenode (segno, rel, relfilenode)
+AS
+:qry
+;
 
-SELECT relfilenode AS relfilenode_parent_heap FROM gp_dist_random('pg_class') where gp_segment_id = 0 and relname = 'rewrite_optimization_heap_parent'
-\gset
-SELECT relfilenode AS relfilenode_child_ao FROM gp_dist_random('pg_class') where gp_segment_id = 0 and relname = 'rewrite_optimization_heap_parent_1_prt_1'
-\gset
-SELECT relfilenode AS relfilenode_child_aoco FROM gp_dist_random('pg_class') where gp_segment_id = 0 and relname = 'rewrite_optimization_heap_parent_1_prt_2'
-\gset
+INSERT INTO rewrite_optimization_heap_parent SELECT i, i % 2, i FROM generate_series(1,10)i;
 
 ALTER TABLE rewrite_optimization_heap_parent ADD COLUMN new_col int DEFAULT 1;
 
 SELECT * FROM rewrite_optimization_heap_parent;
 
-SELECT compare_relfilenodes(:'relfilenode_parent_heap', 'rewrite_optimization_heap_parent') AS heap_parent;
-SELECT compare_relfilenodes(:'relfilenode_child_ao', 'rewrite_optimization_heap_parent_1_prt_1') AS ao_child;
-SELECT compare_relfilenodes(:'relfilenode_child_aoco', 'rewrite_optimization_heap_parent_1_prt_2') AS aoco_child;
+:chk_co_opt_qry;
 
+REFRESH MATERIALIZED VIEW table_relfilenode;
 ALTER TABLE rewrite_optimization_heap_parent ADD COLUMN new_col2 int DEFAULT 1, ALTER COLUMN c TYPE bigint;
 
 SELECT * FROM rewrite_optimization_heap_parent;
 
-SELECT compare_relfilenodes(:'relfilenode_parent_heap', 'rewrite_optimization_heap_parent') AS heap_parent;
-SELECT compare_relfilenodes(:'relfilenode_child_ao', 'rewrite_optimization_heap_parent_1_prt_1') AS ao_child;
-SELECT compare_relfilenodes(:'relfilenode_child_aoco', 'rewrite_optimization_heap_parent_1_prt_2') AS aoco_child;
+:chk_co_opt_qry;
 
 -- Parent is heap, child is heap, grandchild is AOCO.
 CREATE TABLE subpartition_aoco_leaf(a int, b int, c int)
@@ -576,18 +603,13 @@ DISTRIBUTED BY (a)
       );
 
 INSERT INTO subpartition_aoco_leaf SELECT i, i % 2, i % 2 FROM generate_series(1,10)i;
+\set ROOT_PARTITION_UNDER_TEST subpartition_aoco_leaf
 
-SELECT relfilenode AS relfilenode_root
-FROM gp_dist_random('pg_class')
-WHERE gp_segment_id = 0 AND relname = 'subpartition_aoco_leaf' \gset
-
-SELECT relfilenode AS relfilenode_intermediate
-FROM gp_dist_random('pg_class')
-WHERE gp_segment_id = 0 AND relname = 'subpartition_aoco_leaf_1_prt_intermediate' \gset
-
-SELECT relfilenode AS relfilenode_leaf
-FROM gp_dist_random('pg_class')
-WHERE gp_segment_id = 0 AND relname = 'subpartition_aoco_leaf_1_prt_intermediate_2_prt_leaf' \gset
+DROP MATERIALIZED VIEW table_relfilenode;
+CREATE MATERIALIZED VIEW table_relfilenode (segno, rel, relfilenode)
+AS
+:qry
+;
 
 -- Scenario 1: ADD COLUMN for AOCO subpartitioned table should not trigger full
 -- table rewrite. AOCO leaf only writes new column
@@ -595,21 +617,9 @@ ALTER TABLE subpartition_aoco_leaf ADD COLUMN new_col int DEFAULT 1;
 
 SELECT * FROM subpartition_aoco_leaf;
 
-SELECT compare_relfilenodes(:'relfilenode_root', 'subpartition_aoco_leaf');
-SELECT compare_relfilenodes(:'relfilenode_intermediate', 'subpartition_aoco_leaf_1_prt_intermediate');
-SELECT compare_relfilenodes(:'relfilenode_leaf', 'subpartition_aoco_leaf_1_prt_intermediate_2_prt_leaf');
+:chk_co_opt_qry;
 
-SELECT relfilenode AS relfilenode_root
-FROM gp_dist_random('pg_class')
-WHERE gp_segment_id = 0 AND relname = 'subpartition_aoco_leaf' \gset
-
-SELECT relfilenode AS relfilenode_intermediate
-FROM gp_dist_random('pg_class')
-WHERE gp_segment_id = 0 AND relname = 'subpartition_aoco_leaf_1_prt_intermediate' \gset
-
-SELECT relfilenode AS relfilenode_leaf
-FROM gp_dist_random('pg_class')
-WHERE gp_segment_id = 0 AND relname = 'subpartition_aoco_leaf_1_prt_intermediate_2_prt_leaf' \gset
+REFRESH MATERIALIZED VIEW table_relfilenode;
 
 -- Scenario 2: mixing ADD COLUMN with ALTER COLUMN TYPE should trigger full
 -- table rewrite for every level
@@ -617,6 +627,4 @@ ALTER TABLE subpartition_aoco_leaf ADD COLUMN new_col2 int DEFAULT 1, ALTER COLU
 
 SELECT * FROM subpartition_aoco_leaf;
 
-SELECT compare_relfilenodes(:'relfilenode_root', 'subpartition_aoco_leaf') AS heap_parent;
-SELECT compare_relfilenodes(:'relfilenode_intermediate', 'subpartition_aoco_leaf_1_prt_intermediate') AS ao_child;
-SELECT compare_relfilenodes(:'relfilenode_leaf', 'subpartition_aoco_leaf_1_prt_intermediate_2_prt_leaf');
+:chk_co_opt_qry;
