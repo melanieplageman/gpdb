@@ -923,3 +923,103 @@ SELECT compare_relfilenodes(:'relfilenode_child_aoco', 'rewrite_optimization_hea
  full table rewrite occurred
 (1 row)
 
+-- Parent is heap, child is heap, grandchild is AOCO.
+CREATE TABLE subpartition_aoco_leaf(a int, b int, c int)
+DISTRIBUTED BY (a)
+  PARTITION BY RANGE(b) SUBPARTITION BY RANGE(c) 
+      (PARTITION intermediate START (0) END (2)
+        (SUBPARTITION leaf START (0) END(2) WITH (APPENDONLY = true, ORIENTATION = column))
+      );
+NOTICE:  CREATE TABLE will create partition "subpartition_aoco_leaf_1_prt_intermediate" for table "subpartition_aoco_leaf"
+NOTICE:  CREATE TABLE will create partition "subpartition_aoco_leaf_1_prt_intermediate_2_prt_leaf" for table "subpartition_aoco_leaf_1_prt_intermediate"
+INSERT INTO subpartition_aoco_leaf SELECT i, i % 2, i % 2 FROM generate_series(1,10)i;
+SELECT relfilenode AS relfilenode_root
+FROM gp_dist_random('pg_class')
+WHERE gp_segment_id = 0 AND relname = 'subpartition_aoco_leaf' \gset
+SELECT relfilenode AS relfilenode_intermediate
+FROM gp_dist_random('pg_class')
+WHERE gp_segment_id = 0 AND relname = 'subpartition_aoco_leaf_1_prt_intermediate' \gset
+SELECT relfilenode AS relfilenode_leaf
+FROM gp_dist_random('pg_class')
+WHERE gp_segment_id = 0 AND relname = 'subpartition_aoco_leaf_1_prt_intermediate_2_prt_leaf' \gset
+-- Scenario 1: ADD COLUMN for AOCO subpartitioned table should not trigger full
+-- table rewrite. AOCO leaf only writes new column
+ALTER TABLE subpartition_aoco_leaf ADD COLUMN new_col int DEFAULT 1;
+SELECT * FROM subpartition_aoco_leaf;
+ a  | b | c | new_col 
+----+---+---+---------
+  1 | 1 | 1 |       1
+  5 | 1 | 1 |       1
+  6 | 0 | 0 |       1
+  9 | 1 | 1 |       1
+ 10 | 0 | 0 |       1
+  2 | 0 | 0 |       1
+  3 | 1 | 1 |       1
+  4 | 0 | 0 |       1
+  7 | 1 | 1 |       1
+  8 | 0 | 0 |       1
+(10 rows)
+
+SELECT compare_relfilenodes(:'relfilenode_root', 'subpartition_aoco_leaf');
+    compare_relfilenodes     
+-----------------------------
+ full table rewrite occurred
+(1 row)
+
+SELECT compare_relfilenodes(:'relfilenode_intermediate', 'subpartition_aoco_leaf_1_prt_intermediate');
+    compare_relfilenodes     
+-----------------------------
+ full table rewrite occurred
+(1 row)
+
+SELECT compare_relfilenodes(:'relfilenode_leaf', 'subpartition_aoco_leaf_1_prt_intermediate_2_prt_leaf');
+    compare_relfilenodes    
+----------------------------
+ optimized rewrite occurred
+(1 row)
+
+SELECT relfilenode AS relfilenode_root
+FROM gp_dist_random('pg_class')
+WHERE gp_segment_id = 0 AND relname = 'subpartition_aoco_leaf' \gset
+SELECT relfilenode AS relfilenode_intermediate
+FROM gp_dist_random('pg_class')
+WHERE gp_segment_id = 0 AND relname = 'subpartition_aoco_leaf_1_prt_intermediate' \gset
+SELECT relfilenode AS relfilenode_leaf
+FROM gp_dist_random('pg_class')
+WHERE gp_segment_id = 0 AND relname = 'subpartition_aoco_leaf_1_prt_intermediate_2_prt_leaf' \gset
+-- Scenario 2: mixing ADD COLUMN with ALTER COLUMN TYPE should trigger full
+-- table rewrite for every level
+ALTER TABLE subpartition_aoco_leaf ADD COLUMN new_col2 int DEFAULT 1, ALTER COLUMN new_col TYPE bigint;
+SELECT * FROM subpartition_aoco_leaf;
+ a  | b | c | new_col | new_col2 
+----+---+---+---------+----------
+  1 | 1 | 1 |       1 |        1
+  2 | 0 | 0 |       1 |        1
+  3 | 1 | 1 |       1 |        1
+  4 | 0 | 0 |       1 |        1
+  7 | 1 | 1 |       1 |        1
+  8 | 0 | 0 |       1 |        1
+  5 | 1 | 1 |       1 |        1
+  6 | 0 | 0 |       1 |        1
+  9 | 1 | 1 |       1 |        1
+ 10 | 0 | 0 |       1 |        1
+(10 rows)
+
+SELECT compare_relfilenodes(:'relfilenode_root', 'subpartition_aoco_leaf') AS heap_parent;
+         heap_parent         
+-----------------------------
+ full table rewrite occurred
+(1 row)
+
+SELECT compare_relfilenodes(:'relfilenode_intermediate', 'subpartition_aoco_leaf_1_prt_intermediate') AS ao_child;
+          ao_child           
+-----------------------------
+ full table rewrite occurred
+(1 row)
+
+SELECT compare_relfilenodes(:'relfilenode_leaf', 'subpartition_aoco_leaf_1_prt_intermediate_2_prt_leaf');
+    compare_relfilenodes     
+-----------------------------
+ full table rewrite occurred
+(1 row)
+

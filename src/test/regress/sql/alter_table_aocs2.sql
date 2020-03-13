@@ -567,37 +567,56 @@ SELECT compare_relfilenodes(:'relfilenode_parent_heap', 'rewrite_optimization_he
 SELECT compare_relfilenodes(:'relfilenode_child_ao', 'rewrite_optimization_heap_parent_1_prt_1') AS ao_child;
 SELECT compare_relfilenodes(:'relfilenode_child_aoco', 'rewrite_optimization_heap_parent_1_prt_2') AS aoco_child;
 
--- ADD COLUMN for AOCO subpartitioned table should not trigger full table rewrite
--- Scenario 2: Parent is heap, 1 child is AO, 1 child is AOCO. AO child requires full table rewrite. AOCO child does not.
-CREATE TABLE rewrite_optimization_subpartition_aoco_parent(a int, b int, c int)
-WITH (APPENDONLY=true, ORIENTATION=column)
+-- Parent is heap, child is heap, grandchild is AOCO.
+CREATE TABLE subpartition_aoco_leaf(a int, b int, c int)
 DISTRIBUTED BY (a)
   PARTITION BY RANGE(b) SUBPARTITION BY RANGE(c) 
-      (PARTITION level2 START (0) END (2) WITH (APPENDONLY = false) 
-        (SUBPARTITION level3 START (0) END(2) WITH (APPENDONLY = true, ORIENTATION = column))
+      (PARTITION intermediate START (0) END (2)
+        (SUBPARTITION leaf START (0) END(2) WITH (APPENDONLY = true, ORIENTATION = column))
       );
 
-INSERT INTO rewrite_optimization_subpartition_aoco_parent SELECT i, i % 2, i % 2 FROM generate_series(1,10)i;
+INSERT INTO subpartition_aoco_leaf SELECT i, i % 2, i % 2 FROM generate_series(1,10)i;
 
-SELECT relfilenode AS relfilenode_parent_subpartition_aoco FROM gp_dist_random('pg_class') where gp_segment_id = 0 and relname = 'rewrite_optimization_subpartition_aoco_parent';
-\gset
-SELECT relfilenode AS relfilenode_child_subpartition_intermediate FROM gp_dist_random('pg_class') where gp_segment_id = 0 and relname = 'rewrite_optimization_subpartition_aoco_parent_1_prt_1';
-\gset
-SELECT relfilenode AS relfilenode_child_ao FROM gp_dist_random('pg_class') where gp_segment_id = 0 and relname = 'rewrite_optimization_subpartition_aoco_parent_1_prt_2';
-\gset
+SELECT relfilenode AS relfilenode_root
+FROM gp_dist_random('pg_class')
+WHERE gp_segment_id = 0 AND relname = 'subpartition_aoco_leaf' \gset
 
-ALTER TABLE rewrite_optimization_heap_parent ADD COLUMN new_col int DEFAULT 1;
+SELECT relfilenode AS relfilenode_intermediate
+FROM gp_dist_random('pg_class')
+WHERE gp_segment_id = 0 AND relname = 'subpartition_aoco_leaf_1_prt_intermediate' \gset
 
-SELECT * FROM rewrite_optimization_heap_parent;
+SELECT relfilenode AS relfilenode_leaf
+FROM gp_dist_random('pg_class')
+WHERE gp_segment_id = 0 AND relname = 'subpartition_aoco_leaf_1_prt_intermediate_2_prt_leaf' \gset
 
-SELECT compare_relfilenodes(:'relfilenode_parent_heap', 'rewrite_optimization_heap_parent') AS heap_parent;
-SELECT compare_relfilenodes(:'relfilenode_child_ao', 'rewrite_optimization_heap_parent_1_prt_1') AS ao_child;
-SELECT compare_relfilenodes(:'relfilenode_child_aoco', 'rewrite_optimization_heap_parent_1_prt_2') AS aoco_child;
+-- Scenario 1: ADD COLUMN for AOCO subpartitioned table should not trigger full
+-- table rewrite. AOCO leaf only writes new column
+ALTER TABLE subpartition_aoco_leaf ADD COLUMN new_col int DEFAULT 1;
 
-ALTER TABLE rewrite_optimization_heap_parent ADD COLUMN new_col2 int DEFAULT 1, ALTER COLUMN c TYPE bigint;
+SELECT * FROM subpartition_aoco_leaf;
 
-SELECT * FROM rewrite_optimization_heap_parent;
+SELECT compare_relfilenodes(:'relfilenode_root', 'subpartition_aoco_leaf');
+SELECT compare_relfilenodes(:'relfilenode_intermediate', 'subpartition_aoco_leaf_1_prt_intermediate');
+SELECT compare_relfilenodes(:'relfilenode_leaf', 'subpartition_aoco_leaf_1_prt_intermediate_2_prt_leaf');
 
-SELECT compare_relfilenodes(:'relfilenode_parent_heap', 'rewrite_optimization_heap_parent') AS heap_parent;
-SELECT compare_relfilenodes(:'relfilenode_child_ao', 'rewrite_optimization_heap_parent_1_prt_1') AS ao_child;
-SELECT compare_relfilenodes(:'relfilenode_child_aoco', 'rewrite_optimization_heap_parent_1_prt_2') AS aoco_child;
+SELECT relfilenode AS relfilenode_root
+FROM gp_dist_random('pg_class')
+WHERE gp_segment_id = 0 AND relname = 'subpartition_aoco_leaf' \gset
+
+SELECT relfilenode AS relfilenode_intermediate
+FROM gp_dist_random('pg_class')
+WHERE gp_segment_id = 0 AND relname = 'subpartition_aoco_leaf_1_prt_intermediate' \gset
+
+SELECT relfilenode AS relfilenode_leaf
+FROM gp_dist_random('pg_class')
+WHERE gp_segment_id = 0 AND relname = 'subpartition_aoco_leaf_1_prt_intermediate_2_prt_leaf' \gset
+
+-- Scenario 2: mixing ADD COLUMN with ALTER COLUMN TYPE should trigger full
+-- table rewrite for every level
+ALTER TABLE subpartition_aoco_leaf ADD COLUMN new_col2 int DEFAULT 1, ALTER COLUMN new_col TYPE bigint;
+
+SELECT * FROM subpartition_aoco_leaf;
+
+SELECT compare_relfilenodes(:'relfilenode_root', 'subpartition_aoco_leaf') AS heap_parent;
+SELECT compare_relfilenodes(:'relfilenode_intermediate', 'subpartition_aoco_leaf_1_prt_intermediate') AS ao_child;
+SELECT compare_relfilenodes(:'relfilenode_leaf', 'subpartition_aoco_leaf_1_prt_intermediate_2_prt_leaf');
