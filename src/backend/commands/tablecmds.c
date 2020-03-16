@@ -7806,13 +7806,6 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 	{
 		bool	aocs_write_new_columns_only;
 		/*
-		 * We have acquired lockmode on the root and first-level partitions
-		 * already. This leaves the deeper subpartitions unlocked, but no
-		 * operations can drop (or alter) those relations without locking through
-		 * the root
-		 */
-		List *all_inheritors = find_all_inheritors(tab->relid, NoLock, NULL);
-		/*
 		 * ADD COLUMN for CO can be optimized only if it is the
 		 * only subcommand being performed.
 		 */
@@ -7825,17 +7818,28 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 				break;
 			}
 		}
-		ListCell *lc;
-		foreach(lc, all_inheritors)
-		{
-			Oid r = lfirst_oid(lc);
-			Relation rel = heap_open(r, NoLock);
-			AlteredTableInfo *childtab;
-			childtab = ATGetQueueEntry(wqueue, rel);
 
-			if (rel->rd_rel->relstorage == RELSTORAGE_AOCOLS && aocs_write_new_columns_only)
-				childtab->rewrite |= AT_REWRITE_NEW_COLUMNS_ONLY_AOCS;
-			heap_close(rel, NoLock);
+		if (aocs_write_new_columns_only)
+		{
+			/*
+			 * We have acquired lockmode on the root and first-level partitions
+			 * already. This leaves the deeper subpartitions unlocked, but no
+			 * operations can drop (or alter) those relations without locking
+			 * through the root
+			 */
+			List *all_inheritors = find_all_inheritors(tab->relid, NoLock, NULL);
+			ListCell *lc;
+			foreach (lc, all_inheritors)
+			{
+				Oid r = lfirst_oid(lc);
+				Relation rel = heap_open(r, NoLock);
+				AlteredTableInfo *childtab;
+				childtab = ATGetQueueEntry(wqueue, rel);
+
+				if (rel->rd_rel->relstorage == RELSTORAGE_AOCOLS)
+					childtab->rewrite |= AT_REWRITE_NEW_COLUMNS_ONLY_AOCS;
+				heap_close(rel, NoLock);
+			}
 		}
 	}
 
