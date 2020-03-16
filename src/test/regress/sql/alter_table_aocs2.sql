@@ -512,11 +512,11 @@ DISTRIBUTED BY (a)
         (START (0) END (1) EVERY (1) WITH (APPENDONLY = true),
         START (1) END (2) EVERY (1) WITH (APPENDONLY = false));
 SELECT $$
-SELECT -1 AS segno, oid::regclass AS rel, relfilenode
+SELECT -1 AS segno, oid::regclass AS rel, relfilenode, relstorage
 FROM pg_class
 WHERE oid IN (SELECT descendant FROM descendants_of(:'ROOT_PARTITION_UNDER_TEST'))
 UNION ALL
-SELECT gp_segment_id, oid::regclass, relfilenode
+SELECT gp_segment_id, oid::regclass, relfilenode, relstorage
 FROM gp_dist_random('pg_class')
 WHERE oid IN (SELECT descendant FROM descendants_of(:'ROOT_PARTITION_UNDER_TEST'))
 $$ AS qry \gset
@@ -524,10 +524,11 @@ $$ AS qry \gset
 SELECT $$
 SELECT t.segno,
        t.rel,
+       t.relstorage,
        CASE
            WHEN table_relfilenode.segno IS NULL THEN 'full table rewritten'
            ELSE 'ADD COLUMN optimized for columnar table' END AS aoco_add_col_optimized
-FROM (:qry) t(segno, rel, relfilenode)
+FROM (:qry) t
          LEFT JOIN table_relfilenode USING (segno, rel, relfilenode)
 WHERE t.segno IN (-1, 0)
 ORDER BY 1, 2;
