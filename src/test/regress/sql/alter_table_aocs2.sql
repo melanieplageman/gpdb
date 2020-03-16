@@ -492,24 +492,6 @@ ANALYZE nonbulk_rle_tab; -- To avoid NOTICE about missing stats with ORCA.
 update nonbulk_rle_tab set b = b + 3 where a = -1;
 
 
--- ADD COLUMN for AOCO partition children should not trigger full table rewrite
-
-CREATE OR REPLACE FUNCTION compare_relfilenodes(table_relfilenode oid, tablename regclass)
-RETURNS TEXT AS
-$$
-DECLARE
-	result text;
-BEGIN
-	SELECT CASE
-		   WHEN relfilenode = table_relfilenode THEN 'optimized rewrite occurred'
-		   ELSE 'full table rewrite occurred'
-		   END INTO result
-	FROM gp_dist_random('pg_class') WHERE gp_segment_id = 0 AND oid = tablename;
-RETURN result;
-END;
-$$
-LANGUAGE 'plpgsql' STABLE;
-
 CREATE FUNCTION descendants_of(rel regclass) RETURNS TABLE(descendant regclass)
 SET gp_recursive_cte=ON
 LANGUAGE SQL STABLE AS $fn$
