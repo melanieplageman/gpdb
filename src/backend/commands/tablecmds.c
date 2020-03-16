@@ -7801,8 +7801,13 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 		colDef->is_local = false;
 	}
 
-	/* This must be a root partition */
-	if (!recursing)
+	/*
+	 * Leave a flag on tables in the partition hierarchy that can benefit from the
+	 * optimization for columnar tables.
+	 * We have to do it while processing the root partition because that's the
+	 * only level where the `ADD COLUMN` subcommands are populated.
+	 */
+	if (!recursing && tab->relkind == RELKIND_RELATION)
 	{
 		bool	aocs_write_new_columns_only;
 		/*
