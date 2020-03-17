@@ -5932,8 +5932,8 @@ ATRewriteTables(AlterTableStmt *parsetree, List **wqueue, LOCKMODE lockmode)
 }
 
 /*
- * Scan an existing column for varblock headers, write one new segfile
- * each for new columns.  newvals is a list of NewColumnValue items.
+ * A helper for ATAocsWriteNewColumns(). It scans an existing column for
+ * varblock headers. Write one new segfile each for new columns.
  */
 static void
 ATAocsWriteSegFileNewColumns(
@@ -6093,9 +6093,6 @@ column_to_scan(AOCSFileSegInfo **segInfos, int nseg, int natts, Relation aocsrel
 	return scancol;
 }
 
-/*
- * ATAocsNoRewrite: Leverage column orientation to avoid rewrite.
- */
 static void
 ATAocsWriteNewColumns(AlteredTableInfo *tab)
 {
