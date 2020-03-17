@@ -7827,7 +7827,8 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 			 * We have acquired lockmode on the root and first-level partitions
 			 * already. This leaves the deeper subpartitions unlocked, but no
 			 * operations can drop (or alter) those relations without locking
-			 * through the root
+			 * through the root. Note that find_all_inheritors() also includes
+			 * the root partition in the returned list.
 			 */
 			List *all_inheritors = find_all_inheritors(tab->relid, NoLock, NULL);
 			ListCell *lc;
