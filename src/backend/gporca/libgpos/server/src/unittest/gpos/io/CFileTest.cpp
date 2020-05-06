@@ -282,8 +282,8 @@ CFileTest::Unittest_MkTmpFile
 	ioutils::CreateTempDir(szTmpDir);
 
 	// unique temporary file name
-	strTmpFile.AppendFormat(szTmpDir);
-	strTmpFile.AppendFormat(szFile);
+	strTmpFile.AppendBuffer(szTmpDir);
+	strTmpFile.AppendBuffer(szFile);
 
 }
 
