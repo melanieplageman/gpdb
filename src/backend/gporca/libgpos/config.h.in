@@ -1,0 +1,12 @@
+#ifndef GPOS_config_H
+#define GPOS_config_H
+
+#ifndef USE_CMAKE
+#error gpos/config.h should only be used under CMake. \
+Your code should generate values for the following macros \
+elsewhere if you are using configure
+#endif
+
+#cmakedefine GPOS_FORMAT_ARCHETYPE @GPOS_FORMAT_ARCHETYPE@
+
+#endif  // GPOS_config_H
